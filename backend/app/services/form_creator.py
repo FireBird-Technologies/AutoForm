@@ -16,6 +16,107 @@ import dspy
 logger = logging.getLogger(__name__)
 
 
+# Validation metrics for signature outputs
+def validate_form_plan(form_result: Dict[str, Any]) -> Tuple[bool, List[str]]:
+    """
+    Validate that the form plan from FormPlannerSignature is complete.
+    
+    Returns:
+        tuple: (is_valid, error_messages)
+    """
+    errors = []
+    
+    # Check required fields
+    if not form_result.get("title"):
+        errors.append("Missing required field: title")
+    
+    if not form_result.get("components"):
+        errors.append("Missing required field: components (must have at least one)")
+    elif not isinstance(form_result.get("components"), list):
+        errors.append("Field 'components' must be a list")
+    elif len(form_result.get("components")) == 0:
+        errors.append("Components list is empty (must have at least one)")
+    
+    # Validate each component has required fields
+    components = form_result.get("components", [])
+    for idx, comp in enumerate(components):
+        if not comp.get("component_id"):
+            errors.append(f"Component {idx}: missing component_id")
+        if not comp.get("question_type"):
+            errors.append(f"Component {idx}: missing question_type")
+        if not comp.get("question_text"):
+            errors.append(f"Component {idx}: missing question_text")
+        
+        # Validate question type
+        valid_types = [
+            "short_answer", "long_answer", "multiple_choice", "checkboxes",
+            "dropdown", "multi_select", "number", "email", "phone", "link",
+            "file_upload", "date", "time", "linear_scale", "matrix", "rating",
+            "payment", "signature", "ranking", "wallet_connect"
+        ]
+        if comp.get("question_type") not in valid_types:
+            errors.append(f"Component {idx}: invalid question_type '{comp.get('question_type')}'")
+    
+    # Validate conditional logic references valid components
+    component_ids = {comp.get("component_id") for comp in components}
+    conditional_logic = form_result.get("conditional_logic", [])
+    
+    for idx, rule in enumerate(conditional_logic):
+        trigger_id = rule.get("trigger_component_id")
+        target_id = rule.get("target_component_id")
+        
+        if trigger_id not in component_ids:
+            errors.append(f"Conditional rule {idx}: invalid trigger_component_id '{trigger_id}'")
+        if target_id not in component_ids:
+            errors.append(f"Conditional rule {idx}: invalid target_component_id '{target_id}'")
+        
+        valid_conditions = ["equals", "not_equals", "contains", "not_contains", "greater_than", "less_than", "is_empty", "is_not_empty"]
+        if rule.get("condition_type") not in valid_conditions:
+            errors.append(f"Conditional rule {idx}: invalid condition_type '{rule.get('condition_type')}'")
+        
+        if rule.get("action") not in ["show", "hide"]:
+            errors.append(f"Conditional rule {idx}: invalid action '{rule.get('action')}'")
+    
+    is_valid = len(errors) == 0
+    return is_valid, errors
+
+
+def validate_component_settings(question_type: str, settings: Dict[str, Any]) -> Tuple[bool, List[str]]:
+    """
+    Validate that component settings match the question type requirements.
+    
+    Returns:
+        tuple: (is_valid, error_messages)
+    """
+    errors = []
+    
+    # Check type-specific required settings
+    if question_type in ["multiple_choice", "checkboxes", "dropdown", "multi_select"]:
+        if not settings.get("choices"):
+            errors.append(f"Question type '{question_type}' requires 'choices' in settings")
+        elif not isinstance(settings.get("choices"), list) or len(settings.get("choices")) < 2:
+            errors.append(f"Question type '{question_type}' requires at least 2 choices")
+    
+    if question_type == "linear_scale":
+        if "min_value" not in settings or "max_value" not in settings:
+            errors.append(f"Question type 'linear_scale' requires 'min_value' and 'max_value' in settings")
+    
+    if question_type == "matrix":
+        if not settings.get("rows") or not settings.get("columns"):
+            errors.append(f"Question type 'matrix' requires 'rows' and 'columns' in settings")
+    
+    if question_type == "ranking":
+        if not settings.get("ranking_items") or len(settings.get("ranking_items", [])) < 2:
+            errors.append(f"Question type 'ranking' requires at least 2 'ranking_items' in settings")
+    
+    if question_type == "payment":
+        if "payment_amount" not in settings:
+            errors.append(f"Question type 'payment' requires 'payment_amount' in settings")
+    
+    is_valid = len(errors) == 0
+    return is_valid, errors
+
+
 async def generate_form_spec(
     user_query: str,
     user_id: int = None
@@ -51,6 +152,12 @@ async def generate_form_spec(
             logger.error(f"Form generation error: {form_result['error']}")
             raise Exception(form_result['error'])
         
+        # VALIDATION METRIC: Validate form plan structure
+        is_valid, validation_errors = validate_form_plan(form_result)
+        if not is_valid:
+            logger.error(f"Form plan validation failed: {validation_errors}")
+            raise Exception(f"Invalid form plan: {'; '.join(validation_errors)}")
+        
         # Extract form metadata
         form_data = {
             "title": form_result.get("title", "New Form"),
@@ -75,13 +182,69 @@ async def generate_form_spec(
             component_id_to_order[component_id] = idx
             
             # Map component structure to question structure
+            question_type = component.get("question_type", "short_answer")
+            settings = component.get("settings", {})
+            
+            # FIX: Handle AI generating numbers instead of arrays for matrix/ranking
+            # THIS MUST HAPPEN BEFORE VALIDATION
+            if question_type == "matrix":
+                # Ensure settings dict exists
+                if not isinstance(settings, dict):
+                    settings = {}
+                
+                # Convert rows: handle int, float, None, or non-list
+                rows_value = settings.get("rows")
+                if isinstance(rows_value, (int, float)):
+                    num_rows = max(1, int(rows_value))
+                    settings["rows"] = [f"Row {i+1}" for i in range(num_rows)]
+                    logger.info(f"Converted matrix rows from {num_rows} to array of {num_rows} strings")
+                elif not isinstance(rows_value, list):
+                    settings["rows"] = ["Row 1", "Row 2", "Row 3"]
+                    logger.info(f"Set default matrix rows (was: {type(rows_value).__name__})")
+                
+                # Convert columns: handle int, float, None, or non-list
+                columns_value = settings.get("columns")
+                if isinstance(columns_value, (int, float)):
+                    num_cols = max(1, int(columns_value))
+                    settings["columns"] = [f"Column {i+1}" for i in range(num_cols)]
+                    logger.info(f"Converted matrix columns from {num_cols} to array of {num_cols} strings")
+                elif not isinstance(columns_value, list):
+                    settings["columns"] = ["Column 1", "Column 2", "Column 3"]
+                    logger.info(f"Set default matrix columns (was: {type(columns_value).__name__})")
+            
+            if question_type == "ranking":
+                # Ensure settings dict exists
+                if not isinstance(settings, dict):
+                    settings = {}
+                
+                # Convert ranking_items: handle int, float, None, or non-list
+                ranking_value = settings.get("ranking_items")
+                if isinstance(ranking_value, (int, float)):
+                    num_items = max(2, int(ranking_value))
+                    settings["ranking_items"] = [f"Item {i+1}" for i in range(num_items)]
+                    logger.info(f"Converted ranking_items from {num_items} to array of {num_items} strings")
+                elif not isinstance(ranking_value, list):
+                    settings["ranking_items"] = ["Item 1", "Item 2", "Item 3"]
+                    logger.info(f"Set default ranking_items (was: {type(ranking_value).__name__})")
+            
+            # VALIDATION METRIC: Validate component settings
+            settings_valid, settings_errors = validate_component_settings(question_type, settings)
+            if not settings_valid:
+                logger.warning(f"Component {idx} settings validation failed: {settings_errors}")
+                # Add defaults for failed settings instead of rejecting
+                if question_type in ["multiple_choice", "checkboxes", "dropdown", "multi_select"] and not settings.get("choices"):
+                    settings["choices"] = ["Option 1", "Option 2", "Option 3"]
+                if question_type == "linear_scale" and ("min_value" not in settings or "max_value" not in settings):
+                    settings["min_value"] = 1
+                    settings["max_value"] = 10
+            
             question_data = {
                 "question_order": component.get("order", idx),
-                "question_type": component.get("question_type", "short_answer"),
+                "question_type": question_type,
                 "question_text": component.get("question_text", f"Question {idx + 1}"),
                 "description": component.get("description"),
                 "required": component.get("required", False),
-                "settings": component.get("settings", {})
+                "settings": settings
             }
             
             # Add validation rules if present
@@ -111,7 +274,19 @@ async def generate_form_spec(
             else:
                 logger.warning(f"Skipping rule with invalid component IDs: {trigger_id} -> {target_id}")
         
-        logger.info(f"Form generation complete: {len(questions_list)} questions, {len(conditional_rules)} rules")
+        # VALIDATION METRIC: Ensure output is complete and serializable
+        try:
+            # Test JSON serialization to ensure frontend can render
+            json.dumps({
+                "form_data": form_data,
+                "questions": questions_list,
+                "rules": conditional_rules
+            })
+            logger.info(f"✓ Form generation complete: {len(questions_list)} questions, {len(conditional_rules)} rules")
+            logger.info(f"✓ Validation passed: Complete closed JSON ready for frontend")
+        except Exception as e:
+            logger.error(f"✗ JSON serialization failed: {e}")
+            raise Exception(f"Form generation produced non-serializable output: {e}")
         
         return form_data, questions_list, conditional_rules
         
@@ -193,7 +368,7 @@ def validate_question_type(question_type: str) -> bool:
         "short_answer", "long_answer", "multiple_choice", "checkboxes",
         "dropdown", "multi_select", "number", "email", "phone", "link",
         "file_upload", "date", "time", "linear_scale", "matrix", "rating",
-        "payment", "signature", "ranking", "wallet_connect"
+        "payment", "signature", "ranking", "wallet_connect", "button"
     ]
     return question_type in valid_types
 

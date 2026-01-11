@@ -1,32 +1,31 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { config, getAuthHeaders } from '../config';
 
-interface DashboardMetadata {
-  id: string;
-  dashboard_query_id?: number;
+interface FormMetadata {
+  id: number;
   title: string;
-  datasetId: string;
-  chartCount: number;
-  timestamp: number;
-  datasetName?: string;
+  description: string;
+  questions_count: number;
+  updated_at: string;
+  created_at: string;
 }
 
-interface RecentDashboardsProps {
-  onLoadDashboard?: (metadata: DashboardMetadata) => void;
+interface RecentFormsProps {
+  onLoadForm?: (metadata: FormMetadata) => void;
 }
 
-export const RecentForms: React.FC<RecentDashboardsProps> = () => {
+export const RecentForms: React.FC<RecentFormsProps> = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [recentDashboards, setRecentDashboards] = useState<DashboardMetadata[]>([]);
+  const [recentForms, setRecentForms] = useState<FormMetadata[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   
-  const displayedDashboards = showAll ? recentDashboards : recentDashboards.slice(0, 5);
+  const displayedForms = showAll ? recentForms : recentForms.slice(0, 5);
 
   useEffect(() => {
     if (isOpen) {
-      loadRecentDashboards();
+      loadRecentForms();
     }
   }, [isOpen]);
 
@@ -46,32 +45,40 @@ export const RecentForms: React.FC<RecentDashboardsProps> = () => {
     };
   }, [isOpen]);
 
-  const loadRecentDashboards = async () => {
+  const loadRecentForms = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${config.backendUrl}/api/data/dashboards/recent?limit=10`, {
+      const response = await fetch(`${config.backendUrl}/api/forms?limit=10&sort=updated_at`, {
         method: 'GET',
         headers: getAuthHeaders(),
         credentials: 'include',
       });
 
       if (!response.ok) {
-        throw new Error('Failed to load recent dashboards');
+        throw new Error('Failed to load recent forms');
       }
 
       const data = await response.json();
-      setRecentDashboards(data.dashboards || []);
+      
+      // Transform the data to include questions_count
+      const forms = (Array.isArray(data) ? data : []).map((form: any) => ({
+        ...form,
+        questions_count: form.questions?.length || 0
+      }));
+      
+      setRecentForms(forms);
     } catch (error) {
-      console.error('Failed to load recent dashboards:', error);
-      setRecentDashboards([]);
+      console.error('Failed to load recent forms:', error);
+      setRecentForms([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const formatTimestamp = (timestamp: number) => {
+  const formatTimestamp = (dateString: string) => {
+    const date = new Date(dateString);
     const now = Date.now();
-    const diff = now - timestamp;
+    const diff = now - date.getTime();
     
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
@@ -82,25 +89,25 @@ export const RecentForms: React.FC<RecentDashboardsProps> = () => {
     if (hours < 24) return `${hours}h ago`;
     if (days < 7) return `${days}d ago`;
     
-    return new Date(timestamp).toLocaleDateString('en-US', {
+    return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric'
     });
   };
 
-  const handleDashboardClick = (dashboard: DashboardMetadata, event: React.MouseEvent) => {
+  const handleFormClick = (form: FormMetadata, event: React.MouseEvent) => {
     event.preventDefault();
     setIsOpen(false);
     
-    // Open in new tab with dashboard query ID to load saved state
-    const url = `/visualize?dashboardId=${dashboard.dashboard_query_id}&savedView=true`;
+    // Open in new tab with form ID to load saved state
+    const url = `/build?formId=${form.id}`;
     window.open(url, '_blank');
   };
 
-  const clearRecentDashboards = () => {
-    // Since dashboards are now stored in the database per user,
+  const clearRecentForms = () => {
+    // Since forms are stored in the database per user,
     // we just clear the local display
-    setRecentDashboards([]);
+    setRecentForms([]);
     setIsOpen(false);
   };
 
@@ -111,7 +118,7 @@ export const RecentForms: React.FC<RecentDashboardsProps> = () => {
         style={{
           background: 'none',
           border: 'none',
-          color: '#dc2626',
+          color: '#9333ea',
           cursor: 'pointer',
           fontSize: '16px',
           fontWeight: 500,
@@ -121,11 +128,11 @@ export const RecentForms: React.FC<RecentDashboardsProps> = () => {
           display: 'flex',
           alignItems: 'center',
           gap: '6px',
-          backgroundColor: isOpen ? '#fee2e2' : 'transparent'
+          backgroundColor: isOpen ? '#faf5ff' : 'transparent'
         }}
         onMouseOver={(e) => {
           if (!isOpen) {
-            e.currentTarget.style.backgroundColor = '#fee2e2';
+            e.currentTarget.style.backgroundColor = '#faf5ff';
           }
         }}
         onMouseOut={(e) => {
@@ -138,10 +145,10 @@ export const RecentForms: React.FC<RecentDashboardsProps> = () => {
           <polyline points="23 4 23 10 17 10" />
           <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
         </svg>
-        Recent
-        {recentDashboards.length > 0 && (
+        Recent Forms
+        {recentForms.length > 0 && (
           <span style={{
-            backgroundColor: '#ff6b6b',
+            backgroundColor: '#9333ea',
             color: 'white',
             borderRadius: '10px',
             padding: '2px 6px',
@@ -150,7 +157,7 @@ export const RecentForms: React.FC<RecentDashboardsProps> = () => {
             minWidth: '18px',
             textAlign: 'center'
           }}>
-            {recentDashboards.length}
+            {recentForms.length}
           </span>
         )}
       </button>
@@ -182,15 +189,15 @@ export const RecentForms: React.FC<RecentDashboardsProps> = () => {
             backgroundColor: '#f9fafb'
           }}>
             <span style={{ fontWeight: 600, fontSize: '14px', color: '#1f2937' }}>
-              Recent Dashboards
+              Recent Forms
             </span>
-            {recentDashboards.length > 0 && (
+            {recentForms.length > 0 && (
               <button
-                onClick={clearRecentDashboards}
+                onClick={clearRecentForms}
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: '#ef4444',
+                  color: '#9333ea',
                   cursor: 'pointer',
                   fontSize: '12px',
                   padding: '4px 8px',
@@ -198,7 +205,7 @@ export const RecentForms: React.FC<RecentDashboardsProps> = () => {
                   transition: 'background-color 0.2s'
                 }}
                 onMouseOver={(e) => {
-                  e.currentTarget.style.backgroundColor = '#fee2e2';
+                  e.currentTarget.style.backgroundColor = '#faf5ff';
                 }}
                 onMouseOut={(e) => {
                   e.currentTarget.style.backgroundColor = 'transparent';
@@ -222,7 +229,7 @@ export const RecentForms: React.FC<RecentDashboardsProps> = () => {
                 <div className="loading-spinner" style={{ width: 32, height: 32, margin: '0 auto 12px' }} />
                 <p style={{ margin: 0, fontSize: '14px' }}>Loading...</p>
               </div>
-            ) : recentDashboards.length === 0 ? (
+            ) : recentForms.length === 0 ? (
               <div style={{
                 padding: '40px 20px',
                 textAlign: 'center',
@@ -233,15 +240,15 @@ export const RecentForms: React.FC<RecentDashboardsProps> = () => {
                   <line x1="9" y1="9" x2="15" y2="9" />
                   <line x1="9" y1="15" x2="15" y2="15" />
                 </svg>
-                <p style={{ margin: 0, fontSize: '14px' }}>No recent dashboards</p>
-                <p style={{ margin: '4px 0 0 0', fontSize: '12px' }}>Create a dashboard to see it here</p>
+                <p style={{ margin: 0, fontSize: '14px' }}>No recent forms</p>
+                <p style={{ margin: '4px 0 0 0', fontSize: '12px' }}>Create a form to see it here</p>
               </div>
             ) : (
               <>
-              {displayedDashboards.map((dashboard) => (
+              {displayedForms.map((form) => (
                 <button
-                  key={dashboard.id}
-                  onClick={(e) => handleDashboardClick(dashboard, e)}
+                  key={form.id}
+                  onClick={(e) => handleFormClick(form, e)}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -276,7 +283,7 @@ export const RecentForms: React.FC<RecentDashboardsProps> = () => {
                       whiteSpace: 'nowrap',
                       flex: 1
                     }}>
-                      {dashboard.title}
+                      {form.title}
                     </span>
                     <span style={{
                       fontSize: '11px',
@@ -284,7 +291,7 @@ export const RecentForms: React.FC<RecentDashboardsProps> = () => {
                       marginLeft: '8px',
                       flexShrink: 0
                     }}>
-                      {formatTimestamp(dashboard.timestamp)}
+                      {formatTimestamp(form.updated_at)}
                     </span>
                   </div>
                   <div style={{
@@ -294,23 +301,23 @@ export const RecentForms: React.FC<RecentDashboardsProps> = () => {
                     fontSize: '12px',
                     color: '#6b7280'
                   }}>
-                    {dashboard.datasetName && (
+                    {form.description && (
                       <span style={{
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap'
                       }}>
-                        {dashboard.datasetName}
+                        {form.description}
                       </span>
                     )}
                     <span style={{ flexShrink: 0 }}>
-                      {dashboard.chartCount} chart{dashboard.chartCount !== 1 ? 's' : ''}
+                      {form.questions_count} question{form.questions_count !== 1 ? 's' : ''}
                     </span>
                   </div>
                 </button>
               ))}
               
-              {!showAll && recentDashboards.length > 5 && (
+              {!showAll && recentForms.length > 5 && (
                 <button
                   onClick={() => setShowAll(true)}
                   style={{
@@ -321,19 +328,19 @@ export const RecentForms: React.FC<RecentDashboardsProps> = () => {
                     backgroundColor: '#f9fafb',
                     cursor: 'pointer',
                     textAlign: 'center',
-                    color: '#ff6b6b',
+                    color: '#9333ea',
                     fontSize: '13px',
                     fontWeight: 600,
                     transition: 'background-color 0.2s'
                   }}
                   onMouseOver={(e) => {
-                    e.currentTarget.style.backgroundColor = '#fee2e2';
+                    e.currentTarget.style.backgroundColor = '#faf5ff';
                   }}
                   onMouseOut={(e) => {
                     e.currentTarget.style.backgroundColor = '#f9fafb';
                   }}
                 >
-                  Show {recentDashboards.length - 5} more
+                  Show {recentForms.length - 5} more
                 </button>
               )}
               </>
@@ -345,9 +352,9 @@ export const RecentForms: React.FC<RecentDashboardsProps> = () => {
   );
 };
 
-// No-op function since dashboards are now automatically saved in the backend
-export const saveDashboardToRecent = (_metadata: Omit<DashboardMetadata, 'timestamp'>) => {
-  // Dashboards are now automatically saved when charts are generated via save_dashboard_query
+// Helper function for saving forms
+export const saveFormToRecent = (_metadata: any) => {
+  // Forms are automatically saved in the backend when created/updated
   // This function is kept for backward compatibility but doesn't need to do anything
 };
 

@@ -28,25 +28,87 @@ export const Ranking: React.FC<QuestionProps> = ({
   };
 
   return (
-    <div className="question-wrapper">
-      <label className="question-label">
+    <div style={{
+      marginBottom: '48px',
+      transition: 'all 0.2s'
+    }}>
+      <label style={{
+        display: 'block',
+        fontSize: '16px',
+        fontWeight: '500',
+        color: '#000000',
+        marginBottom: '8px',
+        letterSpacing: '-0.01em'
+      }}>
         {question.question_text}
-        {question.required && <span className="required-mark">*</span>}
+        {question.required && <span style={{ color: '#9333ea', marginLeft: '4px' }}>*</span>}
       </label>
       {question.description && (
-        <p className="question-description">{question.description}</p>
+        <p style={{
+          fontSize: '14px',
+          color: '#6b7280',
+          marginBottom: '12px',
+          lineHeight: '1.5'
+        }}>
+          {question.description}
+        </p>
       )}
-      <div className="ranking-container">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {items.map((item, index) => (
-          <div key={index} className="ranking-item">
-            <span className="ranking-number">{index + 1}</span>
-            <span className="ranking-text">{item}</span>
-            <div className="ranking-controls">
+          <div 
+            key={index}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '12px 16px',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              background: '#ffffff'
+            }}
+          >
+            <span style={{
+              width: '24px',
+              height: '24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '13px',
+              fontWeight: '600',
+              color: '#9333ea',
+              background: '#faf5ff',
+              borderRadius: '4px'
+            }}>
+              {index + 1}
+            </span>
+            <span style={{
+              flex: 1,
+              fontSize: '15px',
+              color: '#000000'
+            }}>
+              {item}
+            </span>
+            <div style={{ display: 'flex', gap: '4px' }}>
               <button
                 type="button"
                 onClick={() => moveItem(index, 'up')}
                 disabled={disabled || index === 0}
-                className="ranking-button"
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '16px',
+                  color: disabled || index === 0 ? '#d1d5db' : '#6b7280',
+                  background: 'transparent',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '4px',
+                  cursor: disabled || index === 0 ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => !(disabled || index === 0) && (e.currentTarget.style.borderColor = '#9333ea')}
+                onMouseLeave={(e) => !(disabled || index === 0) && (e.currentTarget.style.borderColor = '#e5e7eb')}
               >
                 ↑
               </button>
@@ -54,7 +116,22 @@ export const Ranking: React.FC<QuestionProps> = ({
                 type="button"
                 onClick={() => moveItem(index, 'down')}
                 disabled={disabled || index === items.length - 1}
-                className="ranking-button"
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '16px',
+                  color: disabled || index === items.length - 1 ? '#d1d5db' : '#6b7280',
+                  background: 'transparent',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '4px',
+                  cursor: disabled || index === items.length - 1 ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => !(disabled || index === items.length - 1) && (e.currentTarget.style.borderColor = '#9333ea')}
+                onMouseLeave={(e) => !(disabled || index === items.length - 1) && (e.currentTarget.style.borderColor = '#e5e7eb')}
               >
                 ↓
               </button>

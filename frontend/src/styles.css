@@ -4391,388 +4391,8 @@ body {
   }
 }
 
-/* Form Question Components */
-.question-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.question-label {
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--aa-text);
-  display: block;
-}
-
-.required-mark {
-  color: #9333ea;
-  margin-left: 4px;
-}
-
-.question-description {
-  font-size: 13px;
-  color: var(--aa-muted);
-  margin: 0;
-}
-
-.question-input,
-.question-textarea,
-.question-select {
-  width: 100%;
-  padding: 10px 12px;
-  font-size: 14px;
-  border: 2px solid var(--aa-border);
-  border-radius: 6px;
-  background: var(--aa-surface);
-  color: var(--aa-text);
-  font-family: inherit;
-  transition: border-color 0.2s;
-}
-
-.question-input:focus,
-.question-textarea:focus,
-.question-select:focus {
-  outline: none;
-  border-color: var(--aa-primary);
-}
-
-.question-textarea {
-  resize: vertical;
-  min-height: 100px;
-}
-
-.character-count,
-.input-hint {
-  font-size: 12px;
-  color: var(--aa-muted);
-  margin-top: 4px;
-}
-
-.choices-container {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 8px;
-}
-
-.choice-label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.choice-label:hover {
-  background: var(--aa-hover-bg);
-}
-
-.choice-label input[type="radio"],
-.choice-label input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-  accent-color: var(--aa-primary);
-}
-
-.choice-text {
-  font-size: 14px;
-  color: var(--aa-text);
-}
-
-/* Rating Component */
-.rating-container {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.star-button {
-  background: none;
-  border: none;
-  font-size: 32px;
-  cursor: pointer;
-  padding: 0;
-  transition: transform 0.2s;
-}
-
-.star-button:hover {
-  transform: scale(1.1);
-}
-
-.star-filled {
-  color: #fbbf24;
-}
-
-.star-empty {
-  color: #d1d5db;
-}
-
-.rating-display {
-  font-size: 13px;
-  color: var(--aa-muted);
-  margin-top: 8px;
-}
-
-/* Linear Scale */
-.scale-container {
-  margin-top: 12px;
-}
-
-.scale-labels {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 12px;
-  font-size: 13px;
-  color: var(--aa-muted);
-}
-
-.scale-options {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.scale-option {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-}
-
-.scale-option input[type="radio"] {
-  width: 20px;
-  height: 20px;
-  cursor: pointer;
-  accent-color: var(--aa-primary);
-}
-
-.scale-number {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--aa-text);
-}
-
-/* Matrix Component */
-.matrix-container {
-  overflow-x: auto;
-  margin-top: 12px;
-}
-
-.matrix-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.matrix-table th,
-.matrix-table td {
-  padding: 12px;
-  text-align: center;
-  border: 1px solid var(--aa-border);
-}
-
-.matrix-table th {
-  background: var(--aa-bg);
-  font-weight: 500;
-  font-size: 13px;
-  color: var(--aa-text);
-}
-
-.matrix-row-label {
-  text-align: left !important;
-  font-weight: 500;
-  background: var(--aa-bg);
-}
-
-.matrix-table input[type="radio"] {
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-  accent-color: var(--aa-primary);
-}
-
-/* File Upload */
-.file-upload-container {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 8px;
-}
-
-.file-upload-button {
-  padding: 10px 20px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--aa-surface);
-  background: var(--aa-primary);
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.file-upload-button:hover {
-  background: var(--aa-primary-700);
-}
-
-.file-upload-button:disabled {
-  background: #d1d5db;
-  cursor: not-allowed;
-}
-
-.file-name {
-  font-size: 14px;
-  color: var(--aa-text);
-}
-
-/* Ranking Component */
-.ranking-container {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.ranking-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  background: var(--aa-bg);
-  border: 1px solid var(--aa-border);
-  border-radius: 6px;
-}
-
-.ranking-number {
-  font-weight: 600;
-  font-size: 16px;
-  color: var(--aa-primary);
-  min-width: 24px;
-}
-
-.ranking-text {
-  flex: 1;
-  font-size: 14px;
-  color: var(--aa-text);
-}
-
-.ranking-controls {
-  display: flex;
-  gap: 4px;
-}
-
-.ranking-button {
-  padding: 4px 8px;
-  font-size: 16px;
-  background: var(--aa-surface);
-  border: 1px solid var(--aa-border);
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.ranking-button:hover:not(:disabled) {
-  background: var(--aa-hover-bg);
-  border-color: var(--aa-primary);
-}
-
-.ranking-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Signature Component */
-.signature-container {
-  margin-top: 12px;
-}
-
-.signature-canvas {
-  border: 2px solid var(--aa-border);
-  border-radius: 6px;
-  cursor: crosshair;
-  background: var(--aa-surface);
-}
-
-.signature-clear-button {
-  margin-top: 8px;
-  padding: 8px 16px;
-  font-size: 13px;
-  color: #9333ea;
-  background: transparent;
-  border: 1px solid #9333ea;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.signature-clear-button:hover {
-  background: #fee2e2;
-}
-
-/* Payment & Wallet Connect */
-.payment-container,
-.wallet-connect-container {
-  margin-top: 12px;
-  padding: 16px;
-  background: var(--aa-bg);
-  border: 1px solid var(--aa-border);
-  border-radius: 6px;
-}
-
-.payment-amount {
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--aa-primary);
-  margin-bottom: 12px;
-}
-
-.payment-placeholder {
-  text-align: center;
-  padding: 20px;
-}
-
-.wallet-connect-button,
-.wallet-disconnect-button {
-  padding: 12px 24px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--aa-surface);
-  background: var(--aa-primary);
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.wallet-connect-button:hover {
-  background: var(--aa-primary-700);
-}
-
-.wallet-disconnect-button {
-  background: #9333ea;
-  margin-top: 8px;
-}
-
-.wallet-disconnect-button:hover {
-  background: #b91c1c;
-}
-
-.wallet-connected {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.wallet-address {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--aa-text);
-  font-family: monospace;
-}
+/* Form Question Components - Now using inline Tally-style designs */
+/* Legacy classes removed - components use inline styles for minimal, clean appearance */
 
 .error-message {
   color: #9333ea;
@@ -4781,4 +4401,74 @@ body {
   background: #fee2e2;
   border-radius: 6px;
   border: 1px solid #fecaca;
+}
+
+/* Markdown Rendering Styles */
+.markdown-question {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+
+.markdown-question strong {
+  font-weight: 700;
+  color: #9333ea;
+}
+
+.markdown-question em {
+  font-style: italic;
+  color: #6b7280;
+}
+
+.markdown-question code {
+  background: #f3f4f6;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 16px;
+  font-family: ui-monospace, monospace;
+}
+
+.markdown-question ul,
+.markdown-question ol {
+  margin: 8px 0;
+  padding-left: 24px;
+}
+
+.markdown-question li {
+  margin: 4px 0;
+}
+
+.markdown-description {
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+.markdown-description strong {
+  font-weight: 600;
+  color: #374151;
+}
+
+.markdown-description em {
+  font-style: italic;
+}
+
+.markdown-description code {
+  background: #f3f4f6;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: ui-monospace, monospace;
+}
+
+.markdown-description a {
+  color: #9333ea;
+  text-decoration: underline;
+}
+
+.markdown-description a:hover {
+  color: #7e22ce;
 }

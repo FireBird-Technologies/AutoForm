@@ -69,6 +69,23 @@ async def generate_form(
         # Create questions
         question_id_map = {}  # Map order to actual ID
         for q_spec in questions_spec:
+            # Final safety check: ensure matrix/ranking settings are lists
+            settings = q_spec.get("settings", {})
+            question_type = q_spec.get("question_type", "")
+            
+            if question_type == "matrix":
+                if isinstance(settings.get("rows"), (int, float)):
+                    num_rows = max(1, int(settings["rows"]))
+                    settings["rows"] = [f"Row {i+1}" for i in range(num_rows)]
+                if isinstance(settings.get("columns"), (int, float)):
+                    num_cols = max(1, int(settings["columns"]))
+                    settings["columns"] = [f"Column {i+1}" for i in range(num_cols)]
+            
+            if question_type == "ranking":
+                if isinstance(settings.get("ranking_items"), (int, float)):
+                    num_items = max(2, int(settings["ranking_items"]))
+                    settings["ranking_items"] = [f"Item {i+1}" for i in range(num_items)]
+            
             question = FormQuestion(
                 form_id=new_form.id,
                 question_order=q_spec["question_order"],
@@ -76,7 +93,7 @@ async def generate_form(
                 question_text=q_spec["question_text"],
                 description=q_spec.get("description"),
                 required=q_spec.get("required", False),
-                settings=q_spec.get("settings", {})
+                settings=settings
             )
             db.add(question)
             db.flush()
@@ -128,12 +145,22 @@ async def list_forms(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     limit: int = 50,
-    offset: int = 0
+    offset: int = 0,
+    sort: str = "created_at"
 ):
-    """Get all forms for the current user"""
-    forms = db.query(Form).filter(
-        Form.user_id == current_user.id
-    ).order_by(desc(Form.created_at)).limit(limit).offset(offset).all()
+    """Get all forms for the current user, optionally sorted by created_at or updated_at"""
+    query = db.query(Form).filter(Form.user_id == current_user.id)
+    
+    # Apply sorting
+    if sort == "updated_at":
+        query = query.order_by(desc(Form.updated_at))
+    elif sort == "created_at":
+        query = query.order_by(desc(Form.created_at))
+    else:
+        # Default to created_at if invalid sort parameter
+        query = query.order_by(desc(Form.created_at))
+    
+    forms = query.limit(limit).offset(offset).all()
     
     return [FormResponse.model_validate(form) for form in forms]
 
@@ -342,6 +369,90 @@ async def delete_question(
     db.commit()
     
     return None
+
+
+@router.post("/{form_id}/questions/{question_id}/regenerate", response_model=QuestionResponse)
+async def regenerate_question(
+    form_id: int,
+    question_id: int,
+    context: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Regenerate a question using AI.
+    """
+    # Get the form
+    form = db.query(Form).filter(
+        Form.id == form_id,
+        Form.user_id == current_user.id
+    ).first()
+    
+    if not form:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Form not found"
+        )
+    
+    # Get the question
+    question = db.query(FormQuestion).filter(
+        FormQuestion.id == question_id,
+        FormQuestion.form_id == form_id
+    ).first()
+    
+    if not question:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Question not found"
+        )
+    
+    try:
+        # Import the signature for question generation
+        from ..services.agents import FormQuestionGeneratorSignature
+        import dspy
+        
+        # Create context for regeneration
+        question_context = {
+            "brief": f"Regenerate this question: {question.question_text}",
+            "index": question.question_order,
+            "form_context": {
+                "title": form.title,
+                "description": form.description,
+                "existing_questions": [q.question_text for q in form.questions if q.id != question_id]
+            }
+        }
+        
+        # Generate new question spec
+        generator = dspy.Predict(FormQuestionGeneratorSignature)
+        result = generator(
+            question_context=str(question_context),
+            form_title=form.title
+        )
+        
+        # Parse and validate the result
+        import json
+        question_spec = json.loads(result.question_spec)
+        
+        # Update the question
+        question.question_text = question_spec.get("text", question.question_text)
+        question.description = question_spec.get("description")
+        question.required = question_spec.get("required", question.required)
+        
+        # Update settings if provided
+        if "settings" in question_spec:
+            question.settings = question_spec["settings"]
+        
+        db.commit()
+        db.refresh(question)
+        
+        return question
+        
+    except Exception as e:
+        logger.error(f"Question regeneration error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to regenerate question: {str(e)}"
+        )
 
 
 # Conditional logic endpoints

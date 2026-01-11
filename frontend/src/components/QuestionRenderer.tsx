@@ -19,6 +19,7 @@ import { Payment } from './questions/Payment';
 import { Signature } from './questions/Signature';
 import { Ranking } from './questions/Ranking';
 import { WalletConnect } from './questions/WalletConnect';
+import { Button } from './questions/Button';
 
 interface QuestionRendererProps {
   question: {
@@ -88,6 +89,8 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
       return <Ranking {...questionProps} />;
     case 'wallet_connect':
       return <WalletConnect {...questionProps} />;
+    case 'button':
+      return <Button {...questionProps} />;
     default:
       return (
         <div className="question-wrapper">

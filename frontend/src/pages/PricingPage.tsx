@@ -28,7 +28,7 @@ interface FAQ {
 const FAQS: FAQ[] = [
   {
     question: "What are credits and how do they work?",
-    answer: "Credits are used for creating dashboards and editing charts. Each dashboard costs 5 credits, and each chart edit costs 2 credits. Your credits reset monthly with your subscription."
+    answer: "Credits are used for creating forms and editing form fields. Each form costs 5 credits, and each form edit costs 2 credits. Your credits reset monthly with your subscription."
   },
   {
     question: "Can I upgrade or downgrade my plan?",
@@ -44,7 +44,7 @@ const FAQS: FAQ[] = [
   },
   {
     question: "What's the difference between Free and paid plans?",
-    answer: "Paid plans (Pro and Ultra) get access to the latest AI models, higher credit limits, priority support, and advanced features. Free plans use standard models with limited credits. Additionally, shared dashboards on free plans expire after 24 hours, while paid plans have permanent dashboards."
+    answer: "Paid plans (Pro and Ultra) get access to the latest AI models, higher credit limits, priority support, and advanced features. Free plans use standard models with limited credits. Additionally, shared forms on free plans expire after 24 hours, while paid plans have permanent forms."
   },
   {
     question: "Can I cancel anytime?",
@@ -293,13 +293,13 @@ export const PricingPage: React.FC = () => {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
-                    <span>{plan.credits_per_analyze} credits per dashboard</span>
+                    <span>{plan.credits_per_analyze} credits per form</span>
                   </div>
                   <div className="feature-item">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
-                    <span>{plan.credits_per_edit} credits per edit</span>
+                    <span>{plan.credits_per_edit} credits per form edit</span>
                   </div>
                   <div className="feature-item">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -311,7 +311,7 @@ export const PricingPage: React.FC = () => {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
-                    <span>{isPaid ? 'Dashboards never expire' : 'Dashboards expire in 24 hours'}</span>
+                    <span>{isPaid ? 'Forms never expire' : 'Forms expire in 24 hours'}</span>
                   </div>
                   {plan.features?.priority_support && (
                     <div className="feature-item">
@@ -368,7 +368,7 @@ export const PricingPage: React.FC = () => {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
-                <span>Dashboards never expire</span>
+                <span>Forms never expire</span>
               </div>
               <div className="feature-item">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

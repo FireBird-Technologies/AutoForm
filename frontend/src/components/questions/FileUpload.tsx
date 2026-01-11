@@ -26,15 +26,32 @@ export const FileUpload: React.FC<QuestionProps> = ({
   };
 
   return (
-    <div className="question-wrapper">
-      <label className="question-label">
+    <div style={{
+      marginBottom: '48px',
+      transition: 'all 0.2s'
+    }}>
+      <label style={{
+        display: 'block',
+        fontSize: '16px',
+        fontWeight: '500',
+        color: '#000000',
+        marginBottom: '8px',
+        letterSpacing: '-0.01em'
+      }}>
         {question.question_text}
-        {question.required && <span className="required-mark">*</span>}
+        {question.required && <span style={{ color: '#9333ea', marginLeft: '4px' }}>*</span>}
       </label>
       {question.description && (
-        <p className="question-description">{question.description}</p>
+        <p style={{
+          fontSize: '14px',
+          color: '#6b7280',
+          marginBottom: '12px',
+          lineHeight: '1.5'
+        }}>
+          {question.description}
+        </p>
       )}
-      <div className="file-upload-container">
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <input
           ref={fileInputRef}
           type="file"
@@ -46,15 +63,39 @@ export const FileUpload: React.FC<QuestionProps> = ({
         />
         <button
           type="button"
-          className="file-upload-button"
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled}
+          style={{
+            padding: '12px 24px',
+            fontSize: '15px',
+            fontWeight: '500',
+            color: '#9333ea',
+            background: 'transparent',
+            border: '1px solid #9333ea',
+            borderRadius: '8px',
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            transition: 'all 0.2s',
+            fontFamily: 'inherit'
+          }}
+          onMouseEnter={(e) => !disabled && (e.currentTarget.style.background = '#faf5ff')}
+          onMouseLeave={(e) => !disabled && (e.currentTarget.style.background = 'transparent')}
         >
           Choose File
         </button>
-        {fileName && <span className="file-name">{fileName}</span>}
+        {fileName && (
+          <span style={{
+            fontSize: '14px',
+            color: '#6b7280'
+          }}>
+            {fileName}
+          </span>
+        )}
       </div>
-      <div className="input-hint">
+      <div style={{
+        fontSize: '12px',
+        color: '#9ca3af',
+        marginTop: '6px'
+      }}>
         Max size: {(maxSize / 1048576).toFixed(1)}MB
       </div>
     </div>

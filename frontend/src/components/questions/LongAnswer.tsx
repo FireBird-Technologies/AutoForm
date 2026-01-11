@@ -12,16 +12,32 @@ export const LongAnswer: React.FC<QuestionProps> = ({
   const maxLength = question.settings?.max_length;
 
   return (
-    <div className="question-wrapper">
-      <label className="question-label">
+    <div style={{
+      marginBottom: '48px',
+      transition: 'all 0.2s'
+    }}>
+      <label style={{
+        display: 'block',
+        fontSize: '16px',
+        fontWeight: '500',
+        color: '#000000',
+        marginBottom: '8px',
+        letterSpacing: '-0.01em'
+      }}>
         {question.question_text}
-        {question.required && <span className="required-mark">*</span>}
+        {question.required && <span style={{ color: '#9333ea', marginLeft: '4px' }}>*</span>}
       </label>
       {question.description && (
-        <p className="question-description">{question.description}</p>
+        <p style={{
+          fontSize: '14px',
+          color: '#6b7280',
+          marginBottom: '12px',
+          lineHeight: '1.5'
+        }}>
+          {question.description}
+        </p>
       )}
       <textarea
-        className="question-textarea"
         value={textValue}
         onChange={(e) => onChange({ text: e.target.value })}
         placeholder={placeholder}
@@ -29,9 +45,27 @@ export const LongAnswer: React.FC<QuestionProps> = ({
         maxLength={maxLength}
         required={question.required}
         rows={4}
+        style={{
+          width: '100%',
+          padding: '12px',
+          fontSize: '15px',
+          border: '1px solid #e5e7eb',
+          borderRadius: '8px',
+          outline: 'none',
+          background: 'transparent',
+          transition: 'border-color 0.2s',
+          fontFamily: 'inherit',
+          resize: 'vertical'
+        }}
+        onFocus={(e) => e.currentTarget.style.borderColor = '#9333ea'}
+        onBlur={(e) => e.currentTarget.style.borderColor = '#e5e7eb'}
       />
       {maxLength && (
-        <div className="character-count">
+        <div style={{
+          fontSize: '12px',
+          color: '#9ca3af',
+          marginTop: '6px'
+        }}>
           {textValue.length} / {maxLength}
         </div>
       )}

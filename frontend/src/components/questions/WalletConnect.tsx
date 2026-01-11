@@ -31,41 +31,108 @@ export const WalletConnect: React.FC<QuestionProps> = ({
   };
 
   return (
-    <div className="question-wrapper">
-      <label className="question-label">
+    <div style={{
+      marginBottom: '48px',
+      transition: 'all 0.2s'
+    }}>
+      <label style={{
+        display: 'block',
+        fontSize: '16px',
+        fontWeight: '500',
+        color: '#000000',
+        marginBottom: '8px',
+        letterSpacing: '-0.01em'
+      }}>
         {question.question_text}
-        {question.required && <span className="required-mark">*</span>}
+        {question.required && <span style={{ color: '#9333ea', marginLeft: '4px' }}>*</span>}
       </label>
       {question.description && (
-        <p className="question-description">{question.description}</p>
+        <p style={{
+          fontSize: '14px',
+          color: '#6b7280',
+          marginBottom: '12px',
+          lineHeight: '1.5'
+        }}>
+          {question.description}
+        </p>
       )}
-      <div className="wallet-connect-container">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {!isConnected ? (
           <button
             type="button"
-            className="wallet-connect-button"
             onClick={handleConnect}
             disabled={disabled}
+            style={{
+              alignSelf: 'flex-start',
+              padding: '12px 24px',
+              fontSize: '15px',
+              fontWeight: '500',
+              color: '#ffffff',
+              background: '#9333ea',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s',
+              fontFamily: 'inherit'
+            }}
+            onMouseEnter={(e) => !disabled && (e.currentTarget.style.background = '#7e22ce')}
+            onMouseLeave={(e) => !disabled && (e.currentTarget.style.background = '#9333ea')}
           >
             Connect Wallet
           </button>
         ) : (
-          <div className="wallet-connected">
-            <div className="wallet-address">
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            padding: '12px 16px',
+            background: '#faf5ff',
+            border: '1px solid #e9d5ff',
+            borderRadius: '8px'
+          }}>
+            <div style={{
+              flex: 1,
+              fontSize: '14px',
+              color: '#7e22ce',
+              fontFamily: 'monospace'
+            }}>
               Connected: {walletAddress.substring(0, 6)}...{walletAddress.substring(38)}
             </div>
             {!disabled && (
               <button
                 type="button"
-                className="wallet-disconnect-button"
                 onClick={handleDisconnect}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  color: '#6b7280',
+                  background: 'transparent',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  fontFamily: 'inherit'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = '#9333ea';
+                  e.currentTarget.style.color = '#9333ea';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = '#e5e7eb';
+                  e.currentTarget.style.color = '#6b7280';
+                }}
               >
                 Disconnect
               </button>
             )}
           </div>
         )}
-        <p className="input-hint">
+        <p style={{
+          fontSize: '12px',
+          color: '#9ca3af',
+          margin: 0
+        }}>
           Web3 wallet connection (MetaMask, WalletConnect, etc.)
         </p>
       </div>

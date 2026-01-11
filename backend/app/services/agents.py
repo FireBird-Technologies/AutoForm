@@ -7,6 +7,15 @@ It includes a multi-stage pipeline:
 1. Planner: Converts user query to form plan with components
 2. Component Signature: Generates renderable form components with metadata
 3. Conditional Logic: Defines relationships between components
+
+FRONTEND TECH STACK:
+- React with TypeScript
+- Headless UI (@headlessui/react) for accessible dialogs, modals, and interactive components
+- React Markdown (react-markdown) with remark-gfm for markdown rendering
+- Tally-inspired minimal design with inline styles (no CSS frameworks)
+- Purple accent color (#9333ea) throughout
+- Clean, generous whitespace (48px between questions)
+- Subtle borders and transitions
 """
 
 import dspy
@@ -82,6 +91,7 @@ class FormPlannerSignature(dspy.Signature):
     - signature: Digital signature
     - ranking: Rank items
     - wallet_connect: Web3 wallet
+    - button: Custom action button
     
     CONDITIONAL LOGIC RULES:
     - condition_type: equals, not_equals, contains, not_contains, greater_than, less_than, is_empty, is_not_empty
@@ -94,6 +104,22 @@ class FormPlannerSignature(dspy.Signature):
     4. Include 3-15 components typically
     5. Add conditional logic where it makes sense (e.g., show follow-up based on previous answer)
     6. Generate component_ids like "comp_1", "comp_2", etc.
+    
+    COMMON FORM PATTERNS (suggest when appropriate):
+    - Contact forms: name, email, phone, message
+    - Registration forms: name, email, password confirmation fields
+    - Feedback forms: name (optional), rating, comments
+    - Applications: name, email, relevant experience fields
+    - Event registration: name, email, attendance confirmation, dietary preferences
+    - Survey forms: demographics, ratings, open-ended responses
+    
+    FORM TITLE BEST PRACTICES:
+    - Be specific and clear (e.g., "Customer Feedback Survey" not "Form")
+    - Use action words when appropriate (e.g., "Submit Your Application", "Register for Event")
+    - Keep under 60 characters for readability
+    - Match the tone to the form purpose (professional for applications, friendly for feedback)
+    
+    Always include a meaningful form title and description that clearly explains the purpose.
     """
     user_query = dspy.InputField(desc="Natural language description of the form needed")
     form_plan = dspy.OutputField(desc="JSON form plan with title, description, components list, and conditional_logic")
@@ -102,6 +128,13 @@ class FormPlannerSignature(dspy.Signature):
 class ComponentSignatureGenerator(dspy.Signature):
     """
     Generate detailed component specifications that the frontend can render.
+    
+    FRONTEND CAPABILITIES:
+    - Headless UI for modals and interactive components
+    - Markdown support in question text and descriptions
+    - Inline editing with QuestionEditor component
+    - Tally-inspired minimal design with clean typography
+    - Purple accent (#9333ea) for focused/selected states
     
     INPUT:
     - component_brief: Brief description from planner
@@ -113,8 +146,8 @@ class ComponentSignatureGenerator(dspy.Signature):
     {
         "component_id": "comp_1",
         "question_type": "type from list",
-        "question_text": "Clear question text",
-        "description": "Optional helper text",
+        "question_text": "Clear question text (markdown supported)",
+        "description": "Optional helper text (markdown supported)",
         "required": true/false,
         "settings": {
             // Type-specific settings
@@ -124,11 +157,11 @@ class ComponentSignatureGenerator(dspy.Signature):
             "placeholder": "Enter text here",  // For text inputs
             "scale_min_label": "Not at all",  // For linear_scale
             "scale_max_label": "Extremely",
-            "rows": ["Row 1", "Row 2"],  // For matrix
-            "columns": ["Col 1", "Col 2"],
+            "rows": ["Row 1", "Row 2"],  // For matrix (MUST be array of strings)
+            "columns": ["Col 1", "Col 2"],  // For matrix (MUST be array of strings)
             "file_types": [".pdf", ".doc"],  // For file_upload
             "max_file_size": 5242880,  // bytes
-            "ranking_items": ["Item 1", "Item 2"]  // For ranking
+            "ranking_items": ["Item 1", "Item 2"]  // For ranking (MUST be array of strings)
         },
         "validation_rules": {
             "min_length": 5,  // For text inputs
@@ -145,6 +178,9 @@ class ComponentSignatureGenerator(dspy.Signature):
     4. Include helpful placeholder text
     5. Add description for complex components
     6. Include validation rules where appropriate
+    7. CRITICAL: rows, columns, and ranking_items MUST be arrays of strings, never integers
+    8. Question text and descriptions support markdown (use **bold**, *italic*, lists, etc.)
+    9. Keep text clear and conversational - the design is minimal and clean
     """
     component_brief = dspy.InputField(desc="Brief description from planner")
     component_type = dspy.InputField(desc="Component type")
@@ -156,6 +192,13 @@ class ComponentSignatureGenerator(dspy.Signature):
 class FormEditorSignature(dspy.Signature):
     """
     Edit an existing form based on user requests.
+    
+    FRONTEND CAPABILITIES:
+    - Headless UI for dialogs and modals
+    - Markdown support in all text fields
+    - Inline editing with QuestionEditor component
+    - Tally-inspired minimal design
+    - Purple accent color throughout
     
     INPUT:
     - edit_request: Natural language edit instruction

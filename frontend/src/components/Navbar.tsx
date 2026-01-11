@@ -26,11 +26,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onAccountClick }) => {
   
   const isBuildPage = location.pathname === '/build';
 
-  const handleLoadRecentDashboard = (metadata: any) => {
-    // Navigate to build page with the dataset ID
+  const handleLoadRecentForm = (metadata: any) => {
+    // Navigate to build page with the form ID
     navigate('/build', { 
       state: { 
-        datasetId: metadata.datasetId,
+        formId: metadata.id,
         fromRecent: true
       } 
     });
@@ -173,7 +173,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onAccountClick }) => {
           >
             Build
           </button>
-            <RecentForms onLoadDashboard={handleLoadRecentDashboard} />
+            <RecentForms onLoadForm={handleLoadRecentForm} />
           </>
         )}
 

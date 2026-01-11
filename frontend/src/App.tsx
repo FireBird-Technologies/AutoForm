@@ -3,10 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocat
 import { Navbar } from './components/Navbar';
 import { Landing } from './components/Landing';
 import { Account } from './components/Account';
-import { BuildPage } from './pages/BuildPage';
 import { PricingPage } from './pages/PricingPage';
 import { SubscriptionResult } from './pages/SubscriptionResult';
-import { PublicFormView } from './pages/PublicFormView';
 import { PublicForm } from './pages/PublicForm';
 import { FormResponses } from './pages/FormResponses';
 import { FormPlanner } from './components/steps/FormPlanner';
@@ -116,23 +114,9 @@ function AppRoutes() {
             element={<PublicForm />}
           />
           
-          {/* Build Routes */}
-          <Route 
-            path="/build" 
-            element={
-              isAuthenticated ? (
-                <BuildPage />
-              ) : (
-                <Navigate to="/" replace />
-              )
-            }
-          />
-          {/* Legacy route - redirect to /build */}
+          {/* Legacy routes - redirect to /build */}
           <Route path="/visualize" element={<Navigate to="/build" replace />} />
-          <Route 
-            path="/shared/:token" 
-            element={<PublicFormView />}
-          />
+          <Route path="/shared/:token" element={<Navigate to="/build" replace />} />
           
           {/* Account & Pricing */}
           <Route 

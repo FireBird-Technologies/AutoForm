@@ -67,20 +67,20 @@ export const NewYearBanner: React.FC = () => {
       position: 'relative',
       overflow: 'hidden',
       flexWrap: 'wrap',
-      borderBottom: '1px solid rgba(255, 107, 107, 0.2)',
-      boxShadow: '0 2px 8px rgba(255, 107, 107, 0.1)',
+      borderBottom: '1px solid rgba(147, 51, 234, 0.2)',
+      boxShadow: '0 2px 8px rgba(147, 51, 234, 0.1)',
     }}>
       {/* Countdown section */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', zIndex: 1 }}>
         <span style={{ fontSize: '20px' }}>🎆</span>
-        <span style={{ fontWeight: 600, fontSize: '14px', color: '#ff6b6b' }}>New Year Extended Sale!</span>
+        <span style={{ fontWeight: 600, fontSize: '14px', color: '#9333ea' }}>New Year Extended Sale!</span>
         <div style={{ display: 'flex', gap: '6px', marginLeft: '8px' }}>
           <TimeBlock value={timeLeft.days} label="d" />
-          <span style={{ color: '#ff6b6b', fontWeight: 'bold' }}>:</span>
+          <span style={{ color: '#9333ea', fontWeight: 'bold' }}>:</span>
           <TimeBlock value={timeLeft.hours} label="h" />
-          <span style={{ color: '#ff6b6b', fontWeight: 'bold' }}>:</span>
+          <span style={{ color: '#9333ea', fontWeight: 'bold' }}>:</span>
           <TimeBlock value={timeLeft.minutes} label="m" />
-          <span style={{ color: '#ff6b6b', fontWeight: 'bold' }}>:</span>
+          <span style={{ color: '#9333ea', fontWeight: 'bold' }}>:</span>
           <TimeBlock value={timeLeft.seconds} label="s" />
         </div>
       </div>
@@ -88,7 +88,7 @@ export const NewYearBanner: React.FC = () => {
       {/* Promo section */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', zIndex: 1 }}>
         <span style={{ 
-          background: 'linear-gradient(135deg, #ff6b6b 0%, #e94560 100%)',
+          background: 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)',
           color: 'white',
           padding: '4px 12px',
           borderRadius: '20px',
@@ -100,18 +100,18 @@ export const NewYearBanner: React.FC = () => {
         </span>
         <span style={{ fontSize: '13px', color: '#666' }}>
           Use code: <code style={{ 
-            background: 'rgba(255, 107, 107, 0.1)', 
+            background: 'rgba(147, 51, 234, 0.1)', 
             padding: '2px 8px', 
             borderRadius: '4px',
             fontWeight: 600,
-            color: '#ff6b6b',
-            border: '1px dashed rgba(255, 107, 107, 0.4)',
+            color: '#9333ea',
+            border: '1px dashed rgba(147, 51, 234, 0.4)',
           }}>NEWYEARS</code>
         </span>
         <button
           onClick={handlePromoClick}
           style={{
-            background: 'linear-gradient(135deg, #ff6b6b 0%, #e94560 100%)',
+            background: 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)',
             color: 'white',
             border: 'none',
             padding: '8px 20px',
@@ -120,15 +120,15 @@ export const NewYearBanner: React.FC = () => {
             fontSize: '13px',
             cursor: 'pointer',
             transition: 'all 0.3s ease',
-            boxShadow: '0 4px 15px rgba(255, 107, 107, 0.3)',
+            boxShadow: '0 4px 15px rgba(147, 51, 234, 0.3)',
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'scale(1.05)';
-            e.currentTarget.style.boxShadow = '0 6px 20px rgba(255, 107, 107, 0.4)';
+            e.currentTarget.style.boxShadow = '0 6px 20px rgba(147, 51, 234, 0.4)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'scale(1)';
-            e.currentTarget.style.boxShadow = '0 4px 15px rgba(255, 107, 107, 0.3)';
+            e.currentTarget.style.boxShadow = '0 4px 15px rgba(147, 51, 234, 0.3)';
           }}
         >
           Go to plan 
@@ -143,9 +143,9 @@ export const NewYearBanner: React.FC = () => {
           right: '12px',
           top: '50%',
           transform: 'translateY(-50%)',
-          background: 'rgba(255, 107, 107, 0.1)',
+          background: 'rgba(147, 51, 234, 0.1)',
           border: 'none',
-          color: '#ff6b6b',
+          color: '#9333ea',
           width: '24px',
           height: '24px',
           borderRadius: '50%',
@@ -170,8 +170,8 @@ export const NewYearBanner: React.FC = () => {
 
 const TimeBlock: React.FC<{ value: number; label: string }> = ({ value, label }) => (
   <div style={{
-    background: 'rgba(255, 107, 107, 0.1)',
-    border: '1px solid rgba(255, 107, 107, 0.3)',
+    background: 'rgba(147, 51, 234, 0.1)',
+    border: '1px solid rgba(147, 51, 234, 0.3)',
     borderRadius: '6px',
     padding: '4px 8px',
     minWidth: '36px',
@@ -181,7 +181,7 @@ const TimeBlock: React.FC<{ value: number; label: string }> = ({ value, label })
       fontWeight: 700, 
       fontSize: '14px',
       fontFamily: 'monospace',
-      color: '#ff6b6b',
+      color: '#9333ea',
     }}>
       {String(value).padStart(2, '0')}
     </span>
