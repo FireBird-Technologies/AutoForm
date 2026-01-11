@@ -10,7 +10,7 @@ interface AddChartPopupProps {
   addingChart: boolean;
 }
 
-export const AddChartPopup: React.FC<AddChartPopupProps> = ({
+export const AddFieldPopup: React.FC<AddChartPopupProps> = ({
   isOpen,
   onClose,
   onAddChart,
@@ -155,7 +155,7 @@ export const AddChartPopup: React.FC<AddChartPopupProps> = ({
                 transition: 'border-color 0.2s'
               }}
               onFocus={(e) => {
-                e.currentTarget.style.borderColor = '#ff6b6b';
+                e.currentTarget.style.borderColor = '#9333ea';
               }}
               onBlur={(e) => {
                 e.currentTarget.style.borderColor = '#e5e7eb';
@@ -285,7 +285,7 @@ export const AddChartPopup: React.FC<AddChartPopupProps> = ({
                 padding: '10px 20px',
                 border: 'none',
                 borderRadius: '8px',
-                backgroundColor: addingChart || !query.trim() ? '#9ca3af' : '#ff6b6b',
+                backgroundColor: addingChart || !query.trim() ? '#9ca3af' : '#9333ea',
                 color: 'white',
                 fontSize: '14px',
                 fontWeight: 500,
@@ -295,12 +295,12 @@ export const AddChartPopup: React.FC<AddChartPopupProps> = ({
               }}
               onMouseEnter={(e) => {
                 if (!addingChart && query.trim()) {
-                  e.currentTarget.style.backgroundColor = '#ef4444';
+                  e.currentTarget.style.backgroundColor = '#7c3aed';
                 }
               }}
               onMouseLeave={(e) => {
                 if (!addingChart && query.trim()) {
-                  e.currentTarget.style.backgroundColor = '#ff6b6b';
+                  e.currentTarget.style.backgroundColor = '#9333ea';
                 }
               }}
             >

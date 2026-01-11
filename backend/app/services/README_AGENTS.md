@@ -405,5 +405,5 @@ python -m app.services.agents
 
 ## License
 
-Part of AutoDash project.
+Part of AutoForm project.
 

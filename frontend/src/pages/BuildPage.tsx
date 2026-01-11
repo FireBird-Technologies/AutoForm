@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { ConnectData } from '../components/steps/ConnectData';
 import { StyleContext } from '../components/steps/StyleContext';
-import { Visualization } from '../components/steps/Visualization';
+import { FormEditor } from '../components/steps/FormEditor';
 import { config, getAuthHeaders } from '../config';
 
 type Row = Record<string, number | string>;
 
-export const VisualizePage: React.FC = () => {
+export const BuildPage: React.FC = () => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const [currentStep, setCurrentStep] = useState(0);
@@ -178,7 +178,7 @@ export const VisualizePage: React.FC = () => {
         );
       case 2:
         return (
-          <Visualization
+          <FormEditor
             data={data}
             datasetId={datasetId}
             context={vizContext}

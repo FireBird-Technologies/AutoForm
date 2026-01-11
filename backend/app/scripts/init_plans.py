@@ -49,7 +49,7 @@ def main():
     """Main initialization function"""
     import argparse
     
-    parser = argparse.ArgumentParser(description="Initialize AutoDash subscription plans")
+    parser = argparse.ArgumentParser(description="Initialize subscription plans")
     parser.add_argument(
         "--force",
         action="store_true",

@@ -56,7 +56,7 @@ const FAQS: FAQ[] = [
   },
   {
     question: "Is there a free trial for paid plans?",
-    answer: "New users start with a Free plan to try out AutoDash. You can upgrade to Pro or Ultra whenever you're ready for more features and credits."
+    answer: "New users start with a Free plan. You can upgrade to Pro or Ultra whenever you're ready for more features and credits."
   }
 ];
 

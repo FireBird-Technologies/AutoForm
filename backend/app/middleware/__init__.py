@@ -1,5 +1,5 @@
 """
-Middleware package for AutoDash
+Middleware package
 """
 from .credit_check import require_credits, CreditCheckResult
 

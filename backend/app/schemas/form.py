@@ -1,0 +1,270 @@
+"""
+Pydantic schemas for form-related operations
+"""
+from pydantic import BaseModel, Field, field_validator
+from typing import Optional, List, Dict, Any
+from datetime import datetime
+from ..models import QuestionType, ConditionType
+
+
+# Question schemas
+class QuestionSettings(BaseModel):
+    """Settings for different question types"""
+    choices: Optional[List[str]] = None  # For multiple choice, checkboxes, dropdown
+    min_value: Optional[int] = None  # For number, linear scale
+    max_value: Optional[int] = None
+    min_length: Optional[int] = None  # For text inputs
+    max_length: Optional[int] = None
+    placeholder: Optional[str] = None
+    scale_min_label: Optional[str] = None  # For linear scale
+    scale_max_label: Optional[str] = None
+    rows: Optional[List[str]] = None  # For matrix questions
+    columns: Optional[List[str]] = None
+    file_types: Optional[List[str]] = None  # For file upload
+    max_file_size: Optional[int] = None
+    payment_amount: Optional[float] = None  # For payment questions
+    currency: Optional[str] = None
+    ranking_items: Optional[List[str]] = None  # For ranking questions
+    
+    class Config:
+        extra = "allow"  # Allow additional fields
+
+
+class QuestionBase(BaseModel):
+    question_text: str
+    question_type: QuestionType
+    description: Optional[str] = None
+    required: bool = False
+    settings: Optional[QuestionSettings] = None
+
+
+class QuestionCreate(QuestionBase):
+    question_order: int
+    form_id: int
+
+
+class QuestionUpdate(BaseModel):
+    question_text: Optional[str] = None
+    question_type: Optional[QuestionType] = None
+    description: Optional[str] = None
+    required: Optional[bool] = None
+    question_order: Optional[int] = None
+    settings: Optional[QuestionSettings] = None
+
+
+class QuestionResponse(QuestionBase):
+    id: int
+    form_id: int
+    question_order: int
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+# Conditional logic schemas
+class ConditionalRuleBase(BaseModel):
+    trigger_question_id: int
+    target_question_id: int
+    condition_type: ConditionType
+    condition_value: Optional[str] = None
+    action: str = "show"  # "show" or "hide"
+    
+    @field_validator('action')
+    @classmethod
+    def validate_action(cls, v):
+        if v not in ["show", "hide"]:
+            raise ValueError('Action must be "show" or "hide"')
+        return v
+
+
+class ConditionalRuleCreate(ConditionalRuleBase):
+    form_id: int
+
+
+class ConditionalRuleResponse(ConditionalRuleBase):
+    id: int
+    form_id: int
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+# Form schemas
+class FormSettings(BaseModel):
+    """Form-level settings"""
+    background_color: str = "#ffffff"
+    text_color: str = "#000000"
+    accent_color: str = "#9333ea"  # Purple
+    submit_button_text: str = "Submit"
+    show_progress_bar: bool = True
+    
+    class Config:
+        extra = "allow"
+
+
+class FormBase(BaseModel):
+    title: str
+    description: Optional[str] = None
+    settings: Optional[FormSettings] = None
+
+
+class FormCreate(FormBase):
+    """Schema for creating a form from AI generation"""
+    user_query: str  # The natural language description
+
+
+class FormUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    settings: Optional[FormSettings] = None
+
+
+class FormResponse(FormBase):
+    id: int
+    user_id: int
+    created_at: datetime
+    updated_at: datetime
+    questions: List[QuestionResponse] = []
+    conditional_rules: List[ConditionalRuleResponse] = []
+    
+    class Config:
+        from_attributes = True
+
+
+# Form generation response
+class FormGenerationResponse(BaseModel):
+    """Response from AI form generation"""
+    form: FormResponse
+    message: str = "Form generated successfully"
+
+
+# Answer and submission schemas
+class AnswerValue(BaseModel):
+    """Answer value for different question types"""
+    text: Optional[str] = None  # For text inputs
+    number: Optional[float] = None  # For number inputs
+    date: Optional[str] = None  # For date/time
+    choices: Optional[List[str]] = None  # For multiple choice, checkboxes
+    file_url: Optional[str] = None  # For file uploads
+    rating: Optional[int] = None  # For ratings
+    signature: Optional[str] = None  # Base64 signature image
+    wallet_address: Optional[str] = None  # For wallet connect
+    matrix_answers: Optional[Dict[str, str]] = None  # For matrix questions
+    ranked_items: Optional[List[str]] = None  # For ranking questions
+    
+    class Config:
+        extra = "allow"
+
+
+class SubmitAnswer(BaseModel):
+    question_id: int
+    answer_value: AnswerValue
+
+
+class SubmissionCreate(BaseModel):
+    """Schema for submitting a form response"""
+    answers: List[SubmitAnswer]
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class SubmissionResponse(BaseModel):
+    """Response after successful submission"""
+    id: int
+    form_id: int
+    submitted_at: datetime
+    message: str = "Form submitted successfully"
+    
+    class Config:
+        from_attributes = True
+
+
+class ResponseAnswerDetail(BaseModel):
+    """Detailed answer in a response"""
+    question_id: int
+    question_text: str
+    question_type: QuestionType
+    answer_value: Dict[str, Any]
+    
+    class Config:
+        from_attributes = True
+
+
+class FormResponseDetail(BaseModel):
+    """Detailed view of a single form response"""
+    id: int
+    form_id: int
+    submitted_at: datetime
+    ip_address: Optional[str]
+    answers: List[ResponseAnswerDetail]
+    
+    class Config:
+        from_attributes = True
+
+
+class FormResponsesList(BaseModel):
+    """List of form responses with summary"""
+    total_count: int
+    responses: List[FormResponseDetail]
+
+
+# Public form schemas
+class PublicFormCreate(BaseModel):
+    form_id: int
+    expires_at: Optional[datetime] = None
+    allow_multiple_submissions: bool = True
+    collect_email: bool = False
+    custom_thank_you_message: Optional[str] = None
+
+
+class PublicFormResponse(BaseModel):
+    id: int
+    form_id: int
+    share_token: str
+    is_public: bool
+    expires_at: Optional[datetime]
+    allow_multiple_submissions: bool
+    collect_email: bool
+    custom_thank_you_message: Optional[str]
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class PublicFormDetail(BaseModel):
+    """Public form structure for submissions"""
+    form: FormResponse
+    public_settings: PublicFormResponse
+    
+    class Config:
+        from_attributes = True
+
+
+# Export schemas
+class ExportFormat(BaseModel):
+    format: str = Field(..., pattern="^(csv|json)$")
+
+
+class ExportResponse(BaseModel):
+    download_url: str
+    format: str
+    total_responses: int
+
+
+# Chat editing schemas
+class ChatMessage(BaseModel):
+    """Schema for chat-based form editing"""
+    message: str = Field(..., min_length=1, max_length=1000)
+
+
+class ChatResponse(BaseModel):
+    """Response from chat-based form editing"""
+    route: str  # add_component, edit_component, general_form_query, need_more_clarity
+    response: Dict[str, Any]  # Updated component or form structure or answer text
+    changes_made: Optional[str] = None  # Summary of changes if applicable
+    
+    class Config:
+        from_attributes = True

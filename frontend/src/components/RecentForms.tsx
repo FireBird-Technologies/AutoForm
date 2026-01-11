@@ -15,7 +15,7 @@ interface RecentDashboardsProps {
   onLoadDashboard?: (metadata: DashboardMetadata) => void;
 }
 
-export const RecentDashboards: React.FC<RecentDashboardsProps> = () => {
+export const RecentForms: React.FC<RecentDashboardsProps> = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [recentDashboards, setRecentDashboards] = useState<DashboardMetadata[]>([]);
   const [isLoading, setIsLoading] = useState(false);

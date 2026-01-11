@@ -75,7 +75,7 @@ export const InsufficientBalancePopup: React.FC<InsufficientBalancePopupProps> =
               fill="none" 
               stroke="currentColor" 
               strokeWidth="2"
-              style={{ color: '#dc2626' }}
+              style={{ color: '#9333ea' }}
             >
               <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
             </svg>
@@ -152,7 +152,7 @@ export const InsufficientBalancePopup: React.FC<InsufficientBalancePopupProps> =
             color: '#4b5563',
             lineHeight: '1.6'
           }}>
-            Upgrade your plan to get more credits and continue using AutoDash.
+            Upgrade your plan to get more credits and continue.
           </p>
         </div>
 
@@ -186,14 +186,14 @@ export const InsufficientBalancePopup: React.FC<InsufficientBalancePopupProps> =
               fontSize: '16px',
               fontWeight: 600,
               color: 'white',
-              backgroundColor: '#dc2626',
+              backgroundColor: '#9333ea',
               border: 'none',
               borderRadius: '8px',
               cursor: 'pointer',
               transition: 'background-color 0.2s'
             }}
-            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'}
-            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#7c3aed'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#9333ea'}
           >
             Upgrade Plan
           </button>

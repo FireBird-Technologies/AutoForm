@@ -1,4 +1,4 @@
 """
-Scripts package for AutoDash
+Scripts package
 """
 

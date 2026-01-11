@@ -142,7 +142,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
           <button
             onClick={() => {
               const subject = encodeURIComponent('Connect to Database Request');
-              const body = encodeURIComponent('Hello,\n\nI would like to connect my database to AutoDash.\n\nPlease let me know the next steps.\n\nThank you!');
+              const body = encodeURIComponent('Hello,\n\nI would like to connect my database.\n\nPlease let me know the next steps.\n\nThank you!');
               window.location.href = `mailto:arslan@firebird-technologies.com?subject=${subject}&body=${body}`;
             }}
             disabled={uploading}
@@ -154,7 +154,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
           <button
             onClick={() => {
               const subject = encodeURIComponent('Demo Request');
-              const body = encodeURIComponent('Hello,\n\nI would like to request a demo of AutoDash.\n\nPlease let me know when would be a good time.\n\nThank you!');
+              const body = encodeURIComponent('Hello,\n\nI would like to request a demo.\n\nPlease let me know when would be a good time.\n\nThank you!');
               window.location.href = `mailto:arslan@firebird-technologies.com?subject=${subject}&body=${body}`;
             }}
             disabled={uploading}

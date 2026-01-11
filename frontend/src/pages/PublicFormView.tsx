@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { PlotlyChartRenderer } from '../components/PlotlyChartRenderer';
+import { FormRenderer } from '../components/FormRenderer';
 import { MarkdownMessage } from '../components/MarkdownMessage';
 import { KPICardsContainer } from '../components/KPICard';
 import { config } from '../config';
 
-export const PublicDashboard: React.FC = () => {
+export const PublicFormView: React.FC = () => {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -212,7 +212,7 @@ export const PublicDashboard: React.FC = () => {
                 color: '#1f2937',
                 marginBottom: '8px'
               }}>
-                Welcome to AutoDash
+                Welcome
               </h2>
               <p style={{
                 margin: 0,
@@ -401,7 +401,7 @@ export const PublicDashboard: React.FC = () => {
                     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
                     minHeight: '600px'
                   }}>
-                    <PlotlyChartRenderer
+                    <FormRenderer
                       chartSpec={{
                         chart_spec: '',
                         chart_type: spec.chart_type,

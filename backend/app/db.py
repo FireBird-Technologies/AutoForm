@@ -3,7 +3,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./autodash.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./app.db")
 
 
 class Base(DeclarativeBase):

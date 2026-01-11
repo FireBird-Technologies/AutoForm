@@ -1,19 +1,19 @@
 <div align="center">
-  <img src="frontend/public/logo.svg" alt="AutoDash Logo" width="300" />
+  <img src="frontend/public/logo.svg" alt="Logo" width="300" />
   
-  <h1>AutoDash</h1>
-  <p><strong>Your AI Data Artist</strong></p>
+  <h1>AutoForm</h1>
+  <p><strong>Your AI Form Builder</strong></p>
   
   <p>
-    <img src="https://img.shields.io/badge/Open%20Source-red?style=flat-square" alt="Open Source" />
-    <img src="https://img.shields.io/badge/Plotly-Powered-orange?style=flat-square" alt="Plotly Powered" />
-    <img src="https://img.shields.io/badge/AI-Enabled-blue?style=flat-square" alt="AI Enabled" />
+    <img src="https://img.shields.io/badge/Open%20Source-purple?style=flat-square" alt="Open Source" />
+    <img src="https://img.shields.io/badge/AI-Powered-blue?style=flat-square" alt="AI Powered" />
+    <img src="https://img.shields.io/badge/No%20Code-green?style=flat-square" alt="No Code" />
   </p>
 
   <p>
-    <em>AutoDash transforms raw data into beautiful, interactive visualizations in three simple steps.</em>
+    <em>Create intelligent forms from natural language descriptions in seconds.</em>
     <br />
-    <strong>No code. No complexity. Just insights.</strong>
+    <strong>No code. No complexity. Just forms.</strong>
   </p>
 </div>
 
@@ -24,30 +24,30 @@
 <table>
   <tr>
     <td width="33%" valign="top">
-      <h3>Instant Upload</h3>
-      <p>Upload CSV, Excel, or use sample datasets. Support for large files with automatic parsing and validation.</p>
-    </td>
-    <td width="33%" valign="top">
       <h3>Natural Language</h3>
-      <p>Describe your insights in plain English. Our AI understands what you're looking for and generates the perfect visualization.</p>
+      <p>Describe your form in plain English. Our AI understands what you need and generates the perfect form structure.</p>
     </td>
     <td width="33%" valign="top">
-      <h3>Real-time Updates</h3>
-      <p>Iteratively refine your charts with feedback. Changes appear instantly as our backend generates new Plotly configurations.</p>
+      <h3>19 Question Types</h3>
+      <p>From text inputs to file uploads, ratings to dates. Support for all common form field types with validation.</p>
+    </td>
+    <td width="33%" valign="top">
+      <h3>Smart Logic</h3>
+      <p>Conditional rules, skip logic, and dynamic fields. Forms adapt based on user responses.</p>
     </td>
   </tr>
   <tr>
     <td width="33%" valign="top">
-      <h3>Smart Analytics</h3>
-      <p>Automatic correlation detection, trend analysis, and anomaly identification powered by backend intelligence.</p>
+      <h3>Response Management</h3>
+      <p>Track submissions, view responses, and export data in CSV or JSON format.</p>
     </td>
     <td width="33%" valign="top">
-      <h3>Plotly-Powered</h3>
-      <p>Beautiful, interactive charts built with Plotly. Hover, zoom, pan, and explore your data like never before.</p>
+      <h3>Easy Sharing</h3>
+      <p>Generate shareable links instantly. No login required for respondents.</p>
     </td>
     <td width="33%" valign="top">
-      <h3>Collaborative</h3>
-      <p>Share dashboards, export visualizations, and collaborate with your team in real-time.</p>
+      <h3>Customizable</h3>
+      <p>White/black/purple theme. Clean, modern interface that works on any device.</p>
     </td>
   </tr>
 </table>
@@ -56,67 +56,77 @@
 
 ## How It Works
 
-### Building visuals is as easy as 1, 2, 3
+### Building forms is as easy as 1, 2, 3
 
-> From raw data to actionable insights in minutes. No technical skills required.
+> From idea to live form in minutes. No technical skills required.
 
-#### **01. Connect Your Data**
-Start by uploading your dataset or choose from our sample data library.
-- Supports CSV, Excel (.xlsx, .xls)
-- Drag & drop or click to browse
-- Automatic data type detection
-- Sample datasets to get started instantly
-
-#### **02. Describe Your Insights**
-Tell us what you want to discover in plain language.
+#### **01. Describe Your Form**
+Tell us what kind of form you need in plain language.
 - Natural language processing understands your intent
-- Examples: "Show sales trends", "Compare regions"
-- AI suggests relevant chart types
-- Context-aware recommendations
+- Examples: "Customer feedback survey", "Event registration form"
+- AI suggests appropriate question types
+- Context-aware field generation
 
-#### **03. Visualize & Refine**
-Get instant visualizations and iterate with real-time feedback.
-- Plotly-powered interactive charts
-- Request changes in plain English
-- Real-time updates from backend
-- Export and share your dashboards
+#### **02. Review & Customize**
+Get instant form generation and refine as needed.
+- 19 question types supported
+- Add conditional logic and validation rules
+- Reorder questions with drag & drop
+- Set required fields and default values
 
----
-
-## Beautiful Plotly-powered Visualizations
-
-**Interactive charts that bring your data to life**
-
-- **Trend Analysis** - Line charts, area charts, time series
-- **Comparisons** - Bar charts, grouped bars, stacked bars
-- **Distributions** - Histograms, box plots, violin plots
-- **Relationships** - Scatter plots, bubble charts, correlation matrices
-- **Hierarchies** - Treemaps, sunburst charts, dendrograms
-- **Networks** - Sankey diagrams, chord diagrams, force layouts
-
-### Visualization Features
-- **Hover tooltips** - Detailed information on hover
-- **Zoom & pan** - Explore large datasets interactively
-- **Fully interactive** - Click, filter, sort, and drill down
-- **Responsive design** - Beautiful on any screen size
+#### **03. Share & Collect**
+Publish your form and start collecting responses.
+- Generate shareable link instantly
+- No login required for respondents
+- Real-time response tracking
+- Export responses as CSV or JSON
 
 ---
 
-## Why AutoDash?
+## Supported Question Types
+
+**Input Fields**
+- Short Text
+- Long Text (Textarea)
+- Email
+- Phone Number
+- Number
+- URL
+
+**Selection Options**
+- Single Choice (Radio)
+- Multiple Choice (Checkboxes)
+- Dropdown Menu
+
+**Specialized Fields**
+- Date Picker
+- Time Picker
+- File Upload
+- Rating Scale
+- Linear Scale
+- Yes/No Toggle
+
+**Advanced**
+- Multi-select Dropdown
+- Section Header (for organization)
+
+---
+
+## Why AutoForm?
 
 <table>
   <tr>
     <td width="33%" align="center">
       <h3>No Code Required</h3>
-      <p>Built for everyone—from analysts to executives. If you can describe it, AutoDash can visualize it.</p>
+      <p>Built for everyone—from analysts to executives. If you can describe it, we can create it.</p>
     </td>
     <td width="33%" align="center">
       <h3>Lightning Fast</h3>
-      <p>Go from upload to insight in under 60 seconds. Our backend handles all the heavy lifting.</p>
+      <p>Go from idea to live form in under 60 seconds. Our AI handles all the heavy lifting.</p>
     </td>
     <td width="33%" align="center">
       <h3>Enterprise Ready</h3>
-      <p>Secure, scalable, and built with production workloads in mind. Connect to any database.</p>
+      <p>Secure, scalable, and built with production workloads in mind. OAuth authentication included.</p>
     </td>
   </tr>
 </table>
@@ -127,20 +137,20 @@ Get instant visualizations and iterate with real-time feedback.
 
 ### Frontend
 - **React** + **TypeScript** - Modern, type-safe UI
-- **Plotly.js** - Powerful data visualization library
+- **React Router** - Seamless navigation
 - **Vite** - Lightning-fast build tool
 
 ### Backend
 - **FastAPI** - High-performance Python API
-- **DSPy** - AI-powered visualization generation
+- **DSPy** - AI-powered form generation
 - **SQLAlchemy** - Database ORM
-- **Pandas** - Data processing and analysis
+- **PostgreSQL/SQLite** - Reliable data storage
 
 ### AI & Intelligence
 - **Natural Language Processing** - Understand user intent
-- **Code Generation** - Automatic Plotly spec creation
-- **Error Recovery** - Self-healing visualizations
-- **Context-Aware** - Smart recommendations based on data
+- **Smart Field Generation** - Automatic question type detection
+- **Validation Rules** - Context-aware field validation
+- **Conditional Logic** - Dynamic form behavior
 
 ---
 
@@ -153,8 +163,8 @@ Get instant visualizations and iterate with real-time feedback.
 
 ### Clone the Repository
 ```bash
-git clone https://github.com/yourusername/autodash.git
-cd autodash
+git clone https://github.com/yourusername/autoform.git
+cd autoform
 ```
 
 ### Backend Setup
@@ -167,7 +177,7 @@ cp .env.example .env
 # Edit .env with your API keys (OpenAI, Google OAuth, etc.)
 
 # Run the backend
-python -m app.main
+uvicorn app.main:app --reload --port 8000
 ```
 
 The backend will start on `http://localhost:8000`
@@ -191,21 +201,19 @@ The frontend will start on `http://localhost:5173`
    - Navigate to `http://localhost:5173`
    - Sign in with Google
 
-2. **Upload Your Data**
-   - Click "Upload Dataset" or drag & drop a CSV/Excel file
-   - Preview your data to ensure it loaded correctly
-
-3. **Ask for Insights**
-   - Type your question in plain English
+2. **Create Your Form**
+   - Click "Create Forms for free"
+   - Describe your form in plain English
    - Examples:
-     - "Show me a histogram of prices"
-     - "Create a scatter plot of sqft_living vs price"
-     - "Compare sales trends by region"
+     - "Customer satisfaction survey with rating and feedback"
+     - "Event registration form with name, email, and dietary preferences"
+     - "Job application form with resume upload"
 
-4. **Refine & Export**
-   - Request changes: "Make the bars blue" or "Add a trend line"
-   - Download your visualization as PNG, SVG, or PDF
-   - Share your dashboard with your team
+3. **Customize & Share**
+   - Review generated questions
+   - Add conditional logic if needed
+   - Generate shareable link
+   - Start collecting responses
 
 ---
 
@@ -230,22 +238,22 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
-- **Plotly** - For the incredible visualization library
 - **FastAPI** - For the blazing-fast Python framework
-- **DSPy** - For AI-powered code generation
+- **DSPy** - For AI-powered form generation
+- **React** - For the excellent UI library
 - **Open Source Community** - For inspiration and support
 
 ---
 
 <div align="center">
-  <h3>Ready to transform your data?</h3>
-  <p><strong>Join thousands of teams using AutoDash to make data-driven decisions faster.</strong></p>
+  <h3>Ready to build intelligent forms?</h3>
+  <p><strong>Join thousands of teams making data-driven decisions faster.</strong></p>
   
   <p>
-    <a href="https://github.com/yourusername/autodash">Star on GitHub</a> •
+    <a href="https://github.com/yourusername/autoform">Star on GitHub</a> •
     <a href="#installation">Get Started</a> •
-    <a href="https://github.com/yourusername/autodash/issues">Report Bug</a> •
-    <a href="https://github.com/yourusername/autodash/issues">Request Feature</a>
+    <a href="https://github.com/yourusername/autoform/issues">Report Bug</a> •
+    <a href="https://github.com/yourusername/autoform/issues">Request Feature</a>
   </p>
 
   <p>

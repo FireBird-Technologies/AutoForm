@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { config, getAuthHeaders, checkAuthResponse } from '../config';
 import { useCreditsContext } from '../contexts/CreditsContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { RecentDashboards } from './RecentDashboards';
+import { RecentForms } from './RecentForms';
 
 interface NavbarProps {
   onAccountClick?: () => void;
@@ -24,11 +24,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onAccountClick }) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const { credits, loading: creditsLoading } = useCreditsContext();
   
-  const isVisualizePage = location.pathname === '/visualize';
+  const isBuildPage = location.pathname === '/build';
 
   const handleLoadRecentDashboard = (metadata: any) => {
-    // Navigate to visualize page with the dataset ID
-    navigate('/visualize', { 
+    // Navigate to build page with the dataset ID
+    navigate('/build', { 
       state: { 
         datasetId: metadata.datasetId,
         fromRecent: true
@@ -125,7 +125,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onAccountClick }) => {
       <div className="brand" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
         <img 
           src="/logo.svg" 
-          alt="AutoDash" 
+          alt="Logo" 
           className="logo" 
           style={{
             width: '150px',
@@ -144,36 +144,36 @@ export const Navbar: React.FC<NavbarProps> = ({ onAccountClick }) => {
         {user && (
           <>
           <button
-            onClick={() => navigate('/visualize')}
+            onClick={() => navigate('/build')}
             className="navbar-analyze-link"
             style={{
-              background: isVisualizePage ? '#fee2e2' : 'none',
+              background: isBuildPage ? '#f3e8ff' : 'none',
               border: 'none',
-              color: '#dc2626',
+              color: '#9333ea',
               cursor: 'pointer',
               fontSize: '16px',
-              fontWeight: isVisualizePage ? 600 : 500,
+              fontWeight: isBuildPage ? 600 : 500,
               padding: '8px 16px',
               borderRadius: '6px',
               transition: 'background-color 0.2s',
               marginRight: '12px'
             }}
             onMouseOver={(e) => {
-              if (!isVisualizePage) {
-                e.currentTarget.style.backgroundColor = '#fee2e2';
+              if (!isBuildPage) {
+                e.currentTarget.style.backgroundColor = '#f3e8ff';
               }
             }}
             onMouseOut={(e) => {
-              if (!isVisualizePage) {
+              if (!isBuildPage) {
                 e.currentTarget.style.backgroundColor = 'transparent';
               } else {
-                e.currentTarget.style.backgroundColor = '#fee2e2';
+                e.currentTarget.style.backgroundColor = '#f3e8ff';
               }
             }}
           >
-            Visualize
+            Build
           </button>
-            <RecentDashboards onLoadDashboard={handleLoadRecentDashboard} />
+            <RecentForms onLoadDashboard={handleLoadRecentDashboard} />
           </>
         )}
 

@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PlotlyChartRenderer } from '../PlotlyChartRenderer';
+import { FormRenderer } from '../FormRenderer';
 import { FixNotification } from '../FixNotification';
 import { MarkdownMessage } from '../MarkdownMessage';
-import { AddChartPopup } from '../AddChartPopup';
+import { AddFieldPopup } from '../AddFieldPopup';
 import { SharePopup } from '../SharePopup';
 import { InsufficientBalancePopup } from '../InsufficientBalancePopup';
 import { KPICardsContainer, KPICard } from '../KPICard';
 import { DashboardSkeleton } from '../LoadingSkeleton';
 import { config, getAuthHeaders, checkAuthResponse } from '../../config';
 import { useNotification } from '../../contexts/NotificationContext';
-import { saveDashboardToRecent } from '../RecentDashboards';
+import { saveDashboardToRecent } from '../RecentForms';
 
 // Chart Item Component
 interface ChartItemProps {
@@ -176,7 +176,7 @@ const ChartItem: React.FC<ChartItemProps> = ({
           if (trace.marker?.color) {
             colors.push(Array.isArray(trace.marker.color) ? trace.marker.color[0] : trace.marker.color);
           } else {
-            colors.push('#ff6b6b'); // Default color
+            colors.push('#9333ea'); // Default color
           }
         } else if (trace.type === 'scatter') {
           if (trace.mode?.includes('lines')) {
@@ -184,14 +184,14 @@ const ChartItem: React.FC<ChartItemProps> = ({
             if (trace.line?.color) {
               colors.push(trace.line.color);
             } else {
-              colors.push('#ff6b6b');
+              colors.push('#9333ea');
             }
           } else {
             // Scatter plot
             if (trace.marker?.color) {
               colors.push(Array.isArray(trace.marker.color) ? trace.marker.color[0] : trace.marker.color);
             } else {
-              colors.push('#ff6b6b');
+              colors.push('#9333ea');
             }
           }
         } else if (trace.type === 'pie') {
@@ -208,7 +208,7 @@ const ChartItem: React.FC<ChartItemProps> = ({
           } else if (trace.line?.color) {
             colors.push(trace.line.color);
           } else {
-            colors.push('#ff6b6b'); // Default
+            colors.push('#9333ea'); // Default
           }
         }
       });
@@ -344,7 +344,7 @@ const ChartItem: React.FC<ChartItemProps> = ({
           display: 'flex',
           flexDirection: 'column'
         }}>
-          <PlotlyChartRenderer 
+          <FormRenderer 
             chartSpec={getFilteredChartSpec(chartSpec, chartIndex)} 
             data={localData}
             chartIndex={chartIndex}
@@ -391,9 +391,9 @@ const ChartItem: React.FC<ChartItemProps> = ({
               color: '#6b7280'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#fef2f2';
-              e.currentTarget.style.color = '#ef4444';
-              e.currentTarget.style.borderColor = '#fecaca';
+              e.currentTarget.style.background = '#f3e8ff';
+              e.currentTarget.style.color = '#9333ea';
+              e.currentTarget.style.borderColor = '#e9d5ff';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = 'white';
@@ -426,12 +426,12 @@ const ChartItem: React.FC<ChartItemProps> = ({
               justifyContent: 'center',
               transition: 'all 0.2s',
               boxShadow: 'none',
-              color: filterPanelOpen === chartIndex ? '#ef4444' : '#6b7280'
+              color: filterPanelOpen === chartIndex ? '#9333ea' : '#6b7280'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#fef2f2';
-              e.currentTarget.style.color = '#ef4444';
-              e.currentTarget.style.borderColor = '#fecaca';
+              e.currentTarget.style.background = '#f3e8ff';
+              e.currentTarget.style.color = '#9333ea';
+              e.currentTarget.style.borderColor = '#e9d5ff';
             }}
             onMouseLeave={(e) => {
               if (filterPanelOpen !== chartIndex) {
@@ -439,8 +439,8 @@ const ChartItem: React.FC<ChartItemProps> = ({
                 e.currentTarget.style.color = '#6b7280';
                 e.currentTarget.style.borderColor = '#e5e7eb';
               } else {
-                e.currentTarget.style.background = '#fef2f2';
-                e.currentTarget.style.color = '#ef4444';
+                e.currentTarget.style.background = '#f3e8ff';
+                e.currentTarget.style.color = '#9333ea';
               }
             }}
             title="Filter data"
@@ -532,8 +532,8 @@ const ChartItem: React.FC<ChartItemProps> = ({
                         <span style={{ 
                           fontSize: '9px', 
                           padding: '2px 6px', 
-                          backgroundColor: 'rgba(239, 68, 68, 0.08)',
-                          color: '#ef4444',
+                          backgroundColor: 'rgba(147, 51, 234, 0.08)',
+                          color: '#9333ea',
                           borderRadius: '4px',
                           textTransform: 'uppercase'
                         }}>
@@ -580,7 +580,7 @@ const ChartItem: React.FC<ChartItemProps> = ({
                                 ...prev,
                                 [chartIndex]: { ...prev[chartIndex], [`${column}_max`]: Number(e.target.value) }
                               }))}
-                              style={{ width: '100%', accentColor: '#ff6b6b' }}
+                              style={{ width: '100%', accentColor: '#9333ea' }}
                             />
                           </div>
                         );
@@ -639,10 +639,10 @@ const ChartItem: React.FC<ChartItemProps> = ({
                                 style={{
                                   padding: '4px 10px',
                                   fontSize: '11px',
-                                  border: isSelected ? '1px solid #ff6b6b' : '1px solid #e5e7eb',
+                                  border: isSelected ? '1px solid #9333ea' : '1px solid #e5e7eb',
                                   borderRadius: '14px',
-                                  backgroundColor: isSelected ? 'rgba(255, 107, 107, 0.1)' : 'white',
-                                  color: isSelected ? '#ff6b6b' : '#6b7280',
+                                  backgroundColor: isSelected ? 'rgba(147, 51, 234, 0.1)' : 'white',
+                                  color: isSelected ? '#9333ea' : '#6b7280',
                                   cursor: 'pointer',
                                   transition: 'all 0.15s'
                                 }}
@@ -719,7 +719,7 @@ const ChartItem: React.FC<ChartItemProps> = ({
                     fontSize: '12px', 
                     border: 'none', 
                     borderRadius: '6px', 
-                    backgroundColor: applyingFilter === chartIndex ? '#fca5a5' : '#ff6b6b', 
+                    backgroundColor: applyingFilter === chartIndex ? '#c084fc' : '#9333ea', 
                     color: 'white', 
                     cursor: applyingFilter === chartIndex ? 'wait' : 'pointer',
                     display: 'flex',
@@ -766,7 +766,7 @@ const ChartItem: React.FC<ChartItemProps> = ({
                   justifyContent: 'center',
                   transition: 'all 0.2s',
                   boxShadow: 'none',
-                  color: activeChartColorPicker === chartIndex ? '#ef4444' : '#6b7280'
+                  color: activeChartColorPicker === chartIndex ? '#9333ea' : '#6b7280'
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = '#fef2f2';
@@ -811,7 +811,7 @@ const ChartItem: React.FC<ChartItemProps> = ({
                     Chart Colors
                   </div>
                   {chartSpec.figure.data.map((trace: any, traceIndex: number) => {
-                    const currentColor = chartColors[chartIndex]?.[traceIndex] || '#ff6b6b';
+                    const currentColor = chartColors[chartIndex]?.[traceIndex] || '#9333ea';
                     const traceName = trace.name || `Trace ${traceIndex + 1}`;
                     const currentOpacity = traceOpacities[traceIndex] ?? trace.opacity ?? 1;
                     
@@ -879,7 +879,7 @@ const ChartItem: React.FC<ChartItemProps> = ({
                               appearance: none;
                               width: 100%;
                               height: 8px;
-                              background: linear-gradient(to right, #ff6b6b 0%, #ff6b6b ${currentOpacity * 100}%, #e5e7eb ${currentOpacity * 100}%, #e5e7eb 100%);
+                              background: linear-gradient(to right, #9333ea 0%, #9333ea ${currentOpacity * 100}%, #e5e7eb ${currentOpacity * 100}%, #e5e7eb 100%);
                               border-radius: 4px;
                               outline: none;
                             }
@@ -889,16 +889,16 @@ const ChartItem: React.FC<ChartItemProps> = ({
                               width: 20px;
                               height: 20px;
                               border-radius: 50%;
-                              background: #ff6b6b;
+                              background: #9333ea;
                               cursor: pointer;
-                              box-shadow: 0 2px 6px rgba(255, 107, 107, 0.4);
+                              box-shadow: 0 2px 6px rgba(147, 51, 234, 0.4);
                               border: 2px solid white;
                             }
                             input[type="range"]#trace-opacity-${chartIndex}-${traceIndex}::-moz-range-thumb {
                               width: 20px;
                               height: 20px;
                               border-radius: 50%;
-                              background: #ff6b6b;
+                              background: #9333ea;
                               cursor: pointer;
                               border: 2px solid white;
                               box-shadow: 0 2px 6px rgba(255, 107, 107, 0.4);
@@ -983,12 +983,12 @@ const ChartItem: React.FC<ChartItemProps> = ({
               justifyContent: 'center',
               transition: 'all 0.2s',
               boxShadow: 'none',
-              color: activeContainerColorPicker === chartIndex ? '#ef4444' : '#6b7280'
+              color: activeContainerColorPicker === chartIndex ? '#9333ea' : '#6b7280'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#fef2f2';
-              e.currentTarget.style.color = '#ef4444';
-              e.currentTarget.style.borderColor = '#fecaca';
+              e.currentTarget.style.background = '#f3e8ff';
+              e.currentTarget.style.color = '#9333ea';
+              e.currentTarget.style.borderColor = '#e9d5ff';
             }}
             onMouseLeave={(e) => {
               if (activeContainerColorPicker !== chartIndex) {
@@ -996,8 +996,8 @@ const ChartItem: React.FC<ChartItemProps> = ({
                 e.currentTarget.style.color = '#6b7280';
                 e.currentTarget.style.borderColor = '#e5e7eb';
               } else {
-                e.currentTarget.style.background = '#fef2f2';
-                e.currentTarget.style.color = '#ef4444';
+                e.currentTarget.style.background = '#f3e8ff';
+                e.currentTarget.style.color = '#9333ea';
               }
             }}
             title="Container colors"
@@ -1056,7 +1056,7 @@ const ChartItem: React.FC<ChartItemProps> = ({
                     appearance: none;
                     width: 100%;
                     height: 8px;
-                    background: linear-gradient(to right, #ff6b6b 0%, #ff6b6b ${(containerColor?.opacity ?? 1) * 100}%, #e5e7eb ${(containerColor?.opacity ?? 1) * 100}%, #e5e7eb 100%);
+                    background: linear-gradient(to right, #9333ea 0%, #9333ea ${(containerColor?.opacity ?? 1) * 100}%, #e5e7eb ${(containerColor?.opacity ?? 1) * 100}%, #e5e7eb 100%);
                     border-radius: 4px;
                     outline: none;
                   }
@@ -1066,16 +1066,16 @@ const ChartItem: React.FC<ChartItemProps> = ({
                     width: 20px;
                     height: 20px;
                     border-radius: 50%;
-                    background: #ff6b6b;
+                    background: #9333ea;
                     cursor: pointer;
-                    box-shadow: 0 2px 6px rgba(255, 107, 107, 0.4);
+                    box-shadow: 0 2px 6px rgba(147, 51, 234, 0.4);
                     border: 2px solid white;
                   }
                   input[type="range"]#chart-opacity-${chartIndex}::-moz-range-thumb {
                     width: 20px;
                     height: 20px;
                     border-radius: 50%;
-                    background: #ff6b6b;
+                    background: #9333ea;
                     cursor: pointer;
                     border: 2px solid white;
                     box-shadow: 0 2px 6px rgba(255, 107, 107, 0.4);
@@ -1113,7 +1113,7 @@ const ChartItem: React.FC<ChartItemProps> = ({
                   style={{
                     width: '100%',
                     cursor: 'pointer',
-                    accentColor: '#ff6b6b'
+                    accentColor: '#9333ea'
                   }}
                 />
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#9ca3af', marginTop: '4px' }}>
@@ -1177,7 +1177,7 @@ const ChartItem: React.FC<ChartItemProps> = ({
               borderRadius: '8px',
               padding: '8px 12px',
               fontSize: '12px',
-              color: notesVisible[chartIndex] ? '#ef4444' : '#6b7280',
+              color: notesVisible[chartIndex] ? '#9333ea' : '#6b7280',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -1260,7 +1260,7 @@ const ChartItem: React.FC<ChartItemProps> = ({
                         border: '1px solid rgba(220, 38, 38, 0.2)',
                         borderRadius: '6px',
                         fontSize: '11px',
-                        color: '#dc2626',
+                        color: '#9333ea',
                         cursor: generatingInsights[chartIndex] ? 'wait' : 'pointer',
                         display: 'flex',
                         alignItems: 'center',
@@ -1644,7 +1644,7 @@ interface VisualizationProps {
   onReupload?: () => void;
 }
 
-export const Visualization: React.FC<VisualizationProps> = ({ data, datasetId, context, onReupload }) => {
+export const FormEditor: React.FC<VisualizationProps> = ({ data, datasetId, context, onReupload }) => {
   const notification = useNotification();
   const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -3233,8 +3233,8 @@ export const Visualization: React.FC<VisualizationProps> = ({ data, datasetId, c
       const link = document.createElement('a');
       link.href = url;
       link.download = format === 'png-zip' 
-        ? `autodash_charts_${Date.now()}.zip`
-        : `autodash_report_${Date.now()}.pdf`;
+        ? `charts_${Date.now()}.zip`
+        : `report_${Date.now()}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -3814,7 +3814,7 @@ export const Visualization: React.FC<VisualizationProps> = ({ data, datasetId, c
                     
                     return (
                     <div key={`chart-${index}`} className="chart-fade-in">
-                      <PlotlyChartRenderer 
+                      <FormRenderer 
                         chartSpec={spec} 
                         data={localData}
                         chartIndex={index}
@@ -3961,7 +3961,7 @@ export const Visualization: React.FC<VisualizationProps> = ({ data, datasetId, c
                 width: isKPICard ? '350px' : '100%', 
                 height: isKPICard ? '120px' : '100%'
               }}>
-                <PlotlyChartRenderer 
+                <FormRenderer 
                   chartSpec={chartSpecs[zoomedChartIndex]} 
                   data={localData}
                   chartIndex={zoomedChartIndex}
@@ -5577,7 +5577,7 @@ export const Visualization: React.FC<VisualizationProps> = ({ data, datasetId, c
 
     {/* Add Chart Popup - Hidden in saved view */}
         {!context.savedView && (
-        <AddChartPopup
+        <AddFieldPopup
           isOpen={showAddChartPopup}
           onClose={() => setShowAddChartPopup(false)}
           onAddChart={handleAddChart}
@@ -5688,7 +5688,7 @@ export const Visualization: React.FC<VisualizationProps> = ({ data, datasetId, c
                 padding: '20px'
               }}>
                 {chartSpecs[chartPreview.chartIndex] && (
-                                  <PlotlyChartRenderer 
+                                  <FormRenderer 
                     chartSpec={chartSpecs[chartPreview.chartIndex]}
                     data={localData}
                     chartIndex={chartPreview.chartIndex}
@@ -5698,7 +5698,7 @@ export const Visualization: React.FC<VisualizationProps> = ({ data, datasetId, c
                   />
                 )}
                 {!chartSpecs[chartPreview.chartIndex] && (
-                  <PlotlyChartRenderer
+                  <FormRenderer
                     chartSpec={{ figure: chartPreview.figure }}
                     data={localData}
                     chartIndex={chartPreview.chartIndex}

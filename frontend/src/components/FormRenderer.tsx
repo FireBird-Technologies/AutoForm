@@ -105,7 +105,7 @@ const getShadow = (backgroundColor: string, hover: boolean = false): string => {
   }
 };
 
-export const PlotlyChartRenderer: React.FC<PlotlyChartRendererProps> = ({ 
+export const FormRenderer: React.FC<PlotlyChartRendererProps> = ({ 
   chartSpec, 
   data, 
   chartIndex = 0,

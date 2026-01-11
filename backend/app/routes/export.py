@@ -23,7 +23,7 @@ from reportlab.lib.utils import ImageReader
 router = APIRouter(prefix="/api/export", tags=["export"])
 
 # Path to logo
-LOGO_PATH = Path(__file__).parent.parent.parent / "images" / "AutoDash.png"
+LOGO_PATH = Path(__file__).parent.parent.parent / "images" / "AutoForm.png"
 
 
 class ChartExportRequest(BaseModel):
@@ -84,7 +84,7 @@ async def export_charts_zip_from_images(request: ChartImageRequest):
                 raise HTTPException(status_code=400, detail="No charts could be processed")
             
             # Create ZIP
-            zip_path = os.path.join(temp_dir, f"autodash_charts_{timestamp}.zip")
+            zip_path = os.path.join(temp_dir, f"charts_{timestamp}.zip")
             with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
                 for filepath in png_files:
                     zipf.write(filepath, os.path.basename(filepath))
@@ -97,7 +97,7 @@ async def export_charts_zip_from_images(request: ChartImageRequest):
         return Response(
             content=zip_data,
             media_type="application/zip",
-            headers={"Content-Disposition": f"attachment; filename=autodash_charts_{timestamp}.zip"}
+            headers={"Content-Disposition": f"attachment; filename=charts_{timestamp}.zip"}
         )
         
     except Exception as e:
@@ -117,7 +117,7 @@ async def export_pdf_from_images(request: ChartImageRequest):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         
         with tempfile.TemporaryDirectory() as temp_dir:
-            pdf_path = os.path.join(temp_dir, f"autodash_report_{timestamp}.pdf")
+            pdf_path = os.path.join(temp_dir, f"report_{timestamp}.pdf")
             
             c = pdf_canvas.Canvas(pdf_path, pagesize=letter)
             page_width, page_height = letter
@@ -231,7 +231,7 @@ async def export_pdf_from_images(request: ChartImageRequest):
         return Response(
             content=pdf_data,
             media_type="application/pdf",
-            headers={"Content-Disposition": f"attachment; filename=autodash_report_{timestamp}.pdf"}
+            headers={"Content-Disposition": f"attachment; filename=report_{timestamp}.pdf"}
         )
         
     except Exception as e:
@@ -307,7 +307,7 @@ async def export_charts_as_zip(request: ChartExportRequest):
                 raise HTTPException(status_code=400, detail="No charts could be exported")
             
             # Create ZIP file
-            zip_path = os.path.join(temp_dir, f"autodash_charts_{timestamp}.zip")
+            zip_path = os.path.join(temp_dir, f"charts_{timestamp}.zip")
             with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
                 for filepath in png_files:
                     zipf.write(filepath, os.path.basename(filepath))
@@ -321,7 +321,7 @@ async def export_charts_as_zip(request: ChartExportRequest):
             content=zip_data,
             media_type="application/zip",
             headers={
-                "Content-Disposition": f"attachment; filename=autodash_charts_{timestamp}.zip"
+                "Content-Disposition": f"attachment; filename=charts_{timestamp}.zip"
             }
         )
         
@@ -343,7 +343,7 @@ async def export_dashboard_as_pdf(request: ChartExportRequest):
         
         # Create temporary directory
         with tempfile.TemporaryDirectory() as temp_dir:
-            pdf_path = os.path.join(temp_dir, f"autodash_report_{timestamp}.pdf")
+            pdf_path = os.path.join(temp_dir, f"report_{timestamp}.pdf")
             
             # Create PDF
             c = pdf_canvas.Canvas(pdf_path, pagesize=letter)
@@ -494,7 +494,7 @@ async def export_dashboard_as_pdf(request: ChartExportRequest):
             content=pdf_data,
             media_type="application/pdf",
             headers={
-                "Content-Disposition": f"attachment; filename=autodash_report_{timestamp}.pdf"
+                "Content-Disposition": f"attachment; filename=report_{timestamp}.pdf"
             }
         )
         

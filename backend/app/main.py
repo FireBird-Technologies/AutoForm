@@ -19,15 +19,17 @@ logging.basicConfig(
 from .core.db import Base, engine
 from .routes.health import router as health_router
 from .routes.auth import router as auth_router
-from .routes.chat import router as chat_router
+# from .routes.chat import router as chat_router  # OLD AutoDash chat - no longer needed
 from .routes.google import router as google_router
 from .routes.payment import router as stripe_router
-from .routes.data import router as data_router
+# from .routes.data import router as data_router  # OLD AutoDash data analysis - no longer needed
 from .routes.export import router as export_router
 from .routes.credits import router as credits_router
 from .routes.plans import router as plans_router
+from .routes.forms import router as forms_router
+from .routes.responses import router as responses_router
 
-app = FastAPI(title="AutoDash Backend", version="0.1.0")
+app = FastAPI(title="Backend", version="0.1.0")
 
 default_model = os.getenv("DEFAULT_MODEL", "").lower()
 if "anthropic" in default_model:
@@ -66,7 +68,7 @@ app.add_middleware(
 
 
 from .schemas.auth import LoginRequest
-from .schemas.chat import ChatRequest
+# from .schemas.chat import ChatRequest  # OLD AutoDash chat - no longer needed
 
 # Optional debug route to verify OAuth env at runtime (masked)
 @app.get("/api/auth/debug")
@@ -87,16 +89,16 @@ app.include_router(health_router)
 app.include_router(auth_router)
 
 
-# Chat routes (dummy)
-app.include_router(chat_router)
+# Chat routes (dummy) - OLD AutoDash chat disabled, use /api/forms/{form_id}/chat for form editing
+# app.include_router(chat_router)
 
 
 # Payment routes (dummy)
 app.include_router(google_router)
 app.include_router(stripe_router)
 
-# Data routes
-app.include_router(data_router)
+# Data routes - OLD AutoDash data analysis disabled, forms use their own data
+# app.include_router(data_router)
 
 # Export routes
 app.include_router(export_router)
@@ -106,6 +108,10 @@ app.include_router(credits_router)
 
 # Plans routes
 app.include_router(plans_router)
+
+# Form routes
+app.include_router(forms_router)
+app.include_router(responses_router)
 
 # Initialize DB
 if os.getenv("AUTO_MIGRATE", "1") == "1":
