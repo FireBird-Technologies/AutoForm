@@ -266,26 +266,34 @@ export const FormAnalyticsNew: React.FC = () => {
     ? (funnel.total_completes / funnel.total_views) * 100 
     : 0;
 
+  // Extract available UTM sources from funnel data
+  const extractUtmSources = (funnelData: FunnelData): string[] => {
+    if (!funnelData.traffic_sources) return [];
+    return Object.keys(funnelData.traffic_sources).filter(source => source.toLowerCase() !== 'organic');
+  };
+
   return (
     <div style={{
-      padding: '40px',
+      padding: '24px',
       background: '#fafafa',
       minHeight: '100vh',
-      overflowY: 'auto'
+      maxHeight: '100vh',
+      overflowY: 'auto',
+      overflowX: 'hidden'
     }}>
       {/* Header */}
-      <div style={{ marginBottom: '24px' }}>
+      <div style={{ marginBottom: '20px' }}>
         <h1 style={{
-          fontSize: '32px',
+          fontSize: '24px',
           fontWeight: '700',
           color: '#111827',
-          marginBottom: '6px',
+          marginBottom: '4px',
           letterSpacing: '-0.02em'
         }}>
           Analytics
         </h1>
         <p style={{
-          fontSize: '15px',
+          fontSize: '13px',
           color: '#6b7280',
           fontWeight: '400'
         }}>
@@ -295,12 +303,13 @@ export const FormAnalyticsNew: React.FC = () => {
 
       {/* Filters */}
       {formData && (
-        <div style={{ marginBottom: '24px' }}>
+        <div style={{ marginBottom: '16px' }}>
           <FilterPanel
             filters={filters}
             onChange={setFilters}
             questions={formData.questions || []}
             availableCountries={availableCountries}
+            availableUtmSources={funnel ? extractUtmSources(funnel) : []}
           />
         </div>
       )}
@@ -308,93 +317,93 @@ export const FormAnalyticsNew: React.FC = () => {
       {/* Chart + Stats Row */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '1fr 320px',
-        gap: '20px',
-        marginBottom: '20px'
+        gridTemplateColumns: '1fr 280px',
+        gap: '16px',
+        marginBottom: '16px'
       }}>
         {/* Bar Chart */}
         {timeSeries && (
           <div style={{
             background: 'white',
-            padding: '24px',
+            padding: '16px',
             borderRadius: '12px',
             border: '1px solid #e5e7eb',
             boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
           }}>
             <h3 style={{ 
-              fontSize: '18px', 
+              fontSize: '15px', 
               fontWeight: '700', 
               color: '#111827', 
-              marginBottom: '4px',
+              marginBottom: '2px',
               letterSpacing: '-0.01em'
             }}>
               Submissions vs Views
             </h3>
             <p style={{
-              fontSize: '14px',
+              fontSize: '12px',
               color: '#6b7280',
-              marginBottom: '20px'
+              marginBottom: '12px'
             }}>
               Track form engagement over time
             </p>
-            <div style={{ height: '360px' }}>
-              <BarChart data={timeSeries.time_series} height={360} />
+            <div style={{ height: '280px' }}>
+              <BarChart data={timeSeries.time_series} height={280} />
             </div>
           </div>
         )}
 
         {/* Stats Cards */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div style={{
             background: 'linear-gradient(135deg, #faf5ff 0%, #ffffff 100%)',
-            padding: '24px',
+            padding: '16px',
             borderRadius: '12px',
             border: '1px solid #e9d5ff',
             boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
           }}>
-            <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '8px', fontWeight: '600' }}>
+            <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '6px', fontWeight: '600' }}>
               Total Submissions
             </div>
-            <div style={{ fontSize: '36px', fontWeight: '700', color: '#9333ea', marginBottom: '4px' }}>
+            <div style={{ fontSize: '28px', fontWeight: '700', color: '#9333ea', marginBottom: '2px' }}>
               {(summary?.total_responses || 0).toLocaleString()}
             </div>
-            <div style={{ fontSize: '13px', color: '#10b981', fontWeight: '500' }}>
+            <div style={{ fontSize: '11px', color: '#10b981', fontWeight: '500' }}>
               +12% from last period
             </div>
           </div>
 
           <div style={{
             background: 'linear-gradient(135deg, #faf5ff 0%, #ffffff 100%)',
-            padding: '24px',
+            padding: '16px',
             borderRadius: '12px',
             border: '1px solid #e9d5ff',
             boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
           }}>
-            <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '8px', fontWeight: '600' }}>
+            <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '6px', fontWeight: '600' }}>
               Total Views
             </div>
-            <div style={{ fontSize: '36px', fontWeight: '700', color: '#9333ea', marginBottom: '4px' }}>
+            <div style={{ fontSize: '28px', fontWeight: '700', color: '#9333ea', marginBottom: '2px' }}>
               {(funnel?.total_views || 0).toLocaleString()}
             </div>
-            <div style={{ fontSize: '13px', color: '#10b981', fontWeight: '500' }}>
+            <div style={{ fontSize: '11px', color: '#10b981', fontWeight: '500' }}>
               +8% from last period
             </div>
           </div>
 
           <div style={{
             background: 'linear-gradient(135deg, #faf5ff 0%, #ffffff 100%)',
-            padding: '24px',
+            padding: '16px',
             borderRadius: '12px',
             border: '1px solid #e9d5ff',
             boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
           }}>
-            <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '8px', fontWeight: '600' }}>
+            <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '6px', fontWeight: '600' }}>
               Conversion Rate
             </div>
-            <div style={{ fontSize: '36px', fontWeight: '700', color: '#9333ea', marginBottom: '4px' }}>
+            <div style={{ fontSize: '28px', fontWeight: '700', color: '#9333ea', marginBottom: '2px' }}>
               {conversionRate.toFixed(1)}%
             </div>
-            <div style={{ fontSize: '13px', color: '#10b981', fontWeight: '500' }}>
+            <div style={{ fontSize: '11px', color: '#10b981', fontWeight: '500' }}>
               +2.1% from last period
             </div>
           </div>
@@ -405,29 +414,31 @@ export const FormAnalyticsNew: React.FC = () => {
       {funnel && (
         <div style={{
           background: 'white',
-          padding: '24px',
+          padding: '16px',
+          paddingBottom: '24px',
           borderRadius: '12px',
           border: '1px solid #e5e7eb',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          marginBottom: '40px'
         }}>
           <h3 style={{ 
-            fontSize: '18px', 
+            fontSize: '15px', 
             fontWeight: '700', 
             color: '#111827', 
-            marginBottom: '4px',
+            marginBottom: '2px',
             letterSpacing: '-0.01em'
           }}>
             Conversion Funnel
           </h3>
           <p style={{
-            fontSize: '14px',
+            fontSize: '12px',
             color: '#6b7280',
-            marginBottom: '20px'
+            marginBottom: '12px'
           }}>
             Track user progression through form completion
           </p>
           <FunnelChart
-            height={400}
+            height={280}
             stages={[
               {
                 label: 'Page Views',

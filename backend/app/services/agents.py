@@ -100,12 +100,16 @@ class FormPlannerSignature(dspy.Signature):
     CRITICAL GUIDELINES:
     1. **FOLLOW USER'S EXACT SPECIFICATIONS** - If user says "Valima, Nikkah, Barat", use those EXACT terms, not substitutes
     2. **DO NOT SUBSTITUTE** terms - Use the exact names, labels, and options the user provides
-    3. Choose appropriate component types based on the data being collected
-    4. Mark essential components as required
-    5. Order components logically (general to specific)
-    6. Include 3-15 components typically
-    7. Add conditional logic where it makes sense (e.g., show follow-up based on previous answer)
-    8. Generate component_ids like "comp_1", "comp_2", etc.
+    3. **USE DIVERSE QUESTION TYPES** - Mix short_answer, multiple_choice, checkboxes, dropdown, date, rating, etc.
+    4. **USE CHECKBOXES for multiple selections** - When users can select multiple items (e.g., "Which events will you attend?")
+    5. **USE MULTIPLE_CHOICE for single selection** - When users pick one option (e.g., "Are you attending? Yes/No")
+    6. Choose appropriate component types based on the data being collected
+    7. Mark essential components as required
+    8. Order components logically (general to specific)
+    9. Include 3-5 components typically
+    10. Add conditional logic where it makes sense (e.g., show follow-up based on previous answer)
+    11. Generate component_ids like "comp_1", "comp_2", etc.
+    12. **PREFER STRUCTURED INPUTS** over text when possible (use checkboxes, dropdowns, ratings instead of open text)
     
     **IMPORTANT: PRESERVE USER'S TERMINOLOGY**
     - If user mentions specific event names (Valima, Nikkah, Barat, etc.), use those EXACT names
@@ -114,18 +118,23 @@ class FormPlannerSignature(dspy.Signature):
     - Do NOT assume Western/US conventions unless specifically requested
     
     COMMON FORM PATTERNS (adapt to user's context):
-    - Contact forms: name, email, phone, message
-    - Registration forms: name, email, password confirmation fields
-    - Feedback forms: name (optional), rating, comments
-    - Applications: name, email, relevant experience fields
-    - Event registration: name, email, attendance confirmation, dietary preferences
-    - Survey forms: demographics, ratings, open-ended responses
+    - Contact forms: name (short_answer), email, phone, message (long_answer)
+    - Registration forms: name, email, password, interests (checkboxes), preferences (dropdown)
+    - Feedback forms: name (optional), rating, satisfaction (linear_scale), comments (long_answer)
+    - Applications: name, email, skills (checkboxes), experience level (dropdown)
+    - Event registration: name, email, events attending (checkboxes), meal preference (dropdown), dietary restrictions (checkboxes)
+    - Survey forms: demographics (dropdowns), agreement scales (linear_scale), multiple choice questions, open-ended responses (long_answer)
+    - RSVP forms: attendance (multiple_choice: Yes/No), guest count (number), dietary needs (checkboxes)
     
     FORM TITLE BEST PRACTICES:
-    - Be specific and clear (e.g., "Customer Feedback Survey" not "Form")
-    - Use action words when appropriate (e.g., "Submit Your Application", "Register for Event")
+    - **ALWAYS wrap title in double asterisks** for bold formatting: "**Your Form Title**"
+    - Be specific and clear (e.g., "**Customer Feedback Survey**" not "Form")
+    - Use action words when appropriate (e.g., "**Submit Your Application**", "**Register for Event**")
     - Keep under 60 characters for readability
     - Match the tone to the form purpose (professional for applications, friendly for feedback)
+    
+    CRITICAL: The title field MUST always start and end with ** to render as bold markdown.
+    Example: "title": "**Wedding RSVP**" NOT "title": "Wedding RSVP"
     
     Always include a meaningful form title and description that clearly explains the purpose.
     """
@@ -182,15 +191,17 @@ class ComponentSignatureGenerator(dspy.Signature):
     RULES:
     1. **USE USER'S EXACT TERMINOLOGY** - If the brief mentions specific terms (e.g., "Valima", "Nikkah", "Barat"), use those EXACT terms
     2. **DO NOT SUBSTITUTE** cultural, local, or specific terms with generic alternatives
-    3. Provide choices exactly as described by user (or 3-5 sensible options if not specified)
-    4. Use descriptive labels for scales
-    5. Set reasonable limits for numbers and file sizes
-    6. Include helpful placeholder text
-    7. Add description for complex components
-    8. Include validation rules where appropriate
-    9. CRITICAL: rows, columns, and ranking_items MUST be arrays of strings, never integers
-    10. Question text and descriptions support markdown (use **bold**, *italic*, lists, etc.)
-    11. Keep text clear and conversational - the design is minimal and clean
+    3. **MATCH COMPONENT TYPE TO DATA** - For multiple selections, use checkboxes; for single selection, use multiple_choice or dropdown
+    4. Provide choices exactly as described by user (or 3-5 sensible options if not specified)
+    5. Use descriptive labels for scales (e.g., "Not at all" to "Extremely")
+    6. Set reasonable limits for numbers and file sizes
+    7. Include helpful placeholder text for text inputs
+    8. Add description for complex components (matrix, ranking, file uploads)
+    9. Include validation rules where appropriate
+    10. CRITICAL: rows, columns, and ranking_items MUST be arrays of strings, never integers
+    11. Question text and descriptions support markdown (use **bold**, *italic*, lists, etc.)
+    12. Keep text clear and conversational - the design is minimal and clean
+    13. **GENERATE COMPLETE CHOICES** - Always provide actual choice options, not placeholders like "Option 1", "Option 2"
     
     EXAMPLES OF PRESERVING USER TERMINOLOGY:
     - User says "Valima, Nikkah, Barat" → choices: ["Valima", "Nikkah", "Barat"] (NOT "Reception, Ceremony, etc.")
@@ -273,10 +284,10 @@ class FormChatRouterSignature(dspy.Signature):
       Keywords: "change", "modify", "update", "edit", "make it", "adjust"
       Examples: "Change the email field to required", "Update the rating scale to 1-5"
     
-    - **general_form_query**: General questions about the form structure or capabilities.
-      Examples: "What fields are in this form?", "How does conditional logic work?"
+    - **general_form_query**: General questions about the form structure or capabilities, or questions that may be irrelevant to form editing.
+      Examples: "What fields are in this form?", "How does conditional logic work?", "What time is it?", "Who won the game last night?"
     
-    - **need_more_clarity**: Query is ambiguous or unclear.
+    - **need_more_clarity**: Query is ambiguous, unclear, or possibly irrelevant.
     
     IMPORTANT: This router is ONLY for form editing/building. NO data analysis.
     """

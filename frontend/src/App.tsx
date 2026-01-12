@@ -133,11 +133,15 @@ function AppRoutes() {
     '/account'
   ].includes(location.pathname) && !location.pathname.startsWith('/public/');
 
+  // Hide navbar only for public form submissions (not for analytics or responses)
+  const isPublicFormPath = /^\/forms\/[^\/]+$/.test(location.pathname);
+  const showNavbar = !isPublicFormPath;
+
   return (
     <>
       <AuthHandler />
       <NewYearBanner />
-      <Navbar onAccountClick={() => navigate('/account')} />
+      {showNavbar && <Navbar onAccountClick={() => navigate('/account')} />}
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'row' }}>
         {showSidebar && <Sidebar />}
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>

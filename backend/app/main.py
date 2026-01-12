@@ -19,10 +19,8 @@ logging.basicConfig(
 from .core.db import Base, engine
 from .routes.health import router as health_router
 from .routes.auth import router as auth_router
-# from .routes.chat import router as chat_router  # OLD AutoDash chat - no longer needed
 from .routes.google import router as google_router
 from .routes.payment import router as stripe_router
-# from .routes.data import router as data_router  # OLD AutoDash data analysis - no longer needed
 from .routes.export import router as export_router
 from .routes.credits import router as credits_router
 from .routes.plans import router as plans_router
@@ -70,7 +68,6 @@ app.add_middleware(
 
 
 from .schemas.auth import LoginRequest
-# from .schemas.chat import ChatRequest  # OLD AutoDash chat - no longer needed
 
 # Optional debug route to verify OAuth env at runtime (masked)
 @app.get("/api/auth/debug")
@@ -87,20 +84,12 @@ def auth_debug():
 app.include_router(health_router)
 
 
-# Auth routes (dummy)
+# Auth routes
 app.include_router(auth_router)
 
-
-# Chat routes (dummy) - OLD AutoDash chat disabled, use /api/forms/{form_id}/chat for form editing
-# app.include_router(chat_router)
-
-
-# Payment routes (dummy)
+# Payment routes
 app.include_router(google_router)
 app.include_router(stripe_router)
-
-# Data routes - OLD AutoDash data analysis disabled, forms use their own data
-# app.include_router(data_router)
 
 # Export routes
 app.include_router(export_router)

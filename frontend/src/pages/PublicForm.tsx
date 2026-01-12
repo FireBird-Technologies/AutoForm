@@ -301,8 +301,49 @@ export const PublicForm: React.FC = () => {
       minHeight: '100vh',
       background: backgroundColor,
       padding: '40px 24px 40px 64px',
-      overflowY: 'auto'
+      overflowY: 'auto',
+      position: 'relative'
     }}>
+      {/* Floating AutoForm Branding Widget */}
+      <a
+        href="https://autoform.ink"
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          padding: '10px 16px',
+          background: 'rgba(255, 255, 255, 0.98)',
+          backdropFilter: 'blur(12px)',
+          borderRadius: '10px',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease',
+          zIndex: 1000,
+          border: '1px solid rgba(0, 0, 0, 0.06)',
+          boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)',
+          textDecoration: 'none'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'translateY(-2px)';
+          e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.12)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'translateY(0)';
+          e.currentTarget.style.boxShadow = '0 2px 12px rgba(0, 0, 0, 0.08)';
+        }}
+      >
+        <span style={{
+          fontSize: '13px',
+          fontWeight: '500',
+          color: '#6b7280',
+          whiteSpace: 'nowrap',
+          letterSpacing: '-0.005em'
+        }}>
+          made with <span style={{ color: '#9333ea', fontWeight: '600' }}>AutoForm</span>
+        </span>
+      </a>
+
       <div style={{
         maxWidth: '800px',
         margin: '0 auto',

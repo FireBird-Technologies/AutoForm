@@ -17,13 +17,15 @@ interface FilterPanelProps {
   onChange: (filters: AnalyticsFilters) => void;
   questions: Array<{ id: number; question_text: string }>;
   availableCountries?: string[];
+  availableUtmSources?: string[];
 }
 
 export const FilterPanel: React.FC<FilterPanelProps> = ({
   filters,
   onChange,
   questions,
-  availableCountries = []
+  availableCountries = [],
+  availableUtmSources = []
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
 
@@ -52,6 +54,11 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
     filters.countries?.length || 0,
     filters.utmSource ? 1 : 0
   ].reduce((a, b) => a + b, 0);
+
+  // Determine which UTM sources to show
+  const utmSourcesToShow = availableUtmSources.length > 0 
+    ? ['Organic', ...availableUtmSources] 
+    : ['Organic'];
 
   return (
     <div style={{
@@ -130,7 +137,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
             }}>
               Date Range
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: filters.dateRange === 'custom' ? '12px' : '0' }}>
               {[
                 { value: '7d', label: 'Last 7 days' },
                 { value: '30d', label: 'Last 30 Days' },
@@ -168,6 +175,55 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                 </button>
               ))}
             </div>
+
+            {/* Custom Date Picker */}
+            {filters.dateRange === 'custom' && (
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <div style={{ flex: 1 }}>
+                  <input
+                    type="date"
+                    value={filters.customStartDate || ''}
+                    onChange={(e) => updateFilter('customStartDate', e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      fontSize: '12px',
+                      border: '2px solid #f3f4f6',
+                      borderRadius: '8px',
+                      background: 'white',
+                      color: '#111827',
+                      fontWeight: '500',
+                      transition: 'all 0.15s',
+                      cursor: 'pointer'
+                    }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = '#9333ea'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = '#f3f4f6'}
+                  />
+                </div>
+                <span style={{ color: '#9ca3af', fontSize: '12px', fontWeight: '600' }}>to</span>
+                <div style={{ flex: 1 }}>
+                  <input
+                    type="date"
+                    value={filters.customEndDate || ''}
+                    onChange={(e) => updateFilter('customEndDate', e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      fontSize: '12px',
+                      border: '2px solid #f3f4f6',
+                      borderRadius: '8px',
+                      background: 'white',
+                      color: '#111827',
+                      fontWeight: '500',
+                      transition: 'all 0.15s',
+                      cursor: 'pointer'
+                    }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = '#9333ea'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = '#f3f4f6'}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Questions */}
@@ -267,52 +323,55 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
             </div>
           )}
 
-          {/* UTM Source */}
-          <div>
-            <div style={{
-              fontSize: '13px',
-              fontWeight: '600',
-              color: '#6b7280',
-              marginBottom: '10px'
-            }}>
-              UTM Source
+          {/* UTM Source - Only show if there are sources */}
+          {utmSourcesToShow.length > 0 && (
+            <div>
+              <div style={{
+                fontSize: '13px',
+                fontWeight: '600',
+                color: '#6b7280',
+                marginBottom: '10px'
+              }}>
+                UTM Source
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {utmSourcesToShow.map((source) => {
+                  const isActive = filters.utmSource?.toLowerCase() === source.toLowerCase() || 
+                                   (!filters.utmSource && source.toLowerCase() === 'organic');
+                  return (
+                    <button
+                      key={source}
+                      onClick={() => updateFilter('utmSource', isActive ? undefined : source.toLowerCase())}
+                      style={{
+                        padding: '6px 14px',
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        color: isActive ? 'white' : '#374151',
+                        background: isActive ? '#9333ea' : '#f9fafb',
+                        border: 'none',
+                        borderRadius: '20px',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                        whiteSpace: 'nowrap'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.background = '#f3f4f6';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.background = '#f9fafb';
+                        }
+                      }}
+                    >
+                      {source}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {['Organic', 'Paid Ads', 'Email', 'Social Media', 'Direct'].map((source) => {
-                const isActive = filters.utmSource?.toLowerCase() === source.toLowerCase();
-                return (
-                  <button
-                    key={source}
-                    onClick={() => updateFilter('utmSource', isActive ? undefined : source.toLowerCase())}
-                    style={{
-                      padding: '6px 14px',
-                      fontSize: '13px',
-                      fontWeight: '500',
-                      color: isActive ? 'white' : '#374151',
-                      background: isActive ? '#9333ea' : '#f9fafb',
-                      border: 'none',
-                      borderRadius: '20px',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s',
-                      whiteSpace: 'nowrap'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.background = '#f3f4f6';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.background = '#f9fafb';
-                      }
-                    }}
-                  >
-                    {source}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          )}
 
           {/* Clear Filters Link */}
           {activeFiltersCount > 0 && (
