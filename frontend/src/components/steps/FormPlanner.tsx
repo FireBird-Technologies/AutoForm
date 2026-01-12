@@ -54,7 +54,7 @@ export const FormPlanner: React.FC<FormPlannerProps> = ({ onComplete }) => {
           <h1 style={{
             fontSize: '48px',
             fontWeight: '700',
-            color: '#1f2937',
+            color: '#9333ea',
             marginBottom: '16px',
             letterSpacing: '-0.02em'
           }}>

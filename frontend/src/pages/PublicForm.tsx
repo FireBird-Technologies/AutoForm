@@ -410,10 +410,28 @@ export const PublicForm: React.FC = () => {
           textAlign: 'center',
           fontSize: '13px',
           color: textColor,
-          opacity: 0.4,
+          opacity: 0.5,
           marginTop: '48px'
         }}>
-          Powered by AutoForm
+          Made using{' '}
+          <a
+            href="https://autoform.ink"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              color: accentColor,
+              textDecoration: 'none',
+              fontWeight: '500'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.textDecoration = 'underline';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.textDecoration = 'none';
+            }}
+          >
+            AutoForm
+          </a>
         </div>
       </div>
     </div>

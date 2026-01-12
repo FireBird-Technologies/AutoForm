@@ -5,7 +5,8 @@ export const WalletConnect: React.FC<QuestionProps> = ({
   question,
   value,
   onChange,
-  disabled = false
+  disabled = false,
+  hideLabel = false
 }) => {
   const [isConnected, setIsConnected] = useState(!!value?.wallet_address);
   const walletAddress = value?.wallet_address || '';
@@ -32,29 +33,33 @@ export const WalletConnect: React.FC<QuestionProps> = ({
 
   return (
     <div style={{
-      marginBottom: '48px',
+      marginBottom: hideLabel ? '0' : '48px',
       transition: 'all 0.2s'
     }}>
-      <label style={{
-        display: 'block',
-        fontSize: '16px',
-        fontWeight: '500',
-        color: '#000000',
-        marginBottom: '8px',
-        letterSpacing: '-0.01em'
-      }}>
-        {question.question_text}
-        {question.required && <span style={{ color: '#9333ea', marginLeft: '4px' }}>*</span>}
-      </label>
-      {question.description && (
-        <p style={{
-          fontSize: '14px',
-          color: '#6b7280',
-          marginBottom: '12px',
-          lineHeight: '1.5'
-        }}>
-          {question.description}
-        </p>
+      {!hideLabel && (
+        <>
+          <label style={{
+            display: 'block',
+            fontSize: '16px',
+            fontWeight: '500',
+            color: '#000000',
+            marginBottom: '8px',
+            letterSpacing: '-0.01em'
+          }}>
+            {question.question_text}
+            {question.required && <span style={{ color: '#9333ea', marginLeft: '4px' }}>*</span>}
+          </label>
+          {question.description && (
+            <p style={{
+              fontSize: '14px',
+              color: '#6b7280',
+              marginBottom: '12px',
+              lineHeight: '1.5'
+            }}>
+              {question.description}
+            </p>
+          )}
+        </>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {!isConnected ? (

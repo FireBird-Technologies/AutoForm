@@ -549,23 +549,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
               ← Back
             </button>
           )}
-          <input
-            type="text"
-            value={formData.title || 'Untitled Form'}
-            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            placeholder="Form title"
-            style={{
-              fontSize: '18px',
-              fontWeight: '500',
-              color: globalColors.text,
-              border: 'none',
-              outline: 'none',
-              background: 'transparent',
-              flex: 1,
-              maxWidth: '500px',
-              padding: '4px 0'
-            }}
-          />
         </div>
 
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -849,10 +832,13 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
               background: '#ffffff',
               display: 'flex',
               flexDirection: 'column',
-              position: 'relative',
-              height: '100%',
+              position: 'sticky',
+              top: 0,
+              height: 'calc(100vh - 80px)',
+              maxHeight: 'calc(100vh - 80px)',
+              minHeight: 0,
               overflow: 'hidden',
-              minHeight: 0
+              zIndex: 2
             }}
           >
             {/* Resize Handle */}
@@ -988,7 +974,9 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
             padding: '20px',
             borderTop: '1px solid #e5e7eb',
             background: '#ffffff',
-            flexShrink: 0
+            flexShrink: 0,
+            position: 'relative',
+            zIndex: 10
           }}>
             <div style={{
               fontSize: '12px',
@@ -1022,7 +1010,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                   resize: 'vertical',
                   background: '#ffffff',
                   color: '#1f2937',
-                  boxShadow: '0 2px 8px rgba(147, 51, 234, 0.15)'
+                  boxShadow: '0 2px 8px rgba(147, 51, 234, 0.15)',
+                  display: 'block'
                 }}
                 onFocus={(e) => {
                   e.target.style.borderColor = '#9333ea';
@@ -1112,6 +1101,22 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
             paddingBottom: '100px',
             position: 'relative'
           }}>
+          {/* Form Title */}
+          <div style={{ marginBottom: '48px' }}>
+            <InlineEditableText
+              value={formData.title || 'Untitled Form'}
+              onChange={(value) => setFormData({ ...formData, title: value })}
+              placeholder="Form title"
+              isTitle={true}
+              style={{
+                fontSize: '32px',
+                fontWeight: '700',
+                color: globalColors.text,
+                lineHeight: '1.2',
+                marginBottom: '8px'
+              }}
+            />
+          </div>
           {isGenerating && (!formData.questions || formData.questions.length === 0) ? (
             <LoadingAnimation />
           ) : formData.questions && formData.questions.length > 0 ? (

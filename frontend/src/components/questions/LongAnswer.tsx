@@ -5,7 +5,8 @@ export const LongAnswer: React.FC<QuestionProps> = ({
   question,
   value,
   onChange,
-  disabled = false
+  disabled = false,
+  hideLabel = false
 }) => {
   const textValue = value?.text || '';
   const placeholder = question.settings?.placeholder || 'Your answer';
@@ -13,29 +14,33 @@ export const LongAnswer: React.FC<QuestionProps> = ({
 
   return (
     <div style={{
-      marginBottom: '48px',
+      marginBottom: hideLabel ? '0' : '48px',
       transition: 'all 0.2s'
     }}>
-      <label style={{
-        display: 'block',
-        fontSize: '16px',
-        fontWeight: '500',
-        color: '#000000',
-        marginBottom: '8px',
-        letterSpacing: '-0.01em'
-      }}>
-        {question.question_text}
-        {question.required && <span style={{ color: '#9333ea', marginLeft: '4px' }}>*</span>}
-      </label>
-      {question.description && (
-        <p style={{
-          fontSize: '14px',
-          color: '#6b7280',
-          marginBottom: '12px',
-          lineHeight: '1.5'
-        }}>
-          {question.description}
-        </p>
+      {!hideLabel && (
+        <>
+          <label style={{
+            display: 'block',
+            fontSize: '16px',
+            fontWeight: '500',
+            color: '#000000',
+            marginBottom: '8px',
+            letterSpacing: '-0.01em'
+          }}>
+            {question.question_text}
+            {question.required && <span style={{ color: '#9333ea', marginLeft: '4px' }}>*</span>}
+          </label>
+          {question.description && (
+            <p style={{
+              fontSize: '14px',
+              color: '#6b7280',
+              marginBottom: '12px',
+              lineHeight: '1.5'
+            }}>
+              {question.description}
+            </p>
+          )}
+        </>
       )}
       <textarea
         value={textValue}
