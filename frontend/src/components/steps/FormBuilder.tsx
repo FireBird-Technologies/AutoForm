@@ -310,9 +310,52 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
     }));
   };
 
-  const handleAddQuestion = async (questionType: string, atIndex?: number | null) => {
+  const handleAddQuestion = async (
+    questionType: string, 
+    atIndex?: number | null,
+    customization?: { text?: string; description?: string; options?: string[]; aiPrompt?: string }
+  ) => {
     if (!formData.id) {
       alert('Form must be saved before adding questions');
+      return;
+    }
+
+    // If AI customization is requested, use the chat API
+    if (customization?.aiPrompt) {
+      setShowComponentPicker(false);
+      setIsGenerating(true);
+      const aiMessage = `Add a ${questionType.replace(/_/g, ' ')} question: ${customization.aiPrompt}`;
+      setChatMessages(prev => [...prev, { role: 'user', content: aiMessage }]);
+      
+      try {
+        const response = await fetch(`${config.backendUrl}/api/forms/${formData.id}/chat`, {
+          method: 'POST',
+          headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+          credentials: 'include',
+          body: JSON.stringify({ message: aiMessage })
+        });
+        
+        if (!response.ok) throw new Error('Failed to generate component');
+        
+        const data = await response.json();
+        setChatMessages(prev => [...prev, { role: 'assistant', content: data.changes_made || 'Component added' }]);
+        
+        // Refresh form data
+        const formResponse = await fetch(`${config.backendUrl}/api/forms/${formData.id}`, {
+          headers: getAuthHeaders(),
+          credentials: 'include'
+        });
+        
+        if (formResponse.ok) {
+          const updatedForm = await formResponse.json();
+          setFormData(updatedForm);
+        }
+      } catch (err) {
+        console.error('AI generate error:', err);
+        setChatMessages(prev => [...prev, { role: 'assistant', content: 'Failed to generate component. Please try again.' }]);
+      } finally {
+        setIsGenerating(false);
+      }
       return;
     }
 
@@ -334,6 +377,25 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
         questionOrder = maxOrder + 1;
       }
 
+      // Use customization data if provided
+      const questionText = customization?.text || 'New Question';
+      const description = customization?.description || '';
+      const customOptions = customization?.options?.filter(o => o.trim());
+
+      // Build settings based on question type
+      let settings: any = {};
+      if (questionType === 'multiple_choice' || questionType === 'checkboxes' || questionType === 'dropdown' || questionType === 'multi_select') {
+        settings = { choices: customOptions?.length ? customOptions : ['Option 1', 'Option 2', 'Option 3'] };
+      } else if (questionType === 'ranking') {
+        settings = { ranking_items: customOptions?.length ? customOptions : ['Item 1', 'Item 2', 'Item 3'] };
+      } else if (questionType === 'matrix') {
+        settings = { rows: ['Row 1', 'Row 2'], columns: ['Column 1', 'Column 2', 'Column 3'] };
+      } else if (questionType === 'linear_scale') {
+        settings = { min_value: 1, max_value: 5, scale_min_label: 'Low', scale_max_label: 'High' };
+      } else if (questionType === 'rating') {
+        settings = { max_value: 5 };
+      }
+
       const response = await fetch(`${config.backendUrl}/api/forms/${formData.id}/questions`, {
         method: 'POST',
         headers: getAuthHeaders({
@@ -344,20 +406,10 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
           form_id: formData.id,
           question_order: questionOrder,
           question_type: questionType,
-          question_text: 'New Question',
-          description: '',
+          question_text: questionText,
+          description: description,
           required: false,
-          settings: questionType === 'multiple_choice' || questionType === 'checkboxes' || questionType === 'dropdown' || questionType === 'multi_select'
-            ? { choices: ['Option 1', 'Option 2', 'Option 3'] }
-            : questionType === 'ranking'
-            ? { ranking_items: ['Item 1', 'Item 2', 'Item 3'] }
-            : questionType === 'matrix'
-            ? { rows: ['Row 1', 'Row 2'], columns: ['Column 1', 'Column 2', 'Column 3'] }
-            : questionType === 'linear_scale'
-            ? { min_value: 1, max_value: 5, scale_min_label: 'Low', scale_max_label: 'High' }
-            : questionType === 'rating'
-            ? { max_value: 5 }
-            : {}
+          settings: settings
         })
       });
 
@@ -832,13 +884,12 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
               background: '#ffffff',
               display: 'flex',
               flexDirection: 'column',
-              position: 'sticky',
-              top: 0,
-              height: 'calc(100vh - 80px)',
-              maxHeight: 'calc(100vh - 80px)',
+              position: 'relative',
+              height: '100%',
+              maxHeight: '100%',
               minHeight: 0,
-              overflow: 'hidden',
-              zIndex: 2
+              overflowX: 'hidden',
+              overflowY: 'hidden'
             }}
           >
             {/* Resize Handle */}
@@ -974,9 +1025,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
             padding: '20px',
             borderTop: '1px solid #e5e7eb',
             background: '#ffffff',
-            flexShrink: 0,
-            position: 'relative',
-            zIndex: 10
+            flexShrink: 0
           }}>
             <div style={{
               fontSize: '12px',
@@ -1755,8 +1804,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
           setShowComponentPicker(false);
           setInsertAtIndex(null);
         }}
-        onSelect={(questionType) => {
-          handleAddQuestion(questionType, insertAtIndex);
+        onSelect={(questionType, customization) => {
+          handleAddQuestion(questionType, insertAtIndex, customization);
         }}
         onGenerate={async (prompt) => {
           // Use the chat API to generate the component
