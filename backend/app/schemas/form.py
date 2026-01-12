@@ -2,7 +2,7 @@
 Pydantic schemas for form-related operations
 """
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from datetime import datetime
 from ..models import QuestionType, ConditionType
 
@@ -18,13 +18,13 @@ class QuestionSettings(BaseModel):
     placeholder: Optional[str] = None
     scale_min_label: Optional[str] = None  # For linear scale
     scale_max_label: Optional[str] = None
-    rows: Optional[List[str]] = None  # For matrix questions
-    columns: Optional[List[str]] = None
+    rows: Optional[Union[int, List[str]]] = None  # For matrix questions - accepts int or list
+    columns: Optional[Union[int, List[str]]] = None  # For matrix questions - accepts int or list
     file_types: Optional[List[str]] = None  # For file upload
     max_file_size: Optional[int] = None
     payment_amount: Optional[float] = None  # For payment questions
     currency: Optional[str] = None
-    ranking_items: Optional[List[str]] = None  # For ranking questions
+    ranking_items: Optional[Union[int, List[str]]] = None  # For ranking questions - accepts int or list
     
     class Config:
         extra = "allow"  # Allow additional fields

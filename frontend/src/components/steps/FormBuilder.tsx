@@ -1,13 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { QuestionRenderer } from '../QuestionRenderer';
+import React, { useState, useEffect, useRef } from 'react';
 import { QuestionEditor } from '../QuestionEditor';
 import { LoadingAnimation } from '../LoadingAnimation';
 import { ConditionModal } from '../ConditionModal';
-import { GlobalColorPicker, QuestionColorPicker } from '../ColorPicker';
-import { AddQuestionButton } from '../AddQuestionButton';
+import { QuestionColorPicker } from '../ColorPicker';
+import { SideAddButton } from '../SideAddButton';
+import { InlineEditableText, EditableOptions } from '../InlineEditableText';
+import { ComponentPicker } from '../ComponentPicker';
 import { config, getAuthHeaders } from '../../config';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 
 interface FormBuilderProps {
   formData: any;
@@ -31,10 +30,110 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
   const [colorPickerForQuestion, setColorPickerForQuestion] = useState<number | null>(null);
   const [questionColors, setQuestionColors] = useState<Record<number, any>>({});
   const [globalColors, setGlobalColors] = useState({
-    background: '#ffffff',
-    text: '#1f2937',
-    accent: '#9333ea'
+    background: initialFormData.settings?.background_color || '#ffffff',
+    text: initialFormData.settings?.text_color || '#1f2937',
+    accent: initialFormData.settings?.accent_color || '#9333ea'
   });
+  const [showComponentPicker, setShowComponentPicker] = useState(false);
+  const [insertAtIndex, setInsertAtIndex] = useState<number | null>(null);
+  const [showBgColorPicker, setShowBgColorPicker] = useState(false);
+  const [showTextColorPicker, setShowTextColorPicker] = useState(false);
+  const [isChatCollapsed, setIsChatCollapsed] = useState(false);
+  const [chatPanelWidth, setChatPanelWidth] = useState(400);
+  const [isResizing, setIsResizing] = useState(false);
+  const chatPanelRef = useRef<HTMLDivElement>(null);
+
+  // Save global colors to form settings when they change
+  useEffect(() => {
+    if (formData.id) {
+      const currentBg = formData.settings?.background_color || '#ffffff';
+      const currentText = formData.settings?.text_color || '#1f2937';
+      const currentAccent = formData.settings?.accent_color || '#9333ea';
+      
+      // Only update if colors actually changed
+      if (
+        currentBg !== globalColors.background ||
+        currentText !== globalColors.text ||
+        currentAccent !== globalColors.accent
+      ) {
+        const updatedSettings = {
+          ...formData.settings,
+          background_color: globalColors.background,
+          text_color: globalColors.text,
+          accent_color: globalColors.accent
+        };
+        
+        // Update local state
+        setFormData({ ...formData, settings: updatedSettings });
+        
+        // Save to backend
+        saveFormSettings(updatedSettings);
+      }
+    }
+  }, [globalColors.background, globalColors.text, globalColors.accent]);
+
+  // Save form settings to backend
+  const saveFormSettings = async (settings: any) => {
+    try {
+      const response = await fetch(`${config.backendUrl}/api/forms/${formData.id}`, {
+        method: 'PUT',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        credentials: 'include',
+        body: JSON.stringify({ settings })
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to save form settings');
+      }
+    } catch (err) {
+      console.error('Error saving form settings:', err);
+    }
+  };
+
+  // Handle chat editing
+  const handleChatEdit = async () => {
+    if (!chatInput.trim() || isGenerating) return;
+    
+    const userMessage = chatInput.trim();
+    setChatInput('');
+    setChatMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setIsGenerating(true);
+    
+    try {
+      const response = await fetch(`${config.backendUrl}/api/forms/${formData.id}/chat`, {
+        method: 'POST',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        credentials: 'include',
+        body: JSON.stringify({ message: userMessage })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to process chat message');
+      }
+      
+      const data = await response.json();
+      
+      // Add AI response to chat
+      const aiMessage = data.changes_made || data.response?.message || 'Changes applied';
+      setChatMessages(prev => [...prev, { role: 'assistant', content: aiMessage }]);
+      
+      // Refresh form data to get updated questions
+      const formResponse = await fetch(`${config.backendUrl}/api/forms/${formData.id}`, {
+        headers: getAuthHeaders(),
+        credentials: 'include'
+      });
+      
+      if (formResponse.ok) {
+        const updatedForm = await formResponse.json();
+        setFormData(updatedForm);
+      }
+    } catch (err: any) {
+      console.error('Chat edit error:', err);
+      setChatMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I couldn\'t process that request. Please try again.' }]);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   // Handle form generation on mount if needed
   useEffect(() => {
@@ -42,6 +141,35 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
       generateForm(initialFormData.user_query);
     }
   }, []);
+
+  // Handle chat panel resize
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      const newWidth = e.clientX;
+      if (newWidth >= 300 && newWidth <= 600) {
+        setChatPanelWidth(newWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.body.style.cursor = 'default';
+      document.body.style.userSelect = 'auto';
+    };
+
+    if (isResizing) {
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
 
   const generateForm = async (userQuery: string) => {
     setIsGenerating(true);
@@ -80,18 +208,39 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
     }
   };
 
-  const handleSaveQuestion = (updates: any) => {
+  const handleSaveQuestion = async (updates: any) => {
     if (!selectedQuestion) return;
 
-    const updatedQuestions = formData.questions.map((q: any) =>
-      q.id === selectedQuestion.id ? { ...q, ...updates } : q
-    );
+    try {
+      // Save to backend
+      const response = await fetch(
+        `${config.backendUrl}/api/forms/${formData.id}/questions/${selectedQuestion.id}`,
+        {
+          method: 'PUT',
+          headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+          credentials: 'include',
+          body: JSON.stringify(updates)
+        }
+      );
 
-    setFormData({ ...formData, questions: updatedQuestions });
-    setSelectedQuestion({ ...selectedQuestion, ...updates });
+      if (!response.ok) {
+        throw new Error('Failed to save question');
+      }
+
+      // Update local state
+      const updatedQuestions = formData.questions.map((q: any) =>
+        q.id === selectedQuestion.id ? { ...q, ...updates } : q
+      );
+
+      setFormData({ ...formData, questions: updatedQuestions });
+      setSelectedQuestion({ ...selectedQuestion, ...updates });
+    } catch (err) {
+      console.error('Failed to save question:', err);
+      alert('Failed to save question. Please try again.');
+    }
   };
 
-  const handleRegenerateQuestion = async (question: any) => {
+  const handleRegenerateQuestion = async (question: any, prompt: string) => {
     try {
       const response = await fetch(
         `${config.backendUrl}/api/forms/${formData.id}/questions/${question.id}/regenerate`,
@@ -99,19 +248,30 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
           method: 'POST',
           headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
           credentials: 'include',
-          body: JSON.stringify({ context: 'Regenerate this question' })
+          body: JSON.stringify({ 
+            context: prompt || 'Regenerate this question',
+            prompt: prompt
+          })
         }
       );
 
       if (!response.ok) {
-        throw new Error('Failed to regenerate question');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to regenerate question');
       }
 
       const data = await response.json();
-      handleSaveQuestion(data.question);
-    } catch (err) {
+      
+      // Update the question in the form
+      if (data.question) {
+        const updatedQuestions = formData.questions.map((q: any) =>
+          q.id === question.id ? { ...q, ...data.question } : q
+        );
+        setFormData({ ...formData, questions: updatedQuestions });
+      }
+    } catch (err: any) {
       console.error('Question regeneration error:', err);
-      alert('Failed to regenerate question. Please try again.');
+      alert(err.message || 'Failed to regenerate question. Please try again.');
     }
   };
 
@@ -120,6 +280,20 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
       const updatedQuestions = formData.questions.filter((q: any) => q.id !== questionId);
       setFormData({ ...formData, questions: updatedQuestions });
     }
+  };
+
+  // Handle inline editing of question text, description, or options
+  const handleInlineQuestionUpdate = (questionId: number, field: string, value: any) => {
+    const updatedQuestions = formData.questions.map((q: any) => {
+      if (q.id === questionId) {
+        if (field === 'settings.choices') {
+          return { ...q, settings: { ...q.settings, choices: value } };
+        }
+        return { ...q, [field]: value };
+      }
+      return q;
+    });
+    setFormData({ ...formData, questions: updatedQuestions });
   };
 
   const handleSaveCondition = (condition: any) => {
@@ -136,17 +310,29 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
     }));
   };
 
-  const handleAddQuestion = async (questionType: string) => {
+  const handleAddQuestion = async (questionType: string, atIndex?: number | null) => {
     if (!formData.id) {
       alert('Form must be saved before adding questions');
       return;
     }
 
     try {
-      // Get the max question order
-      const maxOrder = formData.questions?.length > 0
-        ? Math.max(...formData.questions.map((q: any) => q.question_order))
-        : -1;
+      // Determine the question order based on insertion index
+      let questionOrder: number;
+      if (atIndex !== undefined && atIndex !== null && formData.questions?.length > 0) {
+        // Insert at specific position - use the order of the question at that index
+        const sortedQuestions = [...formData.questions].sort((a: any, b: any) => a.question_order - b.question_order);
+        questionOrder = sortedQuestions[atIndex]?.question_order ?? atIndex;
+        
+        // Shift all questions at or after this position
+        // This will be handled by refetching the form
+      } else {
+        // Add at the end
+        const maxOrder = formData.questions?.length > 0
+          ? Math.max(...formData.questions.map((q: any) => q.question_order))
+          : -1;
+        questionOrder = maxOrder + 1;
+      }
 
       const response = await fetch(`${config.backendUrl}/api/forms/${formData.id}/questions`, {
         method: 'POST',
@@ -156,12 +342,22 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
         credentials: 'include',
         body: JSON.stringify({
           form_id: formData.id,
-          question_order: maxOrder + 1,
+          question_order: questionOrder,
           question_type: questionType,
           question_text: 'New Question',
           description: '',
           required: false,
-          settings: {}
+          settings: questionType === 'multiple_choice' || questionType === 'checkboxes' || questionType === 'dropdown' || questionType === 'multi_select'
+            ? { choices: ['Option 1', 'Option 2', 'Option 3'] }
+            : questionType === 'ranking'
+            ? { ranking_items: ['Item 1', 'Item 2', 'Item 3'] }
+            : questionType === 'matrix'
+            ? { rows: ['Row 1', 'Row 2'], columns: ['Column 1', 'Column 2', 'Column 3'] }
+            : questionType === 'linear_scale'
+            ? { min_value: 1, max_value: 5, scale_min_label: 'Low', scale_max_label: 'High' }
+            : questionType === 'rating'
+            ? { max_value: 5 }
+            : {}
         })
       });
 
@@ -181,6 +377,9 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
         const updatedForm = await formResponse.json();
         setFormData(updatedForm);
       }
+      
+      // Reset insert index
+      setInsertAtIndex(null);
     } catch (err) {
       console.error('Failed to add question:', err);
       alert('Failed to add question. Please try again.');
@@ -191,7 +390,9 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
     try {
       const response = await fetch(`${config.backendUrl}/api/forms/${formData.id}/share`, {
         method: 'POST',
-        headers: getAuthHeaders(),
+        headers: getAuthHeaders({
+          'Content-Type': 'application/json'
+        }),
         credentials: 'include',
         body: JSON.stringify({
           form_id: formData.id,
@@ -205,9 +406,43 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
         const link = `${window.location.origin}/public/forms/${data.share_token}`;
         setShareLink(link);
         setShowSharePopup(true);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Share failed:', errorData);
+        alert('Failed to create share link. Please try again.');
       }
     } catch (error) {
       console.error('Failed to create share link:', error);
+      alert('Failed to create share link. Please try again.');
+    }
+  };
+
+  const handlePreview = async () => {
+    try {
+      // First create/get share link
+      const response = await fetch(`${config.backendUrl}/api/forms/${formData.id}/share`, {
+        method: 'POST',
+        headers: getAuthHeaders({
+          'Content-Type': 'application/json'
+        }),
+        credentials: 'include',
+        body: JSON.stringify({
+          form_id: formData.id,
+          allow_multiple_submissions: true,
+          collect_email: false
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const previewUrl = `${window.location.origin}/public/forms/${data.share_token}`;
+        window.open(previewUrl, '_blank');
+      } else {
+        alert('Failed to generate preview. Please try again.');
+      }
+    } catch (error) {
+      console.error('Preview failed:', error);
+      alert('Failed to generate preview. Please try again.');
     }
   };
 
@@ -331,12 +566,213 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
           />
         </div>
 
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          {/* Global Color Picker */}
-          <GlobalColorPicker
-            colors={globalColors}
-            onChange={setGlobalColors}
-          />
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {/* Add Component Button */}
+          <button
+            onClick={() => {
+              setInsertAtIndex(null);
+              setShowComponentPicker(true);
+            }}
+            style={{
+              padding: '8px 14px',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#374151',
+              background: '#ffffff',
+              border: '1px solid #e5e7eb',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.15s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = '#9333ea';
+              e.currentTarget.style.color = '#9333ea';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = '#e5e7eb';
+              e.currentTarget.style.color = '#374151';
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Add
+          </button>
+
+          {/* Preview Button */}
+          <button
+            onClick={handlePreview}
+            style={{
+              padding: '8px 14px',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#374151',
+              background: '#ffffff',
+              border: '1px solid #e5e7eb',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.15s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = '#9333ea';
+              e.currentTarget.style.color = '#9333ea';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = '#e5e7eb';
+              e.currentTarget.style.color = '#374151';
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            Preview
+          </button>
+
+          {/* Background Color */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowBgColorPicker(!showBgColorPicker)}
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '6px',
+                background: globalColors.background,
+                border: '2px solid #e5e7eb',
+                cursor: 'pointer',
+                position: 'relative'
+              }}
+              title="Background Color"
+            >
+              <div style={{
+                position: 'absolute',
+                bottom: '-2px',
+                right: '-2px',
+                width: '12px',
+                height: '12px',
+                borderRadius: '2px',
+                background: '#ffffff',
+                border: '1px solid #e5e7eb',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="#6b7280" stroke="none">
+                  <rect x="4" y="4" width="16" height="16" rx="2" />
+                </svg>
+              </div>
+            </button>
+            {showBgColorPicker && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: '8px',
+                  background: '#ffffff',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                  border: '1px solid #e5e7eb',
+                  padding: '12px',
+                  zIndex: 100
+                }}
+                onMouseLeave={() => setShowBgColorPicker(false)}
+              >
+                <div style={{ fontSize: '12px', fontWeight: '600', color: '#6b7280', marginBottom: '8px' }}>
+                  Background
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px' }}>
+                  {['#ffffff', '#f9fafb', '#f3f4f6', '#e5e7eb', '#d1d5db', '#faf5ff', '#fef2f2', '#f0fdf4', '#eff6ff', '#fefce8'].map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => {
+                        setGlobalColors({ ...globalColors, background: color });
+                        setShowBgColorPicker(false);
+                      }}
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '4px',
+                        background: color,
+                        border: globalColors.background === color ? '2px solid #9333ea' : '1px solid #e5e7eb',
+                        cursor: 'pointer'
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Text Color */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowTextColorPicker(!showTextColorPicker)}
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '6px',
+                background: '#ffffff',
+                border: '2px solid #e5e7eb',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              title="Text Color"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={globalColors.text} strokeWidth="2.5">
+                <path d="M4 20h4l10.5-10.5a1.5 1.5 0 00-4-4L4 16v4z" />
+              </svg>
+            </button>
+            {showTextColorPicker && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: '8px',
+                  background: '#ffffff',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                  border: '1px solid #e5e7eb',
+                  padding: '12px',
+                  zIndex: 100
+                }}
+                onMouseLeave={() => setShowTextColorPicker(false)}
+              >
+                <div style={{ fontSize: '12px', fontWeight: '600', color: '#6b7280', marginBottom: '8px' }}>
+                  Text Color
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px' }}>
+                  {['#000000', '#1f2937', '#374151', '#4b5563', '#6b7280', '#9333ea', '#7c3aed', '#dc2626', '#059669', '#0284c7'].map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => {
+                        setGlobalColors({ ...globalColors, text: color });
+                        setShowTextColorPicker(false);
+                      }}
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '4px',
+                        background: color,
+                        border: globalColors.text === color ? '2px solid #9333ea' : '1px solid #e5e7eb',
+                        cursor: 'pointer'
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
 
           <button
             onClick={handleShare}
@@ -351,7 +787,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
               cursor: 'pointer'
             }}
           >
-            Share Form
+            Share
           </button>
         </div>
       </div>
@@ -362,18 +798,93 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
         display: 'flex',
         overflow: 'hidden'
       }}>
+        {/* Collapsed Chat Toggle */}
+        {isChatCollapsed && (
+          <button
+            onClick={() => setIsChatCollapsed(false)}
+            style={{
+              width: '40px',
+              background: '#ffffff',
+              border: 'none',
+              borderRight: '1px solid #e5e7eb',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'column',
+              gap: '8px',
+              padding: '16px 0'
+            }}
+            title="Expand chat panel"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+            <span style={{
+              writingMode: 'vertical-rl',
+              textOrientation: 'mixed',
+              fontSize: '12px',
+              fontWeight: '600',
+              color: '#6b7280',
+              letterSpacing: '0.05em'
+            }}>
+              CHAT
+            </span>
+          </button>
+        )}
+
         {/* Chat Panel */}
-        <div style={{
-          width: '400px',
-          borderRight: '1px solid #e5e7eb',
-          background: '#ffffff',
-          display: 'flex',
-          flexDirection: 'column'
-        }}>
+        {!isChatCollapsed && (
+          <div
+            ref={chatPanelRef}
+            style={{
+              width: `${chatPanelWidth}px`,
+              minWidth: '300px',
+              maxWidth: '600px',
+              borderRight: '1px solid #e5e7eb',
+              background: '#ffffff',
+              display: 'flex',
+              flexDirection: 'column',
+              position: 'relative',
+              height: '100%',
+              overflow: 'hidden'
+            }}
+          >
+            {/* Resize Handle */}
+            <div
+              onMouseDown={() => setIsResizing(true)}
+              style={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                bottom: 0,
+                width: '4px',
+                cursor: 'col-resize',
+                background: isResizing ? '#9333ea' : 'transparent',
+                transition: 'background 0.15s',
+                zIndex: 10
+              }}
+              onMouseEnter={(e) => {
+                if (!isResizing) {
+                  e.currentTarget.style.background = '#e5e7eb';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isResizing) {
+                  e.currentTarget.style.background = 'transparent';
+                }
+              }}
+            />
+
           <div style={{
             padding: '16px 20px',
-            borderBottom: '1px solid #e5e7eb'
+            borderBottom: '1px solid #e5e7eb',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexShrink: 0
           }}>
+              <div>
             <h3 style={{
               fontSize: '16px',
               fontWeight: '600',
@@ -389,16 +900,40 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
             }}>
               Chat to edit or add questions
             </p>
+              </div>
+              <button
+                onClick={() => setIsChatCollapsed(true)}
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '6px',
+                  background: 'transparent',
+                  border: '1px solid #e5e7eb',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                title="Collapse chat panel"
+                onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2">
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+              </button>
           </div>
 
           {/* Chat Messages */}
           <div style={{
             flex: 1,
-            overflow: 'auto',
+            overflowY: 'auto',
+            overflowX: 'hidden',
             padding: '20px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '16px'
+            gap: '16px',
+            minHeight: 0
           }}>
             {chatMessages.map((msg, idx) => (
               <div
@@ -445,85 +980,112 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
 
           {/* Chat Input */}
           <div style={{
-            padding: '24px 20px',
+            padding: '20px',
             borderTop: '1px solid #e5e7eb',
             background: '#ffffff',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px'
+            flexShrink: 0
           }}>
             <div style={{
-              fontSize: '13px',
+              fontSize: '12px',
               fontWeight: '600',
               color: '#6b7280',
               textTransform: 'uppercase',
-              letterSpacing: '0.05em'
+              letterSpacing: '0.05em',
+              marginBottom: '8px'
             }}>
               What changes do you need?
             </div>
-            <textarea
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              placeholder="Add a rating question for customer satisfaction..."
-              disabled={isGenerating}
-              style={{
-                width: '100%',
-                minHeight: '100px',
-                padding: '12px 0',
-                fontSize: '15px',
-                fontFamily: 'inherit',
-                border: 'none',
-                borderBottom: '1px solid #e5e7eb',
-                outline: 'none',
-                resize: 'none',
-                background: 'transparent',
-                color: '#1f2937'
-              }}
-              onFocus={(e) => {
-                e.target.style.borderBottom = '2px solid #9333ea';
-              }}
-              onBlur={(e) => {
-                e.target.style.borderBottom = '1px solid #e5e7eb';
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && e.ctrlKey && chatInput.trim() && !isGenerating) {
-                  // TODO: Implement chat editing
-                  setChatInput('');
-                }
-              }}
-            />
-            <button
-              onClick={() => {
-                if (chatInput.trim() && !isGenerating) {
-                  // TODO: Implement chat editing
-                  setChatInput('');
-                }
-              }}
-              disabled={!chatInput.trim() || isGenerating}
-              style={{
-                alignSelf: 'flex-end',
-                padding: '10px 24px',
-                fontSize: '14px',
-                fontWeight: '600',
-                color: '#ffffff',
-                background: (!chatInput.trim() || isGenerating) ? '#d1d5db' : '#9333ea',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: (!chatInput.trim() || isGenerating) ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              Send
-            </button>
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              alignItems: 'flex-end'
+            }}>
+              <textarea
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="Add a question asking which events guests will attend..."
+                disabled={isGenerating}
+                style={{
+                  flex: 1,
+                  minHeight: '80px',
+                  maxHeight: '150px',
+                  padding: '12px',
+                  fontSize: '14px',
+                  fontFamily: 'inherit',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  outline: 'none',
+                  resize: 'vertical',
+                  background: '#ffffff',
+                  color: '#1f2937'
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#9333ea';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = '#e5e7eb';
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey && chatInput.trim() && !isGenerating) {
+                    e.preventDefault();
+                    handleChatEdit();
+                  }
+                }}
+              />
+              <button
+                onClick={handleChatEdit}
+                disabled={!chatInput.trim() || isGenerating}
+                style={{
+                  padding: '12px 20px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#ffffff',
+                  background: (!chatInput.trim() || isGenerating) ? '#d1d5db' : '#9333ea',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: (!chatInput.trim() || isGenerating) ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  minWidth: '100px',
+                  height: '44px'
+                }}
+              >
+                {isGenerating ? (
+                  <>
+                    <div style={{
+                      width: '14px',
+                      height: '14px',
+                      border: '2px solid #ffffff',
+                      borderTopColor: 'transparent',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
+                    }} />
+                    <span>...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="22" y1="2" x2="11" y2="13" />
+                      <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                    </svg>
+                    Send
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
+        )}
 
         {/* Form Edit Area */}
         <div style={{
           flex: 1,
           overflow: 'auto',
-          padding: '40px 24px',
-          background: '#f9fafb',
+          padding: '40px 24px 40px 64px',
+          background: globalColors.background,
           display: 'flex',
           flexDirection: 'column'
         }}>
@@ -534,7 +1096,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
             flex: 1,
             display: 'flex',
             flexDirection: 'column',
-            paddingBottom: '100px'
+            paddingBottom: '100px',
+            position: 'relative'
           }}>
           {isGenerating && (!formData.questions || formData.questions.length === 0) ? (
             <LoadingAnimation />
@@ -545,71 +1108,287 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                 .sort((a: any, b: any) => a.question_order - b.question_order)
                 .map((question: any, index: number) => (
                   <React.Fragment key={question.id}>
-                    {/* Add Question Button Before Each Question */}
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'center',
-                      padding: '24px 0',
-                      position: 'relative'
-                    }}>
-                      <AddQuestionButton
-                        onAdd={handleAddQuestion}
-                        disabled={isGenerating}
-                      />
-                    </div>
-
                     <div
                       style={{
                         padding: '48px 0',
-                        borderBottom: index < formData.questions.length - 1 ? '1px solid #e5e7eb' : 'none',
-                        position: 'relative'
+                        borderBottom: index < formData.questions.length - 1 ? `1px solid ${questionColors[question.id]?.border || '#e5e7eb'}` : 'none',
+                        position: 'relative',
+                        background: questionColors[question.id]?.background || 'transparent',
+                        borderRadius: questionColors[question.id]?.background ? '8px' : '0',
+                        paddingLeft: questionColors[question.id]?.background ? '24px' : '0',
+                        paddingRight: questionColors[question.id]?.background ? '24px' : '0',
+                        paddingTop: questionColors[question.id]?.background ? '32px' : '48px',
+                        paddingBottom: questionColors[question.id]?.background ? '32px' : '48px'
                       }}
                       onMouseEnter={() => setHoveredQuestion(question.id)}
                       onMouseLeave={() => setHoveredQuestion(null)}
                     >
-                    {/* Question Content */}
+                      {/* Side Add Button */}
+                      <SideAddButton
+                        onAdd={() => {
+                          setInsertAtIndex(index);
+                          setShowComponentPicker(true);
+                        }}
+                        disabled={isGenerating}
+                        position="left"
+                      />
+                    {/* Question Content - Inline Editable */}
                     <div style={{ marginBottom: '16px' }}>
-                      <ReactMarkdown 
-                        remarkPlugins={[remarkGfm]}
-                        className="markdown-question"
+                      <InlineEditableText
+                        value={question.question_text}
+                        onChange={(value) => handleInlineQuestionUpdate(question.id, 'question_text', value)}
+                        placeholder="Enter question text..."
+                        isTitle={true}
                         style={{
                           fontSize: '18px',
                           fontWeight: '600',
-                          color: globalColors.text,
+                          color: questionColors[question.id]?.color || globalColors.text,
                           marginBottom: '8px',
                           lineHeight: '1.4'
                         }}
-                        components={{
-                          p: ({ children }) => <div style={{ margin: 0 }}>{children}</div>,
-                          strong: ({ children }) => <strong style={{ color: globalColors.accent }}>{children}</strong>
-                        }}
-                      >
-                        {question.question_text}
-                      </ReactMarkdown>
+                      />
                       
-                      {question.description && (
-                        <ReactMarkdown 
-                          remarkPlugins={[remarkGfm]}
+                      <InlineEditableText
+                        value={question.description || ''}
+                        onChange={(value) => handleInlineQuestionUpdate(question.id, 'description', value)}
+                        placeholder="Add description (optional)"
+                        isDescription={true}
+                        multiline={true}
                           style={{
                             fontSize: '14px',
-                            color: '#6b7280',
+                          color: questionColors[question.id]?.color ? `${questionColors[question.id].color}CC` : '#6b7280',
                             lineHeight: '1.5'
                           }}
-                          components={{
-                            p: ({ children }) => <div style={{ margin: 0 }}>{children}</div>
-                          }}
-                        >
-                          {question.description}
-                        </ReactMarkdown>
-                      )}
+                      />
                     </div>
 
-                    <QuestionRenderer
-                      question={question}
-                      value={answers[question.id] || {}}
-                      onChange={(value) => handleAnswerChange(question.id, value)}
-                      disabled={false}
-                    />
+                    {/* Editable Options for choice-based questions */}
+                    {['multiple_choice', 'checkboxes', 'dropdown', 'multi_select'].includes(question.question_type) && question.settings?.choices && (
+                      <div style={{ marginBottom: '16px' }}>
+                        <EditableOptions
+                          options={question.settings.choices}
+                          onChange={(choices) => handleInlineQuestionUpdate(question.id, 'settings.choices', choices)}
+                          placeholder="Option"
+                        />
+                      </div>
+                    )}
+
+                    {/* Simple input preview for non-choice questions */}
+                    {!['multiple_choice', 'checkboxes', 'dropdown', 'multi_select'].includes(question.question_type) && (
+                      <div style={{ marginTop: '8px' }}>
+                        {question.question_type === 'short_answer' && (
+                          <input
+                            type="text"
+                            placeholder="Short answer text"
+                            disabled
+                            style={{
+                              width: '100%',
+                              padding: '12px 0',
+                              fontSize: '15px',
+                              border: 'none',
+                              borderBottom: '1px solid #e5e7eb',
+                              outline: 'none',
+                              background: 'transparent',
+                              color: '#9ca3af'
+                            }}
+                          />
+                        )}
+                        {question.question_type === 'long_answer' && (
+                          <textarea
+                            placeholder="Long answer text"
+                            disabled
+                            rows={3}
+                            style={{
+                              width: '100%',
+                              padding: '12px',
+                              fontSize: '15px',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '8px',
+                              outline: 'none',
+                              background: 'transparent',
+                              color: '#9ca3af',
+                              resize: 'none'
+                            }}
+                          />
+                        )}
+                        {question.question_type === 'number' && (
+                          <input
+                            type="number"
+                            placeholder="0"
+                            disabled
+                            style={{
+                              width: '100%',
+                              padding: '12px 0',
+                              fontSize: '15px',
+                              border: 'none',
+                              borderBottom: '1px solid #e5e7eb',
+                              outline: 'none',
+                              background: 'transparent',
+                              color: '#9ca3af'
+                            }}
+                          />
+                        )}
+                        {question.question_type === 'email' && (
+                          <input
+                            type="email"
+                            placeholder="email@example.com"
+                            disabled
+                            style={{
+                              width: '100%',
+                              padding: '12px 0',
+                              fontSize: '15px',
+                              border: 'none',
+                              borderBottom: '1px solid #e5e7eb',
+                              outline: 'none',
+                              background: 'transparent',
+                              color: '#9ca3af'
+                            }}
+                          />
+                        )}
+                        {question.question_type === 'phone' && (
+                          <input
+                            type="tel"
+                            placeholder="(123) 456-7890"
+                            disabled
+                            style={{
+                              width: '100%',
+                              padding: '12px 0',
+                              fontSize: '15px',
+                              border: 'none',
+                              borderBottom: '1px solid #e5e7eb',
+                              outline: 'none',
+                              background: 'transparent',
+                              color: '#9ca3af'
+                            }}
+                          />
+                        )}
+                        {question.question_type === 'link' && (
+                          <input
+                            type="url"
+                            placeholder="https://example.com"
+                            disabled
+                            style={{
+                              width: '100%',
+                              padding: '12px 0',
+                              fontSize: '15px',
+                              border: 'none',
+                              borderBottom: '1px solid #e5e7eb',
+                              outline: 'none',
+                              background: 'transparent',
+                              color: '#9ca3af'
+                            }}
+                          />
+                        )}
+                        {question.question_type === 'date' && (
+                          <input
+                            type="date"
+                            disabled
+                            style={{
+                              width: '200px',
+                              padding: '12px 16px',
+                              fontSize: '15px',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '8px',
+                              outline: 'none',
+                              background: 'transparent',
+                              color: '#9ca3af'
+                            }}
+                          />
+                        )}
+                        {question.question_type === 'time' && (
+                          <input
+                            type="time"
+                            disabled
+                            style={{
+                              width: '150px',
+                              padding: '12px 16px',
+                              fontSize: '15px',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '8px',
+                              outline: 'none',
+                              background: 'transparent',
+                              color: '#9ca3af'
+                            }}
+                          />
+                        )}
+                        {question.question_type === 'file_upload' && (
+                          <button
+                            disabled
+                            style={{
+                              padding: '12px 24px',
+                              fontSize: '15px',
+                              fontWeight: '500',
+                              color: '#9ca3af',
+                              background: 'transparent',
+                              border: '1px dashed #d1d5db',
+                              borderRadius: '8px',
+                              cursor: 'not-allowed'
+                            }}
+                          >
+                            Choose File
+                          </button>
+                        )}
+                        {question.question_type === 'rating' && (
+                          <div style={{ display: 'flex', gap: '4px' }}>
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <span key={star} style={{ fontSize: '24px', color: '#d1d5db' }}>★</span>
+                            ))}
+                    </div>
+                        )}
+                        {question.question_type === 'linear_scale' && (
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            {[...Array(question.settings?.max_value || 5)].map((_, i) => (
+                              <span
+                                key={i}
+                                style={{
+                                  width: '40px',
+                                  height: '40px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  border: '1px solid #e5e7eb',
+                                  borderRadius: '8px',
+                                  fontSize: '14px',
+                                  color: '#9ca3af'
+                                }}
+                              >
+                                {(question.settings?.min_value || 1) + i}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {question.question_type === 'signature' && (
+                          <div
+                            style={{
+                              width: '100%',
+                              height: '120px',
+                              border: '1px dashed #d1d5db',
+                              borderRadius: '8px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: '#9ca3af',
+                              fontSize: '14px'
+                            }}
+                          >
+                            Signature area
+                          </div>
+                        )}
+                        {question.question_type === 'payment' && (
+                          <div
+                            style={{
+                              padding: '16px',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '8px',
+                              color: '#9ca3af',
+                              fontSize: '14px'
+                            }}
+                          >
+                            Payment: ${question.settings?.payment_amount || '0.00'}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Per-Component Controls (visible on hover) */}
                     {hoveredQuestion === question.id && (
@@ -737,17 +1516,23 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                   </React.Fragment>
                 ))}
 
-                {/* Add Question Button After Last Question */}
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  padding: '24px 0'
-                }}>
-                  <AddQuestionButton
-                    onAdd={handleAddQuestion}
-                    disabled={isGenerating}
-                  />
-                </div>
+                {/* Side Add Button After Last Question */}
+                {formData.questions && formData.questions.length > 0 && (
+                  <div style={{
+                    position: 'relative',
+                    padding: '48px 0',
+                    marginTop: '24px'
+                  }}>
+                    <SideAddButton
+                      onAdd={() => {
+                        setInsertAtIndex(null);
+                        setShowComponentPicker(true);
+                      }}
+                      disabled={isGenerating}
+                      position="left"
+                    />
+                  </div>
+                )}
 
               {/* Submit Button Preview */}
               <div style={{ marginTop: '48px', marginBottom: '40px' }}>
@@ -771,10 +1556,42 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
           ) : (
             <div style={{
               textAlign: 'center',
-              padding: '60px 20px',
+              padding: '80px 20px',
               color: '#6b7280'
             }}>
-              <p>No questions yet. Add questions to your form.</p>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                background: '#f3f4f6',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 20px'
+              }}>
+                <span style={{ fontSize: '32px', color: '#d1d5db' }}>+</span>
+              </div>
+              <p style={{ marginBottom: '20px', fontSize: '15px' }}>No questions yet. Start building your form.</p>
+              <button
+                onClick={() => {
+                  setInsertAtIndex(null);
+                  setShowComponentPicker(true);
+                }}
+                disabled={isGenerating}
+                style={{
+                  padding: '12px 24px',
+                  fontSize: '15px',
+                  fontWeight: '500',
+                  color: '#ffffff',
+                  background: '#9333ea',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: isGenerating ? 'not-allowed' : 'pointer',
+                  opacity: isGenerating ? 0.5 : 1
+                }}
+              >
+                Add your first question
+              </button>
             </div>
           )}
         </div>
@@ -912,6 +1729,54 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
           onRegenerate={handleRegenerateQuestion}
         />
       )}
+
+      {/* Component Picker Modal */}
+      <ComponentPicker
+        isOpen={showComponentPicker}
+        onClose={() => {
+          setShowComponentPicker(false);
+          setInsertAtIndex(null);
+        }}
+        onSelect={(questionType) => {
+          handleAddQuestion(questionType, insertAtIndex);
+        }}
+        onGenerate={async (prompt) => {
+          // Use the chat API to generate the component
+          setShowComponentPicker(false);
+          setIsGenerating(true);
+          setChatMessages(prev => [...prev, { role: 'user', content: prompt }]);
+          
+          try {
+            const response = await fetch(`${config.backendUrl}/api/forms/${formData.id}/chat`, {
+              method: 'POST',
+              headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+              credentials: 'include',
+              body: JSON.stringify({ message: prompt })
+            });
+            
+            if (!response.ok) throw new Error('Failed to generate component');
+            
+            const data = await response.json();
+            setChatMessages(prev => [...prev, { role: 'assistant', content: data.changes_made || 'Component added' }]);
+            
+            // Refresh form data
+            const formResponse = await fetch(`${config.backendUrl}/api/forms/${formData.id}`, {
+              headers: getAuthHeaders(),
+              credentials: 'include'
+            });
+            
+            if (formResponse.ok) {
+              const updatedForm = await formResponse.json();
+              setFormData(updatedForm);
+            }
+          } catch (err) {
+            console.error('Generate error:', err);
+            setChatMessages(prev => [...prev, { role: 'assistant', content: 'Failed to generate component. Please try again.' }]);
+          } finally {
+            setIsGenerating(false);
+          }
+        }}
+      />
     </div>
   );
 };

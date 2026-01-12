@@ -371,7 +371,7 @@ async def delete_question(
     return None
 
 
-@router.post("/{form_id}/questions/{question_id}/regenerate", response_model=QuestionResponse)
+@router.post("/{form_id}/questions/{question_id}/regenerate")
 async def regenerate_question(
     form_id: int,
     question_id: int,
@@ -380,7 +380,7 @@ async def regenerate_question(
     db: Session = Depends(get_db)
 ):
     """
-    Regenerate a question using AI.
+    Regenerate/edit a question using AI based on user's prompt.
     """
     # Get the form
     form = db.query(Form).filter(
@@ -407,18 +407,22 @@ async def regenerate_question(
         )
     
     try:
+        # Get user's edit prompt
+        user_prompt = context.get("prompt", context.get("context", "Improve this question"))
+        
         # Import the signature for question generation
         from ..services.agents import FormQuestionGeneratorSignature
         import dspy
         
-        # Create context for regeneration
+        # Create context for regeneration with user's instructions
         question_context = {
-            "brief": f"Regenerate this question: {question.question_text}",
+            "brief": f"Edit this question based on user instructions: '{user_prompt}'. Current question: '{question.question_text}'. Current type: {question.question_type}. Current description: '{question.description or 'None'}'",
             "index": question.question_order,
             "form_context": {
                 "title": form.title,
                 "description": form.description,
-                "existing_questions": [q.question_text for q in form.questions if q.id != question_id]
+                "existing_questions": [q.question_text for q in form.questions if q.id != question_id],
+                "user_edit_instructions": user_prompt
             }
         }
         
@@ -438,6 +442,13 @@ async def regenerate_question(
         question.description = question_spec.get("description")
         question.required = question_spec.get("required", question.required)
         
+        # Update question type if specified
+        if "question_type" in question_spec:
+            try:
+                question.question_type = QuestionType(question_spec["question_type"])
+            except ValueError:
+                pass  # Keep existing type if invalid
+        
         # Update settings if provided
         if "settings" in question_spec:
             question.settings = question_spec["settings"]
@@ -445,7 +456,7 @@ async def regenerate_question(
         db.commit()
         db.refresh(question)
         
-        return question
+        return {"question": QuestionResponse.model_validate(question), "message": "Question updated successfully"}
         
     except Exception as e:
         logger.error(f"Question regeneration error: {str(e)}")

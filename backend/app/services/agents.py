@@ -97,15 +97,23 @@ class FormPlannerSignature(dspy.Signature):
     - condition_type: equals, not_equals, contains, not_contains, greater_than, less_than, is_empty, is_not_empty
     - action: show, hide
     
-    GUIDELINES:
-    1. Choose appropriate component types based on the data being collected
-    2. Mark essential components as required
-    3. Order components logically (general to specific)
-    4. Include 3-15 components typically
-    5. Add conditional logic where it makes sense (e.g., show follow-up based on previous answer)
-    6. Generate component_ids like "comp_1", "comp_2", etc.
+    CRITICAL GUIDELINES:
+    1. **FOLLOW USER'S EXACT SPECIFICATIONS** - If user says "Valima, Nikkah, Barat", use those EXACT terms, not substitutes
+    2. **DO NOT SUBSTITUTE** terms - Use the exact names, labels, and options the user provides
+    3. Choose appropriate component types based on the data being collected
+    4. Mark essential components as required
+    5. Order components logically (general to specific)
+    6. Include 3-15 components typically
+    7. Add conditional logic where it makes sense (e.g., show follow-up based on previous answer)
+    8. Generate component_ids like "comp_1", "comp_2", etc.
     
-    COMMON FORM PATTERNS (suggest when appropriate):
+    **IMPORTANT: PRESERVE USER'S TERMINOLOGY**
+    - If user mentions specific event names (Valima, Nikkah, Barat, etc.), use those EXACT names
+    - If user mentions specific options or choices, use those EXACT options
+    - Do NOT replace cultural, local, or specific terms with generic alternatives
+    - Do NOT assume Western/US conventions unless specifically requested
+    
+    COMMON FORM PATTERNS (adapt to user's context):
     - Contact forms: name, email, phone, message
     - Registration forms: name, email, password confirmation fields
     - Feedback forms: name (optional), rating, comments
@@ -172,15 +180,22 @@ class ComponentSignatureGenerator(dspy.Signature):
     }
     
     RULES:
-    1. Provide 3-5 choices for multiple_choice/checkboxes/dropdown
-    2. Use descriptive labels for scales
-    3. Set reasonable limits for numbers and file sizes
-    4. Include helpful placeholder text
-    5. Add description for complex components
-    6. Include validation rules where appropriate
-    7. CRITICAL: rows, columns, and ranking_items MUST be arrays of strings, never integers
-    8. Question text and descriptions support markdown (use **bold**, *italic*, lists, etc.)
-    9. Keep text clear and conversational - the design is minimal and clean
+    1. **USE USER'S EXACT TERMINOLOGY** - If the brief mentions specific terms (e.g., "Valima", "Nikkah", "Barat"), use those EXACT terms
+    2. **DO NOT SUBSTITUTE** cultural, local, or specific terms with generic alternatives
+    3. Provide choices exactly as described by user (or 3-5 sensible options if not specified)
+    4. Use descriptive labels for scales
+    5. Set reasonable limits for numbers and file sizes
+    6. Include helpful placeholder text
+    7. Add description for complex components
+    8. Include validation rules where appropriate
+    9. CRITICAL: rows, columns, and ranking_items MUST be arrays of strings, never integers
+    10. Question text and descriptions support markdown (use **bold**, *italic*, lists, etc.)
+    11. Keep text clear and conversational - the design is minimal and clean
+    
+    EXAMPLES OF PRESERVING USER TERMINOLOGY:
+    - User says "Valima, Nikkah, Barat" → choices: ["Valima", "Nikkah", "Barat"] (NOT "Reception, Ceremony, etc.")
+    - User says "yes/no" → choices: ["Yes", "No"] (NOT "Agree/Disagree" unless asked)
+    - User mentions specific names/terms → use them exactly as written
     """
     component_brief = dspy.InputField(desc="Brief description from planner")
     component_type = dspy.InputField(desc="Component type")
@@ -323,11 +338,20 @@ class FormChatFunction(dspy.Module):
             
             new_id = f"comp_{len(existing_ids) + 1}"
             
+            # CRITICAL: Include the original user query in the form context and brief
+            enhanced_form_context = json.dumps({
+                **json.loads(form_context) if isinstance(form_context, str) else form_context,
+                'ORIGINAL_USER_REQUEST': user_query,
+                'IMPORTANT': 'Use the EXACT terms from ORIGINAL_USER_REQUEST. Do NOT substitute cultural, local, or specific terms.'
+            }) if form_context else json.dumps({'ORIGINAL_USER_REQUEST': user_query})
+            
+            enhanced_brief = f"{user_query}. CRITICAL: Use the exact terms mentioned by the user. Do NOT substitute any terms like 'Valima', 'Nikkah', 'Barat' with generic alternatives."
+            
             response = self.add_component_mod(
-                component_brief=user_query,
+                component_brief=enhanced_brief,
                 component_type="short_answer",  # Default, will be inferred
                 component_id=new_id,
-                form_context=form_context
+                form_context=enhanced_form_context
             )
         elif 'edit_component' in query_type:
             if current_form:
@@ -389,17 +413,23 @@ class FormGenerationModule(dspy.Module):
         components = form_plan.get('components', [])
         detailed_components = []
         
+        # CRITICAL: Include original user_query so components use exact terminology
         form_context = json.dumps({
             'title': form_plan.get('title'),
             'description': form_plan.get('description'),
-            'total_components': len(components)
+            'total_components': len(components),
+            'ORIGINAL_USER_REQUEST': user_query,  # Pass the exact user request
+            'IMPORTANT': 'Use the EXACT terms from ORIGINAL_USER_REQUEST. Do NOT substitute cultural or local terms.'
         })
         
         for comp in components:
             try:
+                # Include original user query in component brief for exact terminology
+                enhanced_brief = f"{comp.get('brief', '')}. IMPORTANT: Use exact terms from user's original request: '{user_query}'. Do NOT substitute any terms."
+                
                 with dspy.context(lm=dspy.LM("openai/gpt-4o-mini", api_key=os.getenv('OPENAI_API_KEY'), max_tokens=1000)):
                     component_spec = self.component_generator(
-                        component_brief=comp.get('brief', ''),
+                        component_brief=enhanced_brief,
                         component_type=comp.get('type', 'short_answer'),
                         component_id=comp.get('component_id', f"comp_{len(detailed_components) + 1}"),
                         form_context=form_context

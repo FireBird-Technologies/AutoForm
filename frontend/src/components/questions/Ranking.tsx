@@ -1,13 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { QuestionProps } from './ShortAnswer';
 
+// Helper to normalize int or list to array of strings
+const normalizeToArray = (val: number | string[] | undefined, prefix: string): string[] => {
+  if (!val) return [];
+  if (typeof val === 'number') {
+    return Array.from({ length: Math.max(2, val) }, (_, i) => `${prefix} ${i + 1}`);
+  }
+  return val;
+};
+
 export const Ranking: React.FC<QuestionProps> = ({
   question,
   value,
   onChange,
   disabled = false
 }) => {
-  const rankingItems = question.settings?.ranking_items || [];
+  const rankingItems = normalizeToArray(question.settings?.ranking_items, 'Item');
   const [items, setItems] = useState<string[]>(value?.ranked_items || [...rankingItems]);
 
   useEffect(() => {

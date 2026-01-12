@@ -13,6 +13,11 @@ export const PublicForm: React.FC = () => {
   const [error, setError] = useState('');
   const [thankYouMessage, setThankYouMessage] = useState('');
 
+  // Extract colors from form settings
+  const backgroundColor = formData?.settings?.background_color || '#ffffff';
+  const textColor = formData?.settings?.text_color || '#1f2937';
+  const accentColor = formData?.settings?.accent_color || '#9333ea';
+
   useEffect(() => {
     loadForm();
   }, [token]);
@@ -157,7 +162,7 @@ export const PublicForm: React.FC = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#f9fafb'
+        background: backgroundColor
       }}>
         <div className="loading-spinner" style={{ width: 40, height: 40 }} />
       </div>
@@ -171,7 +176,7 @@ export const PublicForm: React.FC = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#f9fafb'
+        background: backgroundColor
       }}>
         <div style={{
           maxWidth: '500px',
@@ -207,7 +212,7 @@ export const PublicForm: React.FC = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#f9fafb',
+        background: backgroundColor,
         padding: '20px'
       }}>
         <div style={{
@@ -223,7 +228,7 @@ export const PublicForm: React.FC = () => {
             width: '64px',
             height: '64px',
             margin: '0 auto 24px',
-            background: '#9333ea',
+            background: accentColor,
             borderRadius: '50%',
             display: 'flex',
             alignItems: 'center',
@@ -236,7 +241,7 @@ export const PublicForm: React.FC = () => {
           <h2 style={{
             fontSize: '28px',
             fontWeight: '600',
-            color: '#000000',
+            color: textColor,
             marginBottom: '12px'
           }}>
             Thank You!
@@ -256,96 +261,99 @@ export const PublicForm: React.FC = () => {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#f9fafb',
-      padding: '40px 20px'
+      background: backgroundColor,
+      padding: '40px 20px',
+      overflowY: 'auto'
     }}>
       <div style={{
-        maxWidth: '800px',
-        margin: '0 auto'
+        maxWidth: '700px',
+        margin: '0 auto',
+        paddingBottom: '80px'
       }}>
+        {/* Header */}
         <div style={{
-          background: '#ffffff',
-          borderRadius: '12px',
-          padding: '40px',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
-          marginBottom: '24px'
+          marginBottom: '48px',
+          paddingTop: '20px'
         }}>
           <h1 style={{
-            fontSize: '32px',
+            fontSize: '36px',
             fontWeight: '600',
-            color: '#000000',
-            marginBottom: '12px'
+            color: textColor,
+            marginBottom: '16px',
+            lineHeight: '1.2'
           }}>
             {formData.title}
           </h1>
           {formData.description && (
             <p style={{
-              fontSize: '16px',
-              color: '#6b7280',
-              marginBottom: '32px',
+              fontSize: '17px',
+              color: textColor,
+              opacity: 0.7,
               lineHeight: '1.6'
             }}>
               {formData.description}
             </p>
           )}
-
-          <form onSubmit={handleSubmit}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-              {formData.questions
-                ?.filter((q: any) => visibleQuestionIds.has(q.id))
-                .sort((a: any, b: any) => a.question_order - b.question_order)
-                .map((question: any) => (
-                  <div key={question.id}>
-                    <QuestionRenderer
-                      question={question}
-                      value={answers[question.id] || {}}
-                      onChange={(value) => handleAnswerChange(question.id, value)}
-                      disabled={false}
-                    />
-                  </div>
-                ))}
-            </div>
-
-            {error && (
-              <div style={{
-                marginTop: '24px',
-                padding: '12px',
-                background: '#fee2e2',
-                border: '1px solid #fecaca',
-                borderRadius: '8px',
-                color: '#991b1b',
-                fontSize: '14px'
-              }}>
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={submitting}
-              style={{
-                width: '100%',
-                marginTop: '32px',
-                padding: '14px',
-                fontSize: '16px',
-                fontWeight: '600',
-                color: '#ffffff',
-                background: submitting ? '#d1d5db' : '#9333ea',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: submitting ? 'not-allowed' : 'pointer',
-                transition: 'background 0.2s'
-              }}
-            >
-              {submitting ? 'Submitting...' : (formData.settings?.submit_button_text || 'Submit')}
-            </button>
-          </form>
         </div>
+
+        <form onSubmit={handleSubmit}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '48px' }}>
+            {formData.questions
+              ?.filter((q: any) => visibleQuestionIds.has(q.id))
+              .sort((a: any, b: any) => a.question_order - b.question_order)
+              .map((question: any) => (
+                <div key={question.id}>
+                  <QuestionRenderer
+                    question={question}
+                    value={answers[question.id] || {}}
+                    onChange={(value) => handleAnswerChange(question.id, value)}
+                    disabled={false}
+                  />
+                </div>
+              ))}
+          </div>
+
+          {error && (
+            <div style={{
+              marginTop: '24px',
+              padding: '12px',
+              background: '#fee2e2',
+              border: '1px solid #fecaca',
+              borderRadius: '8px',
+              color: '#991b1b',
+              fontSize: '14px'
+            }}>
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={submitting}
+            style={{
+              width: '100%',
+              marginTop: '48px',
+              padding: '16px',
+              fontSize: '16px',
+              fontWeight: '600',
+              color: '#ffffff',
+              background: submitting ? '#d1d5db' : accentColor,
+              border: 'none',
+              borderRadius: '8px',
+              cursor: submitting ? 'not-allowed' : 'pointer',
+              transition: 'background 0.2s'
+            }}
+          >
+            {submitting ? 'Submitting...' : (formData.settings?.submit_button_text || 'Submit')}
+          </button>
+        </form>
 
         <div style={{
           textAlign: 'center',
           fontSize: '13px',
-          color: '#9ca3af'
+          color: textColor,
+          opacity: 0.4,
+          marginTop: '48px'
         }}>
           Powered by AutoForm
         </div>
@@ -353,4 +361,3 @@ export const PublicForm: React.FC = () => {
     </div>
   );
 };
-
