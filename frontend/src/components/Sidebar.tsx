@@ -72,7 +72,8 @@ export const Sidebar: React.FC = () => {
       display: 'flex',
       flexDirection: 'column',
       flexShrink: 0,
-      position: 'relative'
+      position: 'relative',
+      zIndex: 1
     }}>
 
       {/* Header */}

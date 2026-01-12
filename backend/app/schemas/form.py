@@ -98,6 +98,7 @@ class FormSettings(BaseModel):
     background_color: str = "#ffffff"
     text_color: str = "#000000"
     accent_color: str = "#9333ea"  # Purple
+    bold_text_color: Optional[str] = "#9333ea"  # Bold text and buttons
     submit_button_text: str = "Submit"
     show_progress_bar: bool = True
     

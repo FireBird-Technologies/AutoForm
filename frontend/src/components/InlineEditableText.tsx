@@ -11,6 +11,7 @@ interface InlineEditableTextProps {
   className?: string;
   isTitle?: boolean;
   isDescription?: boolean;
+  boldTextColor?: string;
 }
 
 export const InlineEditableText: React.FC<InlineEditableTextProps> = ({
@@ -21,7 +22,8 @@ export const InlineEditableText: React.FC<InlineEditableTextProps> = ({
   style = {},
   className = '',
   isTitle = false,
-  isDescription = false
+  isDescription = false,
+  boldTextColor = '#9333ea'
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value);
@@ -145,7 +147,7 @@ export const InlineEditableText: React.FC<InlineEditableTextProps> = ({
           remarkPlugins={[remarkGfm]}
           components={{
             p: ({ children }) => <span style={{ margin: 0 }}>{children}</span>,
-            strong: ({ children }) => <strong style={{ color: '#9333ea' }}>{children}</strong>
+            strong: ({ children }) => <strong style={{ color: boldTextColor }}>{children}</strong>
           }}
         >
           {displayContent}

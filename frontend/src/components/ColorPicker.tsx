@@ -22,6 +22,8 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
   onChange,
   presetColors = DEFAULT_PRESET_COLORS
 }) => {
+  const colorInputRef = React.useRef<HTMLInputElement>(null);
+
   return (
     <div style={{ marginBottom: '16px' }}>
       <label
@@ -36,16 +38,47 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
         {label}
       </label>
       
-      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-        {/* Color Preview */}
-        <div
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '12px' }}>
+        {/* Color Block that opens native picker */}
+        <button
+          type="button"
+          onClick={() => colorInputRef.current?.click()}
           style={{
-            width: '40px',
+            width: '48px',
             height: '40px',
             borderRadius: '6px',
-            background: value,
             border: '2px solid #e5e7eb',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            padding: '0',
+            background: value,
+            position: 'relative',
+            overflow: 'hidden'
+          }}
+          title="Pick a custom color"
+        >
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            background: `linear-gradient(45deg, #ccc 25%, transparent 25%), 
+                        linear-gradient(-45deg, #ccc 25%, transparent 25%), 
+                        linear-gradient(45deg, transparent 75%, #ccc 75%), 
+                        linear-gradient(-45deg, transparent 75%, #ccc 75%)`,
+            backgroundSize: '8px 8px',
+            backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
+            zIndex: -1
+          }} />
+        </button>
+        <input
+          ref={colorInputRef}
+          type="color"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          style={{
+            position: 'absolute',
+            opacity: 0,
+            pointerEvents: 'none',
+            width: '1px',
+            height: '1px'
           }}
         />
 
@@ -62,7 +95,8 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
             border: '1px solid #e5e7eb',
             borderRadius: '6px',
             outline: 'none',
-            fontFamily: 'ui-monospace, monospace'
+            fontFamily: 'ui-monospace, monospace',
+            textTransform: 'uppercase'
           }}
         />
       </div>
@@ -72,8 +106,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(8, 1fr)',
-          gap: '8px',
-          marginTop: '12px'
+          gap: '8px'
         }}
       >
         {presetColors.map((color) => (
@@ -182,9 +215,15 @@ export const GlobalColorPicker: React.FC<GlobalColorPickerProps> = ({ colors, on
               />
 
               <ColorPicker
-                label="Text"
+                label="Text Color (Normal)"
                 value={colors.text}
                 onChange={(text) => onChange({ ...colors, text })}
+              />
+
+              <ColorPicker
+                label="Text Color (Bold/Special)"
+                value={colors.boldText || '#9333ea'}
+                onChange={(boldText) => onChange({ ...colors, boldText })}
               />
 
               <ColorPicker

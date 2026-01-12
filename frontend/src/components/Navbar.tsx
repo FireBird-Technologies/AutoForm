@@ -4,7 +4,6 @@ import { config, getAuthHeaders, checkAuthResponse } from '../config';
 import { useCreditsContext } from '../contexts/CreditsContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { useSidebar } from '../contexts/SidebarContext';
-import { RecentForms } from './RecentForms';
 
 interface NavbarProps {
   onAccountClick?: () => void;
@@ -36,16 +35,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onAccountClick }) => {
     '/subscription',
     '/account'
   ].includes(location.pathname) && !location.pathname.startsWith('/public/');
-
-  const handleLoadRecentForm = (metadata: any) => {
-    // Navigate to build page with the form ID
-    navigate('/build', { 
-      state: { 
-        formId: metadata.id,
-        fromRecent: true
-      } 
-    });
-  };
 
   useEffect(() => {
     // Check if user is logged in
@@ -218,7 +207,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onAccountClick }) => {
           >
             Build
           </button>
-            <RecentForms onLoadForm={handleLoadRecentForm} />
           </>
         )}
 

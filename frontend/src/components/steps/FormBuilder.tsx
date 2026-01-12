@@ -8,6 +8,7 @@ import { QuestionColorPicker } from '../ColorPicker';
 import { SideAddButton } from '../SideAddButton';
 import { InlineEditableText, EditableOptions } from '../InlineEditableText';
 import { ComponentPicker } from '../ComponentPicker';
+import { useSidebar } from '../../contexts/SidebarContext';
 import { config, getAuthHeaders } from '../../config';
 
 interface FormBuilderProps {
@@ -16,6 +17,7 @@ interface FormBuilderProps {
 }
 
 export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormData, onBack }) => {
+  const { isOpen: isSidebarOpen } = useSidebar();
   const [formData, setFormData] = useState(initialFormData);
   const [showSharePopup, setShowSharePopup] = useState(false);
   const [shareLink, setShareLink] = useState('');
@@ -33,16 +35,25 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
   const [globalColors, setGlobalColors] = useState({
     background: initialFormData.settings?.background_color || '#ffffff',
     text: initialFormData.settings?.text_color || '#1f2937',
-    accent: initialFormData.settings?.accent_color || '#9333ea'
+    accent: initialFormData.settings?.accent_color || '#9333ea',
+    boldText: initialFormData.settings?.bold_text_color || '#9333ea'
   });
   const [showComponentPicker, setShowComponentPicker] = useState(false);
   const [insertAtIndex, setInsertAtIndex] = useState<number | null>(null);
   const [showBgColorPicker, setShowBgColorPicker] = useState(false);
   const [showTextColorPicker, setShowTextColorPicker] = useState(false);
+  const [showBoldColorPicker, setShowBoldColorPicker] = useState(false);
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
   const [chatPanelWidth, setChatPanelWidth] = useState(400);
   const [isResizing, setIsResizing] = useState(false);
   const chatPanelRef = useRef<HTMLDivElement>(null);
+
+  // Auto-minimize chat when sidebar opens
+  useEffect(() => {
+    if (isSidebarOpen) {
+      setIsChatCollapsed(true);
+    }
+  }, [isSidebarOpen]);
 
   // Save global colors to form settings when they change
   useEffect(() => {
@@ -50,18 +61,21 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
       const currentBg = formData.settings?.background_color || '#ffffff';
       const currentText = formData.settings?.text_color || '#1f2937';
       const currentAccent = formData.settings?.accent_color || '#9333ea';
+      const currentBoldText = formData.settings?.bold_text_color || '#9333ea';
       
       // Only update if colors actually changed
       if (
         currentBg !== globalColors.background ||
         currentText !== globalColors.text ||
-        currentAccent !== globalColors.accent
+        currentAccent !== globalColors.accent ||
+        currentBoldText !== globalColors.boldText
       ) {
         const updatedSettings = {
           ...formData.settings,
           background_color: globalColors.background,
           text_color: globalColors.text,
-          accent_color: globalColors.accent
+          accent_color: globalColors.accent,
+          bold_text_color: globalColors.boldText
         };
         
         // Update local state
@@ -71,7 +85,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
         saveFormSettings(updatedSettings);
       }
     }
-  }, [globalColors.background, globalColors.text, globalColors.accent]);
+  }, [globalColors.background, globalColors.text, globalColors.accent, globalColors.boldText]);
 
   // Save form settings to backend
   const saveFormSettings = async (settings: any) => {
@@ -505,61 +519,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
   };
 
   // Evaluate conditional logic to determine which questions to show
-  const evaluateConditionalLogic = () => {
-    const visibleQuestions = new Set<number>();
-
-    // Initially, all questions are visible
-    formData.questions?.forEach((q: any) => {
-      visibleQuestions.add(q.id);
-    });
-
-    // Apply conditional rules
-    formData.conditional_rules?.forEach((rule: any) => {
-      const triggerAnswer = answers[rule.trigger_question_id];
-      let conditionMet = false;
-
-      if (triggerAnswer) {
-        switch (rule.condition_type) {
-          case 'equals':
-            conditionMet = triggerAnswer.text === rule.condition_value ||
-                          triggerAnswer.number?.toString() === rule.condition_value;
-            break;
-          case 'not_equals':
-            conditionMet = triggerAnswer.text !== rule.condition_value;
-            break;
-          case 'contains':
-            conditionMet = triggerAnswer.text?.includes(rule.condition_value);
-            break;
-          case 'is_not_empty':
-            conditionMet = !!triggerAnswer.text || !!triggerAnswer.number || 
-                          (triggerAnswer.choices && triggerAnswer.choices.length > 0);
-            break;
-          case 'is_empty':
-            conditionMet = !triggerAnswer.text && !triggerAnswer.number && 
-                          (!triggerAnswer.choices || triggerAnswer.choices.length === 0);
-            break;
-        }
-      }
-
-      // Apply action
-      if (conditionMet) {
-        if (rule.action === 'show') {
-          visibleQuestions.add(rule.target_question_id);
-        } else if (rule.action === 'hide') {
-          visibleQuestions.delete(rule.target_question_id);
-        }
-      } else {
-        // Condition not met - reverse the action
-        if (rule.action === 'show') {
-          visibleQuestions.delete(rule.target_question_id);
-        }
-      }
-    });
-
-    return visibleQuestions;
-  };
-
-  const visibleQuestionIds = evaluateConditionalLogic();
+  // In builder view, show all questions (conditional logic applies only in public form)
+  const visibleQuestionIds = new Set(formData.questions?.map((q: any) => q.id) || []);
 
   return (
     <div style={{
@@ -682,27 +643,18 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                 background: globalColors.background,
                 border: '2px solid #e5e7eb',
                 cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 position: 'relative'
               }}
               title="Background Color"
             >
-              <div style={{
-                position: 'absolute',
-                bottom: '-2px',
-                right: '-2px',
-                width: '12px',
-                height: '12px',
-                borderRadius: '2px',
-                background: '#ffffff',
-                border: '1px solid #e5e7eb',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <svg width="8" height="8" viewBox="0 0 24 24" fill="#6b7280" stroke="none">
-                  <rect x="4" y="4" width="16" height="16" rx="2" />
-                </svg>
-              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <path d="M3 9h18" />
+                <path d="M9 21V9" />
+              </svg>
             </button>
             {showBgColorPicker && (
               <div
@@ -712,33 +664,67 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                   right: 0,
                   marginTop: '8px',
                   background: '#ffffff',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                  borderRadius: '12px',
+                  boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
                   border: '1px solid #e5e7eb',
-                  padding: '12px',
-                  zIndex: 100
+                  padding: '16px',
+                  zIndex: 100,
+                  width: '280px'
                 }}
                 onMouseLeave={() => setShowBgColorPicker(false)}
               >
-                <div style={{ fontSize: '12px', fontWeight: '600', color: '#6b7280', marginBottom: '8px' }}>
-                  Background
+                <div style={{ fontSize: '13px', fontWeight: '600', color: '#1f2937', marginBottom: '12px' }}>
+                  Background Color
                 </div>
+                
+                {/* Custom Color Picker */}
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                  <input
+                    type="color"
+                    value={globalColors.background}
+                    onChange={(e) => setGlobalColors({ ...globalColors, background: e.target.value })}
+                    style={{
+                      width: '48px',
+                      height: '36px',
+                      borderRadius: '6px',
+                      border: '2px solid #e5e7eb',
+                      cursor: 'pointer'
+                    }}
+                  />
+                  <input
+                    type="text"
+                    value={globalColors.background}
+                    onChange={(e) => setGlobalColors({ ...globalColors, background: e.target.value })}
+                    placeholder="#FFFFFF"
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      fontSize: '13px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '6px',
+                      fontFamily: 'monospace',
+                      textTransform: 'uppercase'
+                    }}
+                  />
+                </div>
+
+                {/* Preset Colors */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px' }}>
                   {['#ffffff', '#f9fafb', '#f3f4f6', '#e5e7eb', '#d1d5db', '#faf5ff', '#fef2f2', '#f0fdf4', '#eff6ff', '#fefce8'].map((color) => (
                     <button
                       key={color}
-                      onClick={() => {
-                        setGlobalColors({ ...globalColors, background: color });
-                        setShowBgColorPicker(false);
-                      }}
+                      onClick={() => setGlobalColors({ ...globalColors, background: color })}
                       style={{
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: '4px',
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '6px',
                         background: color,
                         border: globalColors.background === color ? '2px solid #9333ea' : '1px solid #e5e7eb',
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        transition: 'transform 0.1s'
                       }}
+                      onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                      onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                     />
                   ))}
                 </div>
@@ -759,13 +745,15 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                fontSize: '18px',
+                fontWeight: '700',
+                fontFamily: 'Georgia, "Times New Roman", serif',
+                color: globalColors.text
               }}
-              title="Text Color"
+              title="Text Colors"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={globalColors.text} strokeWidth="2.5">
-                <path d="M4 20h4l10.5-10.5a1.5 1.5 0 00-4-4L4 16v4z" />
-              </svg>
+              T
             </button>
             {showTextColorPicker && (
               <div
@@ -775,39 +763,131 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                   right: 0,
                   marginTop: '8px',
                   background: '#ffffff',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                  borderRadius: '12px',
+                  boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
                   border: '1px solid #e5e7eb',
-                  padding: '12px',
-                  zIndex: 100
+                  padding: '16px',
+                  zIndex: 100,
+                  width: '280px'
                 }}
                 onMouseLeave={() => setShowTextColorPicker(false)}
               >
-                <div style={{ fontSize: '12px', fontWeight: '600', color: '#6b7280', marginBottom: '8px' }}>
-                  Text Color
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px' }}>
-                  {['#000000', '#1f2937', '#374151', '#4b5563', '#6b7280', '#9333ea', '#7c3aed', '#dc2626', '#059669', '#0284c7'].map((color) => (
-                    <button
-                      key={color}
-                      onClick={() => {
-                        setGlobalColors({ ...globalColors, text: color });
-                        setShowTextColorPicker(false);
-                      }}
+                {/* Normal Text Color */}
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ fontSize: '13px', fontWeight: '600', color: '#1f2937', marginBottom: '12px' }}>
+                    Normal Text
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                    <input
+                      type="color"
+                      value={globalColors.text}
+                      onChange={(e) => setGlobalColors({ ...globalColors, text: e.target.value })}
                       style={{
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: '4px',
-                        background: color,
-                        border: globalColors.text === color ? '2px solid #9333ea' : '1px solid #e5e7eb',
+                        width: '48px',
+                        height: '36px',
+                        borderRadius: '6px',
+                        border: '2px solid #e5e7eb',
                         cursor: 'pointer'
                       }}
                     />
-                  ))}
+                    <input
+                      type="text"
+                      value={globalColors.text}
+                      onChange={(e) => setGlobalColors({ ...globalColors, text: e.target.value })}
+                      placeholder="#000000"
+                      style={{
+                        flex: 1,
+                        padding: '8px 12px',
+                        fontSize: '13px',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '6px',
+                        fontFamily: 'monospace',
+                        textTransform: 'uppercase'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px' }}>
+                    {['#000000', '#1f2937', '#374151', '#4b5563', '#6b7280', '#9333ea', '#7c3aed', '#dc2626', '#059669', '#0284c7'].map((color) => (
+                      <button
+                        key={color}
+                        onClick={() => setGlobalColors({ ...globalColors, text: color })}
+                        style={{
+                          width: '36px',
+                          height: '36px',
+                          borderRadius: '6px',
+                          background: color,
+                          border: globalColors.text === color ? '2px solid #9333ea' : '1px solid #e5e7eb',
+                          cursor: 'pointer',
+                          transition: 'transform 0.1s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Bold/Button Color */}
+                <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '16px' }}>
+                  <div style={{ fontSize: '13px', fontWeight: '600', color: '#1f2937', marginBottom: '12px' }}>
+                    Bold & Button Color
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                    <input
+                      type="color"
+                      value={globalColors.boldText || '#9333ea'}
+                      onChange={(e) => setGlobalColors({ ...globalColors, boldText: e.target.value })}
+                      style={{
+                        width: '48px',
+                        height: '36px',
+                        borderRadius: '6px',
+                        border: '2px solid #e5e7eb',
+                        cursor: 'pointer'
+                      }}
+                    />
+                    <input
+                      type="text"
+                      value={globalColors.boldText || '#9333ea'}
+                      onChange={(e) => setGlobalColors({ ...globalColors, boldText: e.target.value })}
+                      placeholder="#9333EA"
+                      style={{
+                        flex: 1,
+                        padding: '8px 12px',
+                        fontSize: '13px',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '6px',
+                        fontFamily: 'monospace',
+                        textTransform: 'uppercase'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px' }}>
+                    {['#9333ea', '#7c3aed', '#a855f7', '#c084fc', '#3b82f6', '#0284c7', '#10b981', '#059669', '#dc2626', '#f59e0b'].map((color) => (
+                      <button
+                        key={color}
+                        onClick={() => setGlobalColors({ ...globalColors, boldText: color })}
+                        style={{
+                          width: '36px',
+                          height: '36px',
+                          borderRadius: '6px',
+                          background: color,
+                          border: (globalColors.boldText || '#9333ea') === color ? '2px solid #1f2937' : '1px solid #e5e7eb',
+                          cursor: 'pointer',
+                          transition: 'transform 0.1s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
-          </div>
+        </div>
 
           <button
             onClick={handleShare}
@@ -1005,7 +1085,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                     remarkPlugins={[remarkGfm]}
                     components={{
                       p: ({ children }) => <div style={{ margin: '0 0 8px 0' }}>{children}</div>,
-                      strong: ({ children }) => <strong style={{ fontWeight: '600' }}>{children}</strong>,
+                      strong: ({ children }) => <strong style={{ fontWeight: '600', color: globalColors.boldText || '#9333ea' }}>{children}</strong>,
                       em: ({ children }) => <em style={{ fontStyle: 'italic' }}>{children}</em>,
                       code: ({ children }) => (
                         <code style={{
@@ -1185,6 +1265,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                 onChange={(value) => setFormData({ ...formData, title: value })}
                 placeholder="Form title"
                 isTitle={true}
+                boldTextColor={globalColors.boldText || '#9333ea'}
                 style={{
                   fontSize: '32px',
                   fontWeight: '700',
@@ -1200,6 +1281,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                   onChange={(value) => setFormData({ ...formData, description: value })}
                   placeholder="Add form description..."
                   multiline={true}
+                  boldTextColor={globalColors.boldText || '#9333ea'}
                   style={{
                     fontSize: '16px',
                     color: globalColors.text,
@@ -1282,6 +1364,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                         onChange={(value) => handleInlineQuestionUpdate(question.id, 'question_text', value)}
                         placeholder="Enter question text..."
                         isTitle={true}
+                        boldTextColor={globalColors.boldText || '#9333ea'}
                         style={{
                           fontSize: '18px',
                           fontWeight: '600',
@@ -1297,6 +1380,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                         placeholder="Add description (optional)"
                         isDescription={true}
                         multiline={true}
+                        boldTextColor={globalColors.boldText || '#9333ea'}
                           style={{
                             fontSize: '14px',
                           color: questionColors[question.id]?.color ? `${questionColors[question.id].color}CC` : '#6b7280',
@@ -1686,7 +1770,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                     fontSize: '16px',
                     fontWeight: '600',
                     color: '#ffffff',
-                    background: globalColors.accent,
+                    background: globalColors.boldText || globalColors.accent,
                     border: 'none',
                     borderRadius: '8px',
                     cursor: 'pointer'

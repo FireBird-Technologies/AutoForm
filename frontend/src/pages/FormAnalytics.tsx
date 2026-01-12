@@ -234,8 +234,8 @@ export const FormAnalytics: React.FC = () => {
           }}>
             <StatCard
               title="Total Responses"
-              value={summary.total_responses}
-              subtitle={`${summary.complete_responses} complete`}
+              value={summary.total_responses || 0}
+              subtitle={`${summary.complete_responses || 0} complete`}
               icon={
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M9 11l3 3L22 4" />
@@ -246,7 +246,7 @@ export const FormAnalytics: React.FC = () => {
             />
             <StatCard
               title="Completion Rate"
-              value={`${funnel?.completion_rate || 0}%`}
+              value={`${Math.round(funnel?.completion_rate || 0)}%`}
               subtitle={`${funnel?.total_completes || 0} of ${funnel?.total_starts || 0} started`}
               icon={
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -258,7 +258,7 @@ export const FormAnalytics: React.FC = () => {
             />
             <StatCard
               title="Avg. Completion Time"
-              value={formatTime(summary.avg_completion_time_seconds)}
+              value={formatTime(summary.avg_completion_time_seconds || 0)}
               subtitle={`Time to complete`}
               icon={
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -270,8 +270,8 @@ export const FormAnalytics: React.FC = () => {
             />
             <StatCard
               title="Recent Activity"
-              value={summary.recent_activity.last_24_hours}
-              subtitle={`${summary.recent_activity.last_7_days} in last 7 days`}
+              value={summary.recent_activity?.last_24_hours || 0}
+              subtitle={`${summary.recent_activity?.last_7_days || 0} in last 7 days`}
               icon={
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
@@ -283,7 +283,7 @@ export const FormAnalytics: React.FC = () => {
         )}
 
         {/* Funnel Visualization */}
-        {funnel && funnel.question_funnel.length > 0 && (
+        {funnel && funnel.question_funnel && funnel.question_funnel.length > 0 && (
           <div style={{
             background: 'white',
             borderRadius: '12px',
@@ -364,7 +364,7 @@ export const FormAnalytics: React.FC = () => {
           gap: '20px'
         }}>
           {/* Traffic Sources */}
-          {funnel && Object.keys(funnel.traffic_sources).length > 0 && (
+          {funnel && funnel.traffic_sources && Object.keys(funnel.traffic_sources).length > 0 && (
             <div style={{
               background: 'white',
               borderRadius: '12px',
@@ -409,7 +409,7 @@ export const FormAnalytics: React.FC = () => {
           )}
 
           {/* Geographic Distribution */}
-          {funnel && Object.keys(funnel.geographic_distribution).length > 0 && (
+          {funnel && funnel.geographic_distribution && Object.keys(funnel.geographic_distribution).length > 0 && (
             <div style={{
               background: 'white',
               borderRadius: '12px',

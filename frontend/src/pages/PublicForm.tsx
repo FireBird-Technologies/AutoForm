@@ -19,6 +19,7 @@ export const PublicForm: React.FC = () => {
   const backgroundColor = formData?.settings?.background_color || '#ffffff';
   const textColor = formData?.settings?.text_color || '#1f2937';
   const accentColor = formData?.settings?.accent_color || '#9333ea';
+  const boldTextColor = formData?.settings?.bold_text_color || accentColor;
 
   useEffect(() => {
     loadForm();
@@ -230,7 +231,7 @@ export const PublicForm: React.FC = () => {
             width: '64px',
             height: '64px',
             margin: '0 auto 24px',
-            background: accentColor,
+            background: boldTextColor,
             borderRadius: '50%',
             display: 'flex',
             alignItems: 'center',
@@ -328,12 +329,12 @@ export const PublicForm: React.FC = () => {
                         remarkPlugins={[remarkGfm]}
                         components={{
                           p: ({ children }) => <span style={{ margin: 0 }}>{children}</span>,
-                          strong: ({ children }) => <strong style={{ color: accentColor }}>{children}</strong>
+                          strong: ({ children }) => <strong style={{ color: boldTextColor }}>{children}</strong>
                         }}
                       >
                         {question.question_text}
                       </ReactMarkdown>
-                      {question.required && <span style={{ color: accentColor, marginLeft: '4px' }}>*</span>}
+                      {question.required && <span style={{ color: boldTextColor, marginLeft: '4px' }}>*</span>}
                     </div>
                     
                     {/* Description - matches edit view with markdown */}
@@ -348,7 +349,7 @@ export const PublicForm: React.FC = () => {
                           remarkPlugins={[remarkGfm]}
                           components={{
                             p: ({ children }) => <span style={{ margin: 0 }}>{children}</span>,
-                            strong: ({ children }) => <strong style={{ color: accentColor }}>{children}</strong>
+                            strong: ({ children }) => <strong style={{ color: boldTextColor }}>{children}</strong>
                           }}
                         >
                           {question.description}
@@ -395,7 +396,7 @@ export const PublicForm: React.FC = () => {
               fontSize: '16px',
               fontWeight: '600',
               color: '#ffffff',
-              background: submitting ? '#d1d5db' : accentColor,
+              background: submitting ? '#d1d5db' : boldTextColor,
               border: 'none',
               borderRadius: '8px',
               cursor: submitting ? 'not-allowed' : 'pointer',
