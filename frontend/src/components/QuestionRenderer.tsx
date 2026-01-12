@@ -33,19 +33,22 @@ interface QuestionRendererProps {
   value: any;
   onChange: (value: any) => void;
   disabled?: boolean;
+  hideLabel?: boolean;
 }
 
 export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
   question,
   value,
   onChange,
-  disabled = false
+  disabled = false,
+  hideLabel = false
 }) => {
   const questionProps = {
     question,
     value,
     onChange,
-    disabled
+    disabled,
+    hideLabel
   };
 
   switch (question.question_type) {

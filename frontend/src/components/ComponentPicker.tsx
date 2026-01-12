@@ -234,33 +234,33 @@ export const ComponentPicker: React.FC<ComponentPickerProps> = ({
                           width: '100%',
                           padding: '10px 16px',
                           fontSize: '14px',
-                          color: selectedIndex === 0 ? '#9333ea' : '#374151',
-                          background: selectedIndex === 0 ? '#faf5ff' : 'transparent',
-                          border: 'none',
+                          color: '#374151',
+                          background: 'transparent',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '6px',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
                           gap: '10px',
                           textAlign: 'left',
-                          fontFamily: 'inherit'
+                          fontFamily: 'inherit',
+                          transition: 'all 0.2s'
                         }}
                         onMouseEnter={(e) => {
-                          if (selectedIndex !== 0) {
-                            e.currentTarget.style.background = '#f9fafb';
-                          }
+                          e.currentTarget.style.borderColor = '#9333ea';
+                          e.currentTarget.style.color = '#9333ea';
                           setSelectedIndex(0);
                         }}
                         onMouseLeave={(e) => {
-                          if (selectedIndex !== 0) {
-                            e.currentTarget.style.background = 'transparent';
-                          }
+                          e.currentTarget.style.borderColor = '#e5e7eb';
+                          e.currentTarget.style.color = '#374151';
                         }}
                       >
                         <span style={{
                           width: '20px',
                           textAlign: 'center',
                           fontSize: '14px',
-                          color: '#9333ea'
+                          color: 'inherit'
                         }}>
                           ✨
                         </span>
@@ -293,26 +293,27 @@ export const ComponentPicker: React.FC<ComponentPickerProps> = ({
                               width: '100%',
                               padding: '8px 16px',
                               fontSize: '14px',
-                              color: isSelected ? '#9333ea' : '#374151',
-                              background: isSelected ? '#faf5ff' : 'transparent',
-                              border: 'none',
+                              color: '#374151',
+                              background: 'transparent',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '6px',
                               cursor: 'pointer',
                               display: 'flex',
                               alignItems: 'center',
                               gap: '10px',
                               textAlign: 'left',
-                              fontFamily: 'inherit'
+                              fontFamily: 'inherit',
+                              transition: 'all 0.2s',
+                              marginBottom: '4px'
                             }}
                             onMouseEnter={(e) => {
-                              if (!isSelected) {
-                                e.currentTarget.style.background = '#f9fafb';
-                              }
+                              e.currentTarget.style.borderColor = '#9333ea';
+                              e.currentTarget.style.color = '#9333ea';
                               setSelectedIndex(actualIndex);
                             }}
                             onMouseLeave={(e) => {
-                              if (!isSelected) {
-                                e.currentTarget.style.background = 'transparent';
-                              }
+                              e.currentTarget.style.borderColor = '#e5e7eb';
+                              e.currentTarget.style.color = '#374151';
                             }}
                           >
                             <span style={{
@@ -354,26 +355,27 @@ export const ComponentPicker: React.FC<ComponentPickerProps> = ({
                               width: '100%',
                               padding: '8px 16px',
                               fontSize: '14px',
-                              color: isSelected ? '#9333ea' : '#374151',
-                              background: isSelected ? '#faf5ff' : 'transparent',
-                              border: 'none',
+                              color: '#374151',
+                              background: 'transparent',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '6px',
                               cursor: 'pointer',
                               display: 'flex',
                               alignItems: 'center',
                               gap: '10px',
                               textAlign: 'left',
-                              fontFamily: 'inherit'
+                              fontFamily: 'inherit',
+                              transition: 'all 0.2s',
+                              marginBottom: '4px'
                             }}
                             onMouseEnter={(e) => {
-                              if (!isSelected) {
-                                e.currentTarget.style.background = '#f9fafb';
-                              }
+                              e.currentTarget.style.borderColor = '#9333ea';
+                              e.currentTarget.style.color = '#9333ea';
                               setSelectedIndex(actualIndex);
                             }}
                             onMouseLeave={(e) => {
-                              if (!isSelected) {
-                                e.currentTarget.style.background = 'transparent';
-                              }
+                              e.currentTarget.style.borderColor = '#e5e7eb';
+                              e.currentTarget.style.color = '#374151';
                             }}
                           >
                             <span style={{
@@ -454,7 +456,7 @@ export const ComponentPicker: React.FC<ComponentPickerProps> = ({
                   alignItems: showGenerateInput ? 'stretch' : 'center'
                 }}>
                   {showGenerateInput ? (
-                    <>
+                    <div style={{ position: 'relative', width: '100%' }}>
                       <textarea
                         ref={generateInputRef}
                         value={generatePrompt}
@@ -463,17 +465,24 @@ export const ComponentPicker: React.FC<ComponentPickerProps> = ({
                         style={{
                           width: '100%',
                           minHeight: '120px',
-                          padding: '12px',
+                          padding: '12px 48px 12px 12px',
                           fontSize: '14px',
                           border: '1px solid #e5e7eb',
                           borderRadius: '8px',
                           outline: 'none',
                           fontFamily: 'inherit',
                           resize: 'vertical',
-                          marginBottom: '12px'
+                          background: '#ffffff',
+                          boxShadow: '0 2px 8px rgba(147, 51, 234, 0.15)'
                         }}
-                        onFocus={(e) => e.currentTarget.style.borderColor = '#9333ea'}
-                        onBlur={(e) => e.currentTarget.style.borderColor = '#e5e7eb'}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = '#9333ea';
+                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(147, 51, 234, 0.25)';
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = '#e5e7eb';
+                          e.currentTarget.style.boxShadow = '0 2px 8px rgba(147, 51, 234, 0.15)';
+                        }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' && !e.shiftKey && generatePrompt.trim()) {
                             e.preventDefault();
@@ -488,20 +497,42 @@ export const ComponentPicker: React.FC<ComponentPickerProps> = ({
                         onClick={handleGenerate}
                         disabled={!generatePrompt.trim()}
                         style={{
-                          padding: '10px 20px',
-                          fontSize: '14px',
-                          fontWeight: '500',
+                          position: 'absolute',
+                          bottom: '8px',
+                          right: '8px',
+                          width: '32px',
+                          height: '32px',
+                          padding: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
                           color: '#ffffff',
-                          background: generatePrompt.trim() ? '#9333ea' : '#d1d5db',
+                          background: (!generatePrompt.trim()) ? '#d1d5db' : '#9333ea',
                           border: 'none',
-                          borderRadius: '8px',
-                          cursor: generatePrompt.trim() ? 'pointer' : 'not-allowed',
-                          alignSelf: 'flex-end'
+                          borderRadius: '6px',
+                          cursor: (!generatePrompt.trim()) ? 'not-allowed' : 'pointer',
+                          transition: 'all 0.2s',
+                          opacity: (!generatePrompt.trim()) ? 0.5 : 1
+                        }}
+                        onMouseEnter={(e) => {
+                          if (generatePrompt.trim()) {
+                            e.currentTarget.style.background = '#7e22ce';
+                            e.currentTarget.style.transform = 'scale(1.05)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (generatePrompt.trim()) {
+                            e.currentTarget.style.background = '#9333ea';
+                            e.currentTarget.style.transform = 'scale(1)';
+                          }
                         }}
                       >
-                        Generate
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <line x1="22" y1="2" x2="11" y2="13" />
+                          <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                        </svg>
                       </button>
-                    </>
+                    </div>
                   ) : (
                     <>
                       <div style={{

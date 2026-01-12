@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { QuestionRenderer } from '../components/QuestionRenderer';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { config } from '../config';
 
 export const PublicForm: React.FC = () => {
@@ -262,15 +264,16 @@ export const PublicForm: React.FC = () => {
     <div style={{
       minHeight: '100vh',
       background: backgroundColor,
-      padding: '40px 20px',
+      padding: '40px 24px 40px 64px',
       overflowY: 'auto'
     }}>
       <div style={{
-        maxWidth: '700px',
+        maxWidth: '800px',
         margin: '0 auto',
-        paddingBottom: '80px'
+        width: '100%',
+        paddingBottom: '100px'
       }}>
-        {/* Header */}
+        {/* Header - matches edit view */}
         <div style={{
           marginBottom: '48px',
           paddingTop: '20px'
@@ -285,30 +288,85 @@ export const PublicForm: React.FC = () => {
             {formData.title}
           </h1>
           {formData.description && (
-            <p style={{
+            <div style={{
               fontSize: '17px',
               color: textColor,
               opacity: 0.7,
               lineHeight: '1.6'
             }}>
-              {formData.description}
-            </p>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {formData.description}
+              </ReactMarkdown>
+            </div>
           )}
         </div>
 
         <form onSubmit={handleSubmit}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '48px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
             {formData.questions
               ?.filter((q: any) => visibleQuestionIds.has(q.id))
               .sort((a: any, b: any) => a.question_order - b.question_order)
-              .map((question: any) => (
-                <div key={question.id}>
-                  <QuestionRenderer
-                    question={question}
-                    value={answers[question.id] || {}}
-                    onChange={(value) => handleAnswerChange(question.id, value)}
-                    disabled={false}
-                  />
+              .map((question: any, index: number) => (
+                <div
+                  key={question.id}
+                  style={{
+                    padding: '48px 0',
+                    borderBottom: index < formData.questions.length - 1 ? '1px solid #e5e7eb' : 'none',
+                    position: 'relative'
+                  }}
+                >
+                  {/* Question Text - matches edit view with markdown */}
+                  <div style={{ marginBottom: '16px' }}>
+                    <div style={{
+                      fontSize: '18px',
+                      fontWeight: '600',
+                      color: textColor,
+                      marginBottom: '8px',
+                      lineHeight: '1.4'
+                    }}>
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          p: ({ children }) => <span style={{ margin: 0 }}>{children}</span>,
+                          strong: ({ children }) => <strong style={{ color: accentColor }}>{children}</strong>
+                        }}
+                      >
+                        {question.question_text}
+                      </ReactMarkdown>
+                      {question.required && <span style={{ color: accentColor, marginLeft: '4px' }}>*</span>}
+                    </div>
+                    
+                    {/* Description - matches edit view with markdown */}
+                    {question.description && (
+                      <div style={{
+                        fontSize: '14px',
+                        color: textColor,
+                        opacity: 0.7,
+                        lineHeight: '1.5'
+                      }}>
+                        <ReactMarkdown 
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            p: ({ children }) => <span style={{ margin: 0 }}>{children}</span>,
+                            strong: ({ children }) => <strong style={{ color: accentColor }}>{children}</strong>
+                          }}
+                        >
+                          {question.description}
+                        </ReactMarkdown>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Question Input - using QuestionRenderer without labels */}
+                  <div style={{ marginTop: '8px' }}>
+                    <QuestionRenderer
+                      question={question}
+                      value={answers[question.id] || {}}
+                      onChange={(value) => handleAnswerChange(question.id, value)}
+                      disabled={false}
+                      hideLabel={true}
+                    />
+                  </div>
                 </div>
               ))}
           </div>

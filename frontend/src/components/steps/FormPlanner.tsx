@@ -38,10 +38,10 @@ export const FormPlanner: React.FC<FormPlannerProps> = ({ onComplete }) => {
     <div style={{
       minHeight: '100vh',
       display: 'flex',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       justifyContent: 'center',
-      padding: '40px 20px',
-      background: 'linear-gradient(135deg, #faf5ff 0%, #ffffff 100%)'
+      padding: '12vh 20px 40px 20px',
+      background: '#ffffff'
     }}>
       <div style={{
         maxWidth: '900px',
@@ -49,7 +49,7 @@ export const FormPlanner: React.FC<FormPlannerProps> = ({ onComplete }) => {
       }}>
         <div style={{
           textAlign: 'center',
-          marginBottom: '48px'
+          marginBottom: '38px'
         }}>
           <h1 style={{
             fontSize: '48px',
@@ -74,31 +74,85 @@ export const FormPlanner: React.FC<FormPlannerProps> = ({ onComplete }) => {
           maxWidth: '900px',
           width: '100%'
         }}>
-          <textarea
-            value={description}
-            onChange={(e) => {
-              setDescription(e.target.value);
-              setError('');
-            }}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
-            placeholder="Example: Create a customer feedback form with rating and comments"
-            style={{
-              width: '100%',
-              minHeight: '140px',
-              padding: '20px',
-              fontSize: '17px',
-              border: `2px solid ${isFocused ? '#9333ea' : '#e5e7eb'}`,
-              borderRadius: '12px',
-              resize: 'vertical',
-              fontFamily: 'inherit',
-              outline: 'none',
-              transition: 'all 0.2s',
-              marginBottom: '16px',
-              boxShadow: isFocused ? '0 0 0 4px rgba(147, 51, 234, 0.1)' : 'none',
-              background: '#ffffff'
-            }}
-          />
+          <div style={{ position: 'relative', width: '100%', marginBottom: '16px' }}>
+            <textarea
+              value={description}
+              onChange={(e) => {
+                setDescription(e.target.value);
+                setError('');
+              }}
+              onFocus={(e) => {
+                setIsFocused(true);
+                e.target.style.borderColor = '#9333ea';
+                e.target.style.boxShadow = '0 4px 12px rgba(147, 51, 234, 0.25)';
+              }}
+              onBlur={(e) => {
+                setIsFocused(false);
+                e.target.style.borderColor = '#e5e7eb';
+                e.target.style.boxShadow = '0 2px 8px rgba(147, 51, 234, 0.15)';
+              }}
+              placeholder="Example: Create a customer feedback form with rating and comments"
+              style={{
+                width: '100%',
+                minHeight: '140px',
+                padding: '20px 60px 20px 20px',
+                fontSize: '17px',
+                border: '1px solid #e5e7eb',
+                borderRadius: '12px',
+                resize: 'vertical',
+                fontFamily: 'inherit',
+                outline: 'none',
+                transition: 'all 0.2s',
+                background: '#ffffff',
+                boxShadow: '0 2px 8px rgba(147, 51, 234, 0.15)'
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey && description.trim()) {
+                  e.preventDefault();
+                  handleGenerate();
+                }
+              }}
+            />
+            <button
+              onClick={handleGenerate}
+              disabled={!description.trim()}
+              style={{
+                position: 'absolute',
+                bottom: '12px',
+                right: '12px',
+                width: '36px',
+                height: '36px',
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#ffffff',
+                background: (!description.trim()) ? '#d1d5db' : '#9333ea',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: (!description.trim()) ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+                opacity: (!description.trim()) ? 0.5 : 1
+              }}
+              onMouseEnter={(e) => {
+                if (description.trim()) {
+                  e.currentTarget.style.background = '#7e22ce';
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (description.trim()) {
+                  e.currentTarget.style.background = '#9333ea';
+                  e.currentTarget.style.transform = 'scale(1)';
+                }
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
+            </button>
+          </div>
 
           {error && (
             <div style={{
@@ -114,41 +168,6 @@ export const FormPlanner: React.FC<FormPlannerProps> = ({ onComplete }) => {
             </div>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '24px' }}>
-            <button
-              onClick={handleGenerate}
-              disabled={!description.trim()}
-              style={{
-                padding: '12px 32px',
-                fontSize: '16px',
-                fontWeight: '600',
-                color: '#ffffff',
-                background: !description.trim() ? '#d1d5db' : '#9333ea',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: !description.trim() ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s',
-                boxShadow: !description.trim() ? 'none' : '0 4px 12px rgba(147, 51, 234, 0.3)'
-              }}
-            onMouseEnter={(e) => {
-              if (description.trim()) {
-                e.currentTarget.style.background = '#7e22ce';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-                e.currentTarget.style.boxShadow = '0 6px 16px rgba(147, 51, 234, 0.4)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (description.trim()) {
-                e.currentTarget.style.background = '#9333ea';
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(147, 51, 234, 0.3)';
-              }
-            }}
-            >
-              Generate Form
-            </button>
-          </div>
-
           {/* Suggestions as pills below button */}
           <div style={{
             display: 'flex',
@@ -163,21 +182,21 @@ export const FormPlanner: React.FC<FormPlannerProps> = ({ onComplete }) => {
                 style={{
                   padding: '10px 16px',
                   fontSize: '14px',
-                  color: '#9333ea',
-                  background: '#faf5ff',
-                  border: '1px solid #e9d5ff',
+                  color: '#374151',
+                  background: 'transparent',
+                  border: '1px solid #e5e7eb',
                   borderRadius: '8px',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
                   fontWeight: '500'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#f3e8ff';
-                  e.currentTarget.style.borderColor = '#d8b4fe';
+                  e.currentTarget.style.borderColor = '#9333ea';
+                  e.currentTarget.style.color = '#9333ea';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = '#faf5ff';
-                  e.currentTarget.style.borderColor = '#e9d5ff';
+                  e.currentTarget.style.borderColor = '#e5e7eb';
+                  e.currentTarget.style.color = '#374151';
                 }}
               >
                 {example}

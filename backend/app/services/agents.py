@@ -339,11 +339,21 @@ class FormChatFunction(dspy.Module):
             new_id = f"comp_{len(existing_ids) + 1}"
             
             # CRITICAL: Include the original user query in the form context and brief
-            enhanced_form_context = json.dumps({
-                **json.loads(form_context) if isinstance(form_context, str) else form_context,
-                'ORIGINAL_USER_REQUEST': user_query,
-                'IMPORTANT': 'Use the EXACT terms from ORIGINAL_USER_REQUEST. Do NOT substitute cultural, local, or specific terms.'
-            }) if form_context else json.dumps({'ORIGINAL_USER_REQUEST': user_query})
+            if form_context:
+                # Parse form_context if it's a string
+                if isinstance(form_context, str):
+                    parsed_context = json.loads(form_context)
+                else:
+                    parsed_context = form_context
+                
+                # Merge with original user request
+                enhanced_form_context = json.dumps({
+                    **parsed_context,
+                    'ORIGINAL_USER_REQUEST': user_query,
+                    'IMPORTANT': 'Use the EXACT terms from ORIGINAL_USER_REQUEST. Do NOT substitute cultural, local, or specific terms.'
+                })
+            else:
+                enhanced_form_context = json.dumps({'ORIGINAL_USER_REQUEST': user_query})
             
             enhanced_brief = f"{user_query}. CRITICAL: Use the exact terms mentioned by the user. Do NOT substitute any terms like 'Valima', 'Nikkah', 'Barat' with generic alternatives."
             

@@ -553,15 +553,17 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
             type="text"
             value={formData.title || 'Untitled Form'}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            placeholder="Form title"
             style={{
-              fontSize: '20px',
-              fontWeight: '600',
+              fontSize: '18px',
+              fontWeight: '500',
               color: globalColors.text,
               border: 'none',
               outline: 'none',
               background: 'transparent',
               flex: 1,
-              maxWidth: '500px'
+              maxWidth: '500px',
+              padding: '4px 0'
             }}
           />
         </div>
@@ -796,7 +798,9 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
       <div style={{
         flex: 1,
         display: 'flex',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        height: 'calc(100vh - 80px)',
+        minHeight: 0
       }}>
         {/* Collapsed Chat Toggle */}
         {isChatCollapsed && (
@@ -847,7 +851,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
               flexDirection: 'column',
               position: 'relative',
               height: '100%',
-              overflow: 'hidden'
+              overflow: 'hidden',
+              minHeight: 0
             }}
           >
             {/* Resize Handle */}
@@ -996,9 +1001,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
               What changes do you need?
             </div>
             <div style={{
-              display: 'flex',
-              gap: '12px',
-              alignItems: 'flex-end'
+              position: 'relative',
+              width: '100%'
             }}>
               <textarea
                 value={chatInput}
@@ -1006,10 +1010,10 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                 placeholder="Add a question asking which events guests will attend..."
                 disabled={isGenerating}
                 style={{
-                  flex: 1,
+                  width: '100%',
                   minHeight: '80px',
                   maxHeight: '150px',
-                  padding: '12px',
+                  padding: '12px 48px 12px 12px',
                   fontSize: '14px',
                   fontFamily: 'inherit',
                   border: '1px solid #e5e7eb',
@@ -1017,13 +1021,16 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                   outline: 'none',
                   resize: 'vertical',
                   background: '#ffffff',
-                  color: '#1f2937'
+                  color: '#1f2937',
+                  boxShadow: '0 2px 8px rgba(147, 51, 234, 0.15)'
                 }}
                 onFocus={(e) => {
                   e.target.style.borderColor = '#9333ea';
+                  e.target.style.boxShadow = '0 4px 12px rgba(147, 51, 234, 0.25)';
                 }}
                 onBlur={(e) => {
                   e.target.style.borderColor = '#e5e7eb';
+                  e.target.style.boxShadow = '0 2px 8px rgba(147, 51, 234, 0.15)';
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey && chatInput.trim() && !isGenerating) {
@@ -1036,43 +1043,49 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                 onClick={handleChatEdit}
                 disabled={!chatInput.trim() || isGenerating}
                 style={{
-                  padding: '12px 20px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#ffffff',
-                  background: (!chatInput.trim() || isGenerating) ? '#d1d5db' : '#9333ea',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: (!chatInput.trim() || isGenerating) ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s',
+                  position: 'absolute',
+                  bottom: '8px',
+                  right: '8px',
+                  width: '32px',
+                  height: '32px',
+                  padding: 0,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '8px',
-                  minWidth: '100px',
-                  height: '44px'
+                  color: '#ffffff',
+                  background: (!chatInput.trim() || isGenerating) ? '#d1d5db' : '#9333ea',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: (!chatInput.trim() || isGenerating) ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  if (chatInput.trim() && !isGenerating) {
+                    e.currentTarget.style.background = '#7e22ce';
+                    e.currentTarget.style.transform = 'scale(1.05)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (chatInput.trim() && !isGenerating) {
+                    e.currentTarget.style.background = '#9333ea';
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }
                 }}
               >
                 {isGenerating ? (
-                  <>
-                    <div style={{
-                      width: '14px',
-                      height: '14px',
-                      border: '2px solid #ffffff',
-                      borderTopColor: 'transparent',
-                      borderRadius: '50%',
-                      animation: 'spin 1s linear infinite'
-                    }} />
-                    <span>...</span>
-                  </>
+                  <div style={{
+                    width: '14px',
+                    height: '14px',
+                    border: '2px solid #ffffff',
+                    borderTopColor: 'transparent',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite'
+                  }} />
                 ) : (
-                  <>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <line x1="22" y1="2" x2="11" y2="13" />
-                      <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                    </svg>
-                    Send
-                  </>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="22" y1="2" x2="11" y2="13" />
+                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                  </svg>
                 )}
               </button>
             </div>
@@ -1130,7 +1143,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                           setShowComponentPicker(true);
                         }}
                         disabled={isGenerating}
-                        position="left"
+                        position="right"
                       />
                     {/* Question Content - Inline Editable */}
                     <div style={{ marginBottom: '16px' }}>
@@ -1529,7 +1542,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                         setShowComponentPicker(true);
                       }}
                       disabled={isGenerating}
-                      position="left"
+                      position="right"
                     />
                   </div>
                 )}
