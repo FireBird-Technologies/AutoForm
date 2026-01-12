@@ -42,7 +42,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
   const [insertAtIndex, setInsertAtIndex] = useState<number | null>(null);
   const [showBgColorPicker, setShowBgColorPicker] = useState(false);
   const [showTextColorPicker, setShowTextColorPicker] = useState(false);
-  const [showBoldColorPicker, setShowBoldColorPicker] = useState(false);
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
   const [chatPanelWidth, setChatPanelWidth] = useState(400);
   const [isResizing, setIsResizing] = useState(false);
@@ -470,7 +469,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
 
       if (response.ok) {
         const data = await response.json();
-        const link = `${window.location.origin}/public/forms/${data.share_token}`;
+        const link = `${window.location.origin}/forms/${data.share_token}`;
         setShareLink(link);
         setShowSharePopup(true);
       } else {
@@ -502,7 +501,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
 
       if (response.ok) {
         const data = await response.json();
-        const previewUrl = `${window.location.origin}/public/forms/${data.share_token}`;
+        const previewUrl = `${window.location.origin}/forms/${data.share_token}`;
         window.open(previewUrl, '_blank');
       } else {
         alert('Failed to generate preview. Please try again.');
@@ -510,7 +509,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
     } catch (error) {
       console.error('Preview failed:', error);
       alert('Failed to generate preview. Please try again.');
-    }
+        }
   };
 
   const copyShareLink = () => {
@@ -691,22 +690,22 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                       cursor: 'pointer'
                     }}
                   />
-                  <input
-                    type="text"
+          <input
+            type="text"
                     value={globalColors.background}
                     onChange={(e) => setGlobalColors({ ...globalColors, background: e.target.value })}
                     placeholder="#FFFFFF"
-                    style={{
-                      flex: 1,
+            style={{
+              flex: 1,
                       padding: '8px 12px',
                       fontSize: '13px',
                       border: '1px solid #e5e7eb',
                       borderRadius: '6px',
                       fontFamily: 'monospace',
                       textTransform: 'uppercase'
-                    }}
-                  />
-                </div>
+            }}
+          />
+        </div>
 
                 {/* Preset Colors */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px' }}>
@@ -847,7 +846,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                         border: '2px solid #e5e7eb',
                         cursor: 'pointer'
                       }}
-                    />
+          />
                     <input
                       type="text"
                       value={globalColors.boldText || '#9333ea'}
@@ -1005,7 +1004,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between'
-            }}>
+          }}>
               <div>
             <h3 style={{
               fontSize: '16px',
@@ -1047,7 +1046,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
           </div>
 
             {/* Chat Messages - Scrollable middle area */}
-            <div style={{
+          <div style={{
               position: 'absolute',
               top: '70px',
               left: 0,
@@ -1103,7 +1102,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                       li: ({ children }) => <li style={{ margin: '2px 0' }}>{children}</li>
                     }}
                   >
-                    {msg.content}
+                  {msg.content}
                   </ReactMarkdown>
                 </div>
               </div>
@@ -1554,7 +1553,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                           >
                             Choose File
                           </button>
-                        )}
+                      )}
                         {question.question_type === 'rating' && (
                           <div style={{ display: 'flex', gap: '4px' }}>
                             {[1, 2, 3, 4, 5].map((star) => (
@@ -1749,7 +1748,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                     position: 'relative',
                     padding: '48px 0',
                     marginTop: '24px'
-                  }}>
+                }}>
                     <SideAddButton
                       onAdd={() => {
                         setInsertAtIndex(null);

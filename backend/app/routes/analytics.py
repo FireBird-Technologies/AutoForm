@@ -73,10 +73,13 @@ async def get_form_funnel(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     start_date: Optional[str] = None,
-    end_date: Optional[str] = None
+    end_date: Optional[str] = None,
+    question_ids: Optional[str] = None,
+    countries: Optional[str] = None,
+    utm_source: Optional[str] = None
 ):
     """
-    Get funnel analytics for form owner.
+    Get funnel analytics for form owner with advanced filtering.
     Requires authentication.
     """
     # Verify form ownership
@@ -95,15 +98,75 @@ async def get_form_funnel(
     start_dt = datetime.fromisoformat(start_date) if start_date else None
     end_dt = datetime.fromisoformat(end_date) if end_date else None
     
+    # Parse question IDs
+    question_id_list = [int(x) for x in question_ids.split(',')] if question_ids else None
+    
+    # Parse countries
+    country_list = [x.strip() for x in countries.split(',')] if countries else None
+    
     # Get funnel analytics
     funnel_data = await analytics_service.get_funnel_analytics(
         db=db,
         form_id=form_id,
         start_date=start_dt,
-        end_date=end_dt
+        end_date=end_dt,
+        question_ids=question_id_list,
+        countries=country_list,
+        utm_source=utm_source
     )
     
     return funnel_data
+
+
+@router.get("/forms/{form_id}/analytics/timeseries")
+async def get_time_series(
+    form_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    question_ids: Optional[str] = None,
+    countries: Optional[str] = None,
+    utm_source: Optional[str] = None
+):
+    """
+    Get time-series data for views and submissions with filtering.
+    Requires authentication.
+    """
+    # Verify form ownership
+    form = db.query(Form).filter(
+        Form.id == form_id,
+        Form.user_id == current_user.id
+    ).first()
+    
+    if not form:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Form not found"
+        )
+    
+    # Parse dates
+    start_dt = datetime.fromisoformat(start_date) if start_date else None
+    end_dt = datetime.fromisoformat(end_date) if end_date else None
+    
+    # Parse question IDs
+    question_id_list = [int(x) for x in question_ids.split(',')] if question_ids else None
+    
+    # Parse countries
+    country_list = [x.strip() for x in countries.split(',')] if countries else None
+    
+    # Get time-series data
+    time_series_data = await analytics_service.get_time_series_data(
+        db=db,
+        form_id=form_id,
+        start_date=start_dt,
+        end_date=end_dt,
+        question_ids=question_id_list,
+        countries=country_list,
+        utm_source=utm_source
+    )
+    
+    return time_series_data
 
 
 @router.get("/forms/{form_id}/analytics/summary")

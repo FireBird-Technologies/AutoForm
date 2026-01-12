@@ -14,6 +14,7 @@ export const PublicForm: React.FC = () => {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
   const [thankYouMessage, setThankYouMessage] = useState('');
+  const [sessionId] = useState(() => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
 
   // Extract colors from form settings
   const backgroundColor = formData?.settings?.background_color || '#ffffff';
@@ -36,9 +37,30 @@ export const PublicForm: React.FC = () => {
       const data = await response.json();
       setFormData(data.form);
       setLoading(false);
+      
+      // Track form view
+      trackEvent('form_viewed');
     } catch (err: any) {
       setError(err.message);
       setLoading(false);
+    }
+  };
+
+  const trackEvent = async (eventType: string, questionId?: number, timeSpent?: number) => {
+    try {
+      await fetch(`${config.backendUrl}/api/public/forms/${token}/track`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event_type: eventType,
+          session_id: sessionId,
+          question_id: questionId,
+          time_spent: timeSpent
+        })
+      });
+    } catch (err) {
+      // Silently fail - don't break form for analytics
+      console.error('Analytics tracking failed:', err);
     }
   };
 
@@ -95,10 +117,20 @@ export const PublicForm: React.FC = () => {
   const visibleQuestionIds = formData ? evaluateConditionalLogic() : new Set();
 
   const handleAnswerChange = (questionId: number, value: any) => {
+    const isFirstAnswer = Object.keys(answers).length === 0;
+    
     setAnswers(prev => ({
       ...prev,
       [questionId]: value
     }));
+
+    // Track first answer as form started
+    if (isFirstAnswer) {
+      trackEvent('form_started');
+    }
+    
+    // Track question answered
+    trackEvent('question_answered', questionId);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -147,6 +179,9 @@ export const PublicForm: React.FC = () => {
       if (!response.ok) {
         throw new Error('Failed to submit form');
       }
+
+      // Track form completion
+      trackEvent('form_submitted_complete');
 
       const data = await response.json();
       setThankYouMessage(data.message);

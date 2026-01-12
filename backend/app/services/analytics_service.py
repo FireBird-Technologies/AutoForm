@@ -106,12 +106,91 @@ class AnalyticsService:
             # Don't raise - analytics failures shouldn't break form submission
             db.rollback()
     
+    async def get_time_series_data(
+        self,
+        db: Session,
+        form_id: int,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        question_ids: Optional[List[int]] = None,
+        countries: Optional[List[str]] = None,
+        utm_source: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Get time-series data for views and submissions.
+        
+        Returns daily counts of views and submissions within the date range.
+        """
+        # Default date range: last 30 days
+        if not end_date:
+            end_date = datetime.utcnow()
+        if not start_date:
+            start_date = end_date - timedelta(days=30)
+        
+        # Build base filter
+        filters = [
+            FormAnalyticsEvent.form_id == form_id,
+            FormAnalyticsEvent.created_at >= start_date,
+            FormAnalyticsEvent.created_at <= end_date
+        ]
+        
+        if question_ids:
+            filters.append(FormAnalyticsEvent.question_id.in_(question_ids))
+        if countries:
+            filters.append(FormAnalyticsEvent.country.in_(countries))
+        if utm_source:
+            filters.append(FormAnalyticsEvent.utm_source == utm_source)
+        
+        # Get daily views
+        views_query = db.query(
+            func.date(FormAnalyticsEvent.created_at).label('date'),
+            func.count(FormAnalyticsEvent.id).label('count')
+        ).filter(
+            and_(*filters),
+            FormAnalyticsEvent.event_type == AnalyticsEventType.FORM_VIEWED.value
+        ).group_by(func.date(FormAnalyticsEvent.created_at)).all()
+        
+        # Get daily submissions
+        submissions_query = db.query(
+            func.date(FormAnalyticsEvent.created_at).label('date'),
+            func.count(FormAnalyticsEvent.id).label('count')
+        ).filter(
+            and_(*filters),
+            FormAnalyticsEvent.event_type == AnalyticsEventType.FORM_SUBMITTED_COMPLETE.value
+        ).group_by(func.date(FormAnalyticsEvent.created_at)).all()
+        
+        # Build complete date range
+        current_date = start_date.date()
+        end = end_date.date()
+        time_series = []
+        
+        views_dict = {str(row.date): row.count for row in views_query}
+        submissions_dict = {str(row.date): row.count for row in submissions_query}
+        
+        while current_date <= end:
+            date_str = str(current_date)
+            time_series.append({
+                "date": date_str,
+                "views": views_dict.get(date_str, 0),
+                "submissions": submissions_dict.get(date_str, 0)
+            })
+            current_date += timedelta(days=1)
+        
+        return {
+            "time_series": time_series,
+            "total_views": sum(v["views"] for v in time_series),
+            "total_submissions": sum(v["submissions"] for v in time_series)
+        }
+    
     async def get_funnel_analytics(
         self,
         db: Session,
         form_id: int,
         start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None
+        end_date: Optional[datetime] = None,
+        question_ids: Optional[List[int]] = None,
+        countries: Optional[List[str]] = None,
+        utm_source: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Generate funnel analytics for a form.
@@ -132,11 +211,20 @@ class AnalyticsService:
             start_date = end_date - timedelta(days=30)
         
         # Base query filter
-        base_filter = and_(
+        filters = [
             FormAnalyticsEvent.form_id == form_id,
             FormAnalyticsEvent.created_at >= start_date,
             FormAnalyticsEvent.created_at <= end_date
-        )
+        ]
+        
+        if question_ids:
+            filters.append(FormAnalyticsEvent.question_id.in_(question_ids))
+        if countries:
+            filters.append(FormAnalyticsEvent.country.in_(countries))
+        if utm_source:
+            filters.append(FormAnalyticsEvent.utm_source == utm_source)
+        
+        base_filter = and_(*filters)
         
         # Count events by type
         total_views = db.query(func.count(FormAnalyticsEvent.id)).filter(

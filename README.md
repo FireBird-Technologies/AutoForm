@@ -1,13 +1,15 @@
 <div align="center">
-  <img src="frontend/public/logo.svg" alt="Logo" width="300" />
+  <img src="backend/images/AutoForm.svg" alt="AutoForm Logo" width="300" />
   
   <h1>AutoForm</h1>
-  <p><strong>Your AI Form Builder</strong></p>
+  <p><strong>Your AI-Powered Form Builder</strong></p>
   
   <p>
     <img src="https://img.shields.io/badge/Open%20Source-purple?style=flat-square" alt="Open Source" />
     <img src="https://img.shields.io/badge/AI-Powered-blue?style=flat-square" alt="AI Powered" />
     <img src="https://img.shields.io/badge/No%20Code-green?style=flat-square" alt="No Code" />
+    <img src="https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI" />
+    <img src="https://img.shields.io/badge/React-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React" />
   </p>
 
   <p>
@@ -24,30 +26,30 @@
 <table>
   <tr>
     <td width="33%" valign="top">
-      <h3>Natural Language</h3>
+      <h3>🤖 Natural Language AI</h3>
       <p>Describe your form in plain English. Our AI understands what you need and generates the perfect form structure.</p>
     </td>
     <td width="33%" valign="top">
-      <h3>19 Question Types</h3>
-      <p>From text inputs to file uploads, ratings to dates. Support for all common form field types with validation.</p>
+      <h3>📝 20+ Question Types</h3>
+      <p>Short/long text, email, phone, date/time, multiple choice, checkboxes, ratings, matrix, ranking, file upload, signature, payment, and more.</p>
     </td>
     <td width="33%" valign="top">
-      <h3>Smart Logic</h3>
-      <p>Conditional rules, skip logic, and dynamic fields. Forms adapt based on user responses.</p>
+      <h3>⚡ Smart Logic</h3>
+      <p>Conditional rules, skip logic, and dynamic fields. Forms adapt based on user responses in real-time.</p>
     </td>
   </tr>
   <tr>
     <td width="33%" valign="top">
-      <h3>Response Management</h3>
-      <p>Track submissions, view responses, and export data in CSV or JSON format.</p>
+      <h3>📊 Analytics & Insights</h3>
+      <p>Track submissions, view funnel analytics, completion rates, and time spent per question. Export data in CSV, Excel, or PDF.</p>
     </td>
     <td width="33%" valign="top">
-      <h3>Easy Sharing</h3>
-      <p>Generate shareable links instantly. No login required for respondents.</p>
+      <h3>🔗 Easy Sharing</h3>
+      <p>Generate shareable links instantly. Beautiful public forms with no login required for respondents.</p>
     </td>
     <td width="33%" valign="top">
-      <h3>Customizable</h3>
-      <p>White/black/purple theme. Clean, modern interface that works on any device.</p>
+      <h3>🎨 Fully Customizable</h3>
+      <p>Customize colors, fonts, and layout. Inline markdown editing for rich text. Clean, modern interface that works on any device.</p>
     </td>
   </tr>
 </table>
@@ -63,52 +65,64 @@
 #### **01. Describe Your Form**
 Tell us what kind of form you need in plain language.
 - Natural language processing understands your intent
-- Examples: "Customer feedback survey", "Event registration form"
+- Examples: "Wedding RSVP with meal preferences", "Job application with resume upload"
 - AI suggests appropriate question types
 - Context-aware field generation
+- Chat-based refinement available
 
 #### **02. Review & Customize**
 Get instant form generation and refine as needed.
-- 19 question types supported
+- 20+ question types supported
+- Inline markdown editing for rich text
 - Add conditional logic and validation rules
-- Reorder questions with drag & drop
-- Set required fields and default values
+- Customize colors, backgrounds, and button styles
+- AI-powered editing via chat interface
+- Component library for quick additions
 
 #### **03. Share & Collect**
 Publish your form and start collecting responses.
 - Generate shareable link instantly
+- Beautiful, customizable public forms
 - No login required for respondents
 - Real-time response tracking
-- Export responses as CSV or JSON
+- Auto-save submissions (prevents data loss)
+- Export responses as CSV, Excel, or PDF
+- View analytics and completion funnels
 
 ---
 
 ## Supported Question Types
 
-**Input Fields**
-- Short Text
-- Long Text (Textarea)
-- Email
-- Phone Number
-- Number
-- URL
+**Text Input Fields**
+- 📝 Short Text
+- 📄 Long Text (Textarea)
+- 📧 Email
+- 📞 Phone Number
+- 🔗 URL/Link
+- 🔢 Number Input
 
-**Selection Options**
-- Single Choice (Radio)
-- Multiple Choice (Checkboxes)
-- Dropdown Menu
+**Selection & Choice**
+- ⭕ Multiple Choice (Radio)
+- ☑️ Checkboxes
+- 📋 Dropdown Menu
+- 🎯 Multi-select Dropdown
 
-**Specialized Fields**
-- Date Picker
-- Time Picker
-- File Upload
-- Rating Scale
-- Linear Scale
-- Yes/No Toggle
+**Date & Time**
+- 📅 Date Picker
+- ⏰ Time Picker
+
+**Ratings & Scales**
+- ⭐ Rating (Star/Heart/Thumbs)
+- 📊 Linear Scale
+- 📈 Matrix (Grid)
+- 🔀 Ranking
 
 **Advanced**
-- Multi-select Dropdown
-- Section Header (for organization)
+- 📎 File Upload
+- ✍️ Signature Pad
+- 💳 Payment Integration
+- 🔗 Wallet Connect (Web3)
+- 📍 Section Header (for organization)
 
 ---
 
@@ -147,10 +161,12 @@ Publish your form and start collecting responses.
 - **PostgreSQL/SQLite** - Reliable data storage
 
 ### AI & Intelligence
-- **Natural Language Processing** - Understand user intent
+- **DSPy Framework** - Advanced AI orchestration for form generation
+- **OpenAI GPT-4** - Natural language understanding
 - **Smart Field Generation** - Automatic question type detection
 - **Validation Rules** - Context-aware field validation
 - **Conditional Logic** - Dynamic form behavior
+- **Chat-based Editing** - Conversational form refinement
 
 ---
 
@@ -163,24 +179,39 @@ Publish your form and start collecting responses.
 
 ### Clone the Repository
 ```bash
-git clone https://github.com/yourusername/autoform.git
-cd autoform
+git clone https://github.com/FireBird-Technologies/AutoForm.git
+cd AutoForm
 ```
 
 ### Backend Setup
 ```bash
 cd backend
+
+# Create and activate virtual environment
+python -m venv venv
+# On Windows:
+venv\Scripts\activate
+# On macOS/Linux:
+source venv/bin/activate
+
+# Install dependencies
 pip install -r requirements.txt
 
 # Set up environment variables
-cp .env.example .env
-# Edit .env with your API keys (OpenAI, Google OAuth, etc.)
+# Create a .env file with the following:
+# - OPENAI_API_KEY=your_openai_key
+# - GOOGLE_CLIENT_ID=your_google_client_id
+# - GOOGLE_CLIENT_SECRET=your_google_client_secret
+# - SECRET_KEY=your_secret_key
+# - DATABASE_URL=sqlite:///./chat.db (or your PostgreSQL URL)
 
 # Run the backend
 uvicorn app.main:app --reload --port 8000
 ```
 
 The backend will start on `http://localhost:8000`
+
+**API Documentation:** Visit `http://localhost:8000/docs` for interactive API documentation.
 
 ### Frontend Setup
 ```bash
@@ -250,10 +281,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
   <p><strong>Join thousands of teams making data-driven decisions faster.</strong></p>
   
   <p>
-    <a href="https://github.com/yourusername/autoform">Star on GitHub</a> •
-    <a href="#installation">Get Started</a> •
-    <a href="https://github.com/yourusername/autoform/issues">Report Bug</a> •
-    <a href="https://github.com/yourusername/autoform/issues">Request Feature</a>
+    <a href="https://github.com/FireBird-Technologies/AutoForm">⭐ Star on GitHub</a> •
+    <a href="#installation">🚀 Get Started</a> •
+    <a href="https://github.com/FireBird-Technologies/AutoForm/issues">🐛 Report Bug</a> •
+    <a href="https://github.com/FireBird-Technologies/AutoForm/issues">💡 Request Feature</a>
   </p>
 
   <p>

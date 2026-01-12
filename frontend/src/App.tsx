@@ -8,8 +8,8 @@ import { Account } from './components/Account';
 import { PricingPage } from './pages/PricingPage';
 import { SubscriptionResult } from './pages/SubscriptionResult';
 import { PublicForm } from './pages/PublicForm';
-import { FormResponses } from './pages/FormResponses';
-import { FormAnalytics } from './pages/FormAnalytics';
+import { FormResponsesNew as FormResponses } from './pages/FormResponsesNew';
+import { FormAnalyticsNew as FormAnalytics } from './pages/FormAnalyticsNew';
 import { FormPlanner } from './components/steps/FormPlanner';
 import { FormBuilder } from './components/steps/FormBuilder';
 import { CreditsProvider } from './contexts/CreditsContext';
@@ -178,7 +178,7 @@ function AppRoutes() {
           
           {/* Public Form Submission */}
           <Route 
-            path="/public/forms/:token" 
+            path="/forms/:token" 
             element={<PublicForm />}
           />
           

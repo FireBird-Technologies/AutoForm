@@ -142,8 +142,9 @@ interface GlobalColorPickerProps {
     background: string;
     text: string;
     accent: string;
+    boldText?: string;
   };
-  onChange: (colors: { background: string; text: string; accent: string }) => void;
+  onChange: (colors: { background: string; text: string; accent: string; boldText?: string }) => void;
 }
 
 export const GlobalColorPicker: React.FC<GlobalColorPickerProps> = ({ colors, onChange }) => {

@@ -25,26 +25,26 @@ export const Checkboxes: React.FC<QuestionProps> = ({
     }}>
       {!hideLabel && (
         <>
-          <label style={{
-            display: 'block',
-            fontSize: '16px',
-            fontWeight: '500',
-            color: '#000000',
-            marginBottom: '8px',
-            letterSpacing: '-0.01em'
-          }}>
-            {question.question_text}
-            {question.required && <span style={{ color: '#9333ea', marginLeft: '4px' }}>*</span>}
-          </label>
-          {question.description && (
-            <p style={{
-              fontSize: '14px',
-              color: '#6b7280',
-              marginBottom: '12px',
-              lineHeight: '1.5'
-            }}>
-              {question.description}
-            </p>
+      <label style={{
+        display: 'block',
+        fontSize: '16px',
+        fontWeight: '500',
+        color: '#000000',
+        marginBottom: '8px',
+        letterSpacing: '-0.01em'
+      }}>
+        {question.question_text}
+        {question.required && <span style={{ color: '#9333ea', marginLeft: '4px' }}>*</span>}
+      </label>
+      {question.description && (
+        <p style={{
+          fontSize: '14px',
+          color: '#6b7280',
+          marginBottom: '12px',
+          lineHeight: '1.5'
+        }}>
+          {question.description}
+        </p>
           )}
         </>
       )}
