@@ -50,6 +50,26 @@ class ConditionType(str, enum.Enum):
     IS_NOT_EMPTY = "is_not_empty"
 
 
+class SubmissionStatus(str, enum.Enum):
+    """Form submission status types"""
+    IN_PROGRESS = "in_progress"
+    PARTIAL = "partial"
+    COMPLETE = "complete"
+    ABANDONED = "abandoned"
+
+
+class AnalyticsEventType(str, enum.Enum):
+    """Analytics event types"""
+    FORM_VIEWED = "form_viewed"
+    FORM_STARTED = "form_started"
+    QUESTION_VIEWED = "question_viewed"
+    QUESTION_ANSWERED = "question_answered"
+    QUESTION_SKIPPED = "question_skipped"
+    FORM_ABANDONED = "form_abandoned"
+    FORM_SUBMITTED_PARTIAL = "form_submitted_partial"
+    FORM_SUBMITTED_COMPLETE = "form_submitted_complete"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -275,6 +295,8 @@ class Form(Base):
     conditional_rules: Mapped[list["ConditionalRule"]] = relationship(back_populates="form", cascade="all, delete-orphan")
     responses: Mapped[list["FormResponse"]] = relationship(back_populates="form", cascade="all, delete-orphan")
     chat_messages_form: Mapped[list["ChatMessageForm"]] = relationship(back_populates="form", cascade="all, delete-orphan")
+    versions: Mapped[list["FormVersion"]] = relationship(back_populates="form", cascade="all, delete-orphan")
+    analytics_events: Mapped[list["FormAnalyticsEvent"]] = relationship(back_populates="form", cascade="all, delete-orphan")
 
 
 class FormQuestion(Base):
@@ -299,6 +321,7 @@ class FormQuestion(Base):
     trigger_rules: Mapped[list["ConditionalRule"]] = relationship(foreign_keys="ConditionalRule.trigger_question_id", back_populates="trigger_question", cascade="all, delete-orphan")
     target_rules: Mapped[list["ConditionalRule"]] = relationship(foreign_keys="ConditionalRule.target_question_id", back_populates="target_question", cascade="all, delete-orphan")
     answers: Mapped[list["ResponseAnswer"]] = relationship(back_populates="question", cascade="all, delete-orphan")
+    analytics_events: Mapped[list["FormAnalyticsEvent"]] = relationship(back_populates="question", cascade="all, delete-orphan")
 
 
 class ConditionalRule(Base):
@@ -329,13 +352,35 @@ class FormResponse(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     form_id: Mapped[int] = mapped_column(ForeignKey("forms.id"), index=True)
     
+    # Enhanced tracking fields
+    status: Mapped[str] = mapped_column(String(20), default="complete", index=True)
+    form_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    session_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    
+    # Timestamps
     submitted_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
-    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)  # IPv6 compatible
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, onupdate=datetime.utcnow)
+    
+    # IP and geolocation
+    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)  # IPv6 compatible (legacy)
+    ip_address_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    country: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    
+    # Traffic source tracking
+    user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
+    referrer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    utm_source: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    utm_medium: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    utm_campaign: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    
     submission_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # Additional submission metadata
     
     # Relationships
     form: Mapped[Form] = relationship(back_populates="responses")
     answers: Mapped[list["ResponseAnswer"]] = relationship(back_populates="response", cascade="all, delete-orphan")
+    analytics_events: Mapped[list["FormAnalyticsEvent"]] = relationship(back_populates="submission", cascade="all, delete-orphan")
 
 
 class ResponseAnswer(Base):
@@ -399,4 +444,98 @@ class ChatMessageForm(Base):
     form: Mapped[Form] = relationship(back_populates="chat_messages_form")
     user: Mapped[User] = relationship()
 
+
+class FormVersion(Base):
+    """Form version snapshots for validation and history"""
+    __tablename__ = "form_versions"
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    form_id: Mapped[int] = mapped_column(ForeignKey("forms.id"), index=True)
+    
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    schema_snapshot: Mapped[dict] = mapped_column(JSON, nullable=False)  # Full form + questions structure
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    form: Mapped[Form] = relationship(back_populates="versions")
+
+
+class FormAnalyticsEvent(Base):
+    """Analytics event tracking for forms"""
+    __tablename__ = "form_analytics_events"
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    event_id: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, index=True)  # UUID
+    
+    # Foreign keys
+    form_id: Mapped[int] = mapped_column(ForeignKey("forms.id"), index=True)
+    submission_id: Mapped[int | None] = mapped_column(ForeignKey("form_responses.id"), nullable=True, index=True)
+    question_id: Mapped[int | None] = mapped_column(ForeignKey("form_questions.id"), nullable=True, index=True)
+    
+    # Event details
+    event_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    session_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    
+    # IP and geolocation
+    ip_address_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    ip_address_raw: Mapped[str | None] = mapped_column(String(45), nullable=True)  # Only if user opts in
+    country: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    
+    # Traffic source
+    user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
+    referrer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    utm_source: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    utm_medium: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    utm_campaign: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    
+    # Event-specific data
+    time_spent_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    event_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    
+    # Relationships
+    form: Mapped[Form] = relationship(back_populates="analytics_events")
+    submission: Mapped["FormResponse"] = relationship(back_populates="analytics_events")
+    question: Mapped["FormQuestion"] = relationship(back_populates="analytics_events")
+
+
+class SubmissionRateLimit(Base):
+    """Rate limiting for form submissions"""
+    __tablename__ = "submission_rate_limits"
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    identifier: Mapped[str] = mapped_column(String(64), nullable=False, index=True)  # IP hash or device fingerprint
+    form_id: Mapped[int] = mapped_column(ForeignKey("forms.id"), nullable=False, index=True)
+    
+    submission_count: Mapped[int] = mapped_column(Integer, default=0)
+    window_start: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    is_blocked: Mapped[bool] = mapped_column(Boolean, default=False)
+    
+    # Relationships
+    form: Mapped[Form] = relationship()
+
+
+class WebhookConfig(Base):
+    """Webhook configuration for forms"""
+    __tablename__ = "webhook_configs"
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    form_id: Mapped[int] = mapped_column(ForeignKey("forms.id"), unique=True, nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    
+    webhook_url: Mapped[str] = mapped_column(Text, nullable=False)
+    secret: Mapped[str] = mapped_column(String(128), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    events: Mapped[list] = mapped_column(JSON, nullable=False)  # Array of event types to trigger on
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    form: Mapped[Form] = relationship()
+    user: Mapped[User] = relationship()
 

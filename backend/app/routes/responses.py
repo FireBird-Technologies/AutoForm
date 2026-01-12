@@ -22,6 +22,11 @@ from ..schemas.form import (
     FormResponseDetail, FormResponsesList, ResponseAnswerDetail,
     PublicFormDetail, FormResponse as FormSchema
 )
+from ..schemas.validation import PartialSubmissionCreate, AutoSaveResponse
+from ..services.validation_service import validation_service
+from ..services.analytics_service import analytics_service
+from ..services.webhook_service import webhook_service
+from ..middleware.rate_limiter import rate_limiter
 
 import logging
 
@@ -107,6 +112,130 @@ async def submit_form(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to submit form"
+        )
+
+
+@router.post("/public/forms/{token}/autosave", response_model=AutoSaveResponse)
+async def autosave_submission(
+    token: str,
+    submission: PartialSubmissionCreate,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """
+    Auto-save partial submission after each question.
+    No authentication required.
+    """
+    # Find public form by token
+    public_form = db.query(PublicForm).filter(
+        PublicForm.share_token == token,
+        PublicForm.is_public == True
+    ).first()
+    
+    if not public_form:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Form not found"
+        )
+    
+    # Get form
+    form = db.query(Form).filter(Form.id == public_form.form_id).first()
+    if not form:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Form not found"
+        )
+    
+    # Get client IP
+    client_ip = request.client.host if request.client else None
+    ip_hash = rate_limiter.hash_identifier(client_ip) if client_ip else "unknown"
+    
+    try:
+        # Find existing in-progress submission for this session
+        existing_response = db.query(FormResponse).filter(
+            FormResponse.form_id == form.id,
+            FormResponse.session_id == submission.session_id,
+            FormResponse.status.in_(["in_progress", "partial"])
+        ).first()
+        
+        if existing_response:
+            # Update existing response
+            existing_response.last_updated_at = datetime.utcnow()
+            existing_response.status = "in_progress"
+            
+            # Update answers
+            for answer_data in submission.answers:
+                # Check if answer exists
+                existing_answer = db.query(ResponseAnswer).filter(
+                    ResponseAnswer.form_response_id == existing_response.id,
+                    ResponseAnswer.form_question_id == answer_data.get('question_id')
+                ).first()
+                
+                if existing_answer:
+                    # Update existing answer
+                    existing_answer.answer_value = answer_data.get('answer_value', {})
+                else:
+                    # Create new answer
+                    new_answer = ResponseAnswer(
+                        form_response_id=existing_response.id,
+                        form_question_id=answer_data.get('question_id'),
+                        answer_value=answer_data.get('answer_value', {})
+                    )
+                    db.add(new_answer)
+            
+            form_response = existing_response
+        else:
+            # Create new form response
+            form_response = FormResponse(
+                form_id=form.id,
+                session_id=submission.session_id,
+                status="in_progress",
+                form_version=submission.form_version,
+                started_at=datetime.utcnow(),
+                last_updated_at=datetime.utcnow(),
+                ip_address=client_ip,
+                ip_address_hash=ip_hash,
+                utm_source=submission.utm_source,
+                utm_medium=submission.utm_medium,
+                utm_campaign=submission.utm_campaign,
+                submission_metadata=submission.metadata or {}
+            )
+            db.add(form_response)
+            db.flush()
+            
+            # Create answers
+            for answer_data in submission.answers:
+                answer = ResponseAnswer(
+                    form_response_id=form_response.id,
+                    form_question_id=answer_data.get('question_id'),
+                    answer_value=answer_data.get('answer_value', {})
+                )
+                db.add(answer)
+        
+        db.commit()
+        db.refresh(form_response)
+        
+        # Validate answers (non-blocking)
+        validation_result = validation_service.validate_submission(
+            db=db,
+            form_id=form.id,
+            answers=submission.answers,
+            is_complete=False
+        )
+        
+        return AutoSaveResponse(
+            success=True,
+            submission_id=form_response.id,
+            validation=validation_result,
+            message="Auto-saved successfully"
+        )
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Auto-save failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to auto-save"
         )
 
 

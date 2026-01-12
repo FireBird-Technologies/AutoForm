@@ -28,6 +28,8 @@ from .routes.credits import router as credits_router
 from .routes.plans import router as plans_router
 from .routes.forms import router as forms_router
 from .routes.responses import router as responses_router
+from .routes.analytics import router as analytics_router
+from .routes.users import router as users_router
 
 app = FastAPI(title="Backend", version="0.1.0")
 
@@ -112,6 +114,8 @@ app.include_router(plans_router)
 # Form routes
 app.include_router(forms_router)
 app.include_router(responses_router)
+app.include_router(analytics_router)
+app.include_router(users_router)
 
 # Initialize DB
 if os.getenv("AUTO_MIGRATE", "1") == "1":

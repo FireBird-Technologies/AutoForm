@@ -116,7 +116,7 @@ interface GlobalColorPickerProps {
 export const GlobalColorPicker: React.FC<GlobalColorPickerProps> = ({ colors, onChange }) => {
   return (
     <Popover className="relative">
-      {({ open }) => (
+      {() => (
         <>
           <Popover.Button
             style={{

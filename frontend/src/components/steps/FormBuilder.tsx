@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { QuestionEditor } from '../QuestionEditor';
 import { LoadingAnimation } from '../LoadingAnimation';
 import { ConditionModal } from '../ConditionModal';
@@ -15,7 +17,6 @@ interface FormBuilderProps {
 
 export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormData, onBack }) => {
   const [formData, setFormData] = useState(initialFormData);
-  const [answers, setAnswers] = useState<Record<number, any>>({});
   const [showSharePopup, setShowSharePopup] = useState(false);
   const [shareLink, setShareLink] = useState('');
   const [showQuestionEditor, setShowQuestionEditor] = useState(false);
@@ -228,12 +229,12 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
       }
 
       // Update local state
-      const updatedQuestions = formData.questions.map((q: any) =>
-        q.id === selectedQuestion.id ? { ...q, ...updates } : q
-      );
+    const updatedQuestions = formData.questions.map((q: any) =>
+      q.id === selectedQuestion.id ? { ...q, ...updates } : q
+    );
 
-      setFormData({ ...formData, questions: updatedQuestions });
-      setSelectedQuestion({ ...selectedQuestion, ...updates });
+    setFormData({ ...formData, questions: updatedQuestions });
+    setSelectedQuestion({ ...selectedQuestion, ...updates });
     } catch (err) {
       console.error('Failed to save question:', err);
       alert('Failed to save question. Please try again.');
@@ -371,9 +372,9 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
         // This will be handled by refetching the form
       } else {
         // Add at the end
-        const maxOrder = formData.questions?.length > 0
-          ? Math.max(...formData.questions.map((q: any) => q.question_order))
-          : -1;
+      const maxOrder = formData.questions?.length > 0
+        ? Math.max(...formData.questions.map((q: any) => q.question_order))
+        : -1;
         questionOrder = maxOrder + 1;
       }
 
@@ -417,7 +418,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
         throw new Error('Failed to add question');
       }
 
-      const newQuestion = await response.json();
+      await response.json();
       
       // Refresh form data
       const formResponse = await fetch(`${config.backendUrl}/api/forms/${formData.id}`, {
@@ -560,19 +561,14 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
 
   const visibleQuestionIds = evaluateConditionalLogic();
 
-  const handleAnswerChange = (questionId: number, value: any) => {
-    setAnswers(prev => ({
-      ...prev,
-      [questionId]: value
-    }));
-  };
-
   return (
     <div style={{
       height: '100vh',
+      maxHeight: '100vh',
       display: 'flex',
       flexDirection: 'column',
-      background: globalColors.background
+      background: globalColors.background,
+      overflow: 'hidden'
     }}>
       {/* Top Bar */}
       <div style={{
@@ -582,7 +578,9 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+        flexShrink: 0,
+        zIndex: 10
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1 }}>
           {onBack && (
@@ -746,7 +744,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                 </div>
               </div>
             )}
-          </div>
+        </div>
 
           {/* Text Color */}
           <div style={{ position: 'relative' }}>
@@ -831,10 +829,10 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
 
       {/* Main Content: Chat + Form side by side */}
       <div style={{
-        flex: 1,
+        flex: '1 1 0',
         display: 'flex',
+        position: 'relative',
         overflow: 'hidden',
-        height: 'calc(100vh - 80px)',
         minHeight: 0
       }}>
         {/* Collapsed Chat Toggle */}
@@ -843,11 +841,11 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
             onClick={() => setIsChatCollapsed(false)}
             style={{
               width: '40px',
-              background: '#ffffff',
+          background: '#ffffff',
               border: 'none',
               borderRight: '1px solid #e5e7eb',
               cursor: 'pointer',
-              display: 'flex',
+          display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               flexDirection: 'column',
@@ -882,14 +880,10 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
               maxWidth: '600px',
               borderRight: '1px solid #e5e7eb',
               background: '#ffffff',
-              display: 'flex',
-              flexDirection: 'column',
               position: 'relative',
               height: '100%',
-              maxHeight: '100%',
-              minHeight: 0,
-              overflowX: 'hidden',
-              overflowY: 'hidden'
+              flexShrink: 0,
+              overflow: 'hidden'
             }}
           >
             {/* Resize Handle */}
@@ -918,14 +912,20 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
               }}
             />
 
+            {/* Header - Fixed at top */}
           <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
             padding: '16px 20px',
-            borderBottom: '1px solid #e5e7eb',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexShrink: 0
-          }}>
+              borderBottom: '1px solid #e5e7eb',
+              background: '#ffffff',
+              zIndex: 5,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
               <div>
             <h3 style={{
               fontSize: '16px',
@@ -966,17 +966,18 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
               </button>
           </div>
 
-          {/* Chat Messages */}
-          <div style={{
-            flex: 1,
-            overflowY: 'auto',
-            overflowX: 'hidden',
-            padding: '20px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px',
-            minHeight: 0
-          }}>
+            {/* Chat Messages - Scrollable middle area */}
+            <div style={{
+              position: 'absolute',
+              top: '70px',
+              left: 0,
+              right: 0,
+              bottom: '130px',
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              padding: '16px 20px'
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {chatMessages.map((msg, idx) => (
               <div
                 key={idx}
@@ -991,16 +992,39 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                   fontSize: '12px',
                   fontWeight: '600',
                   color: msg.role === 'user' ? '#9333ea' : '#6b7280',
-                  marginBottom: '4px'
+                  marginBottom: '6px'
                 }}>
                   {msg.role === 'user' ? 'You' : 'Assistant'}
                 </div>
                 <div style={{
                   fontSize: '14px',
                   color: '#000000',
-                  lineHeight: '1.5'
+                  lineHeight: '1.6'
                 }}>
-                  {msg.content}
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      p: ({ children }) => <div style={{ margin: '0 0 8px 0' }}>{children}</div>,
+                      strong: ({ children }) => <strong style={{ fontWeight: '600' }}>{children}</strong>,
+                      em: ({ children }) => <em style={{ fontStyle: 'italic' }}>{children}</em>,
+                      code: ({ children }) => (
+                        <code style={{
+                          background: '#f3f4f6',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          fontSize: '13px',
+                          fontFamily: 'monospace'
+                        }}>
+                          {children}
+                        </code>
+                      ),
+                      ul: ({ children }) => <ul style={{ margin: '4px 0', paddingLeft: '20px' }}>{children}</ul>,
+                      ol: ({ children }) => <ol style={{ margin: '4px 0', paddingLeft: '20px' }}>{children}</ol>,
+                      li: ({ children }) => <li style={{ margin: '2px 0' }}>{children}</li>
+                    }}
+                  >
+                    {msg.content}
+                  </ReactMarkdown>
                 </div>
               </div>
             ))}
@@ -1018,69 +1042,69 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                 <span style={{ fontSize: '14px', color: '#6b7280' }}>Generating form...</span>
               </div>
             )}
+              </div>
           </div>
 
-          {/* Chat Input */}
+            {/* Chat Input - Fixed at bottom */}
           <div style={{
-            padding: '20px',
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              padding: '12px 20px 16px',
             borderTop: '1px solid #e5e7eb',
             background: '#ffffff',
-            flexShrink: 0
+              zIndex: 5
           }}>
             <div style={{
-              fontSize: '12px',
+                fontSize: '11px',
               fontWeight: '600',
               color: '#6b7280',
               textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              marginBottom: '8px'
+                letterSpacing: '0.05em',
+                marginBottom: '6px'
             }}>
               What changes do you need?
             </div>
-            <div style={{
-              position: 'relative',
-              width: '100%'
-            }}>
-              <textarea
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                placeholder="Add a question asking which events guests will attend..."
-                disabled={isGenerating}
-                style={{
-                  width: '100%',
-                  minHeight: '80px',
-                  maxHeight: '150px',
-                  padding: '12px 48px 12px 12px',
-                  fontSize: '14px',
-                  fontFamily: 'inherit',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                  outline: 'none',
-                  resize: 'vertical',
-                  background: '#ffffff',
-                  color: '#1f2937',
-                  boxShadow: '0 2px 8px rgba(147, 51, 234, 0.15)',
-                  display: 'block'
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#9333ea';
-                  e.target.style.boxShadow = '0 4px 12px rgba(147, 51, 234, 0.25)';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#e5e7eb';
-                  e.target.style.boxShadow = '0 2px 8px rgba(147, 51, 234, 0.15)';
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey && chatInput.trim() && !isGenerating) {
-                    e.preventDefault();
-                    handleChatEdit();
-                  }
-                }}
-              />
-              <button
+              <div style={{ position: 'relative' }}>
+            <textarea
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+                  placeholder="Describe changes..."
+              disabled={isGenerating}
+              style={{
+                width: '100%',
+                    height: '60px',
+                    padding: '10px 44px 10px 12px',
+                    fontSize: '14px',
+                fontFamily: 'inherit',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                outline: 'none',
+                resize: 'none',
+                    background: '#ffffff',
+                    color: '#1f2937',
+                    boxShadow: '0 2px 8px rgba(147, 51, 234, 0.15)'
+              }}
+              onFocus={(e) => {
+                    e.target.style.borderColor = '#9333ea';
+                    e.target.style.boxShadow = '0 4px 12px rgba(147, 51, 234, 0.25)';
+              }}
+              onBlur={(e) => {
+                    e.target.style.borderColor = '#e5e7eb';
+                    e.target.style.boxShadow = '0 2px 8px rgba(147, 51, 234, 0.15)';
+              }}
+              onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey && chatInput.trim() && !isGenerating) {
+                      e.preventDefault();
+                      handleChatEdit();
+                }
+              }}
+            />
+            <button
                 onClick={handleChatEdit}
-                disabled={!chatInput.trim() || isGenerating}
-                style={{
+              disabled={!chatInput.trim() || isGenerating}
+              style={{
                   position: 'absolute',
                   bottom: '8px',
                   right: '8px',
@@ -1090,13 +1114,13 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#ffffff',
-                  background: (!chatInput.trim() || isGenerating) ? '#d1d5db' : '#9333ea',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: (!chatInput.trim() || isGenerating) ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s'
-                }}
+                color: '#ffffff',
+                background: (!chatInput.trim() || isGenerating) ? '#d1d5db' : '#9333ea',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: (!chatInput.trim() || isGenerating) ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s'
+              }}
                 onMouseEnter={(e) => {
                   if (chatInput.trim() && !isGenerating) {
                     e.currentTarget.style.background = '#7e22ce';
@@ -1125,9 +1149,9 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                     <polygon points="22 2 15 22 11 13 2 9 22 2" />
                   </svg>
                 )}
-              </button>
-            </div>
+            </button>
           </div>
+        </div>
         </div>
         )}
 
@@ -1135,11 +1159,79 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
         <div style={{
           flex: 1,
           overflow: 'auto',
-          padding: '40px 24px 40px 64px',
+          padding: '0',
           background: globalColors.background,
           display: 'flex',
-          flexDirection: 'column'
+          flexDirection: 'column',
+          position: 'relative'
         }}>
+          {/* Form Title & Description - Sticky at top */}
+          <div style={{
+            position: 'sticky',
+            top: 0,
+            background: globalColors.background,
+            zIndex: 5,
+            padding: '40px 24px 24px 64px',
+            borderBottom: '1px solid #e5e7eb',
+            marginBottom: '24px'
+          }}>
+            <div style={{
+              maxWidth: '800px',
+              margin: '0 auto',
+              width: '100%'
+            }}>
+              <InlineEditableText
+                value={formData.title || 'Untitled Form'}
+                onChange={(value) => setFormData({ ...formData, title: value })}
+                placeholder="Form title"
+                isTitle={true}
+                style={{
+                  fontSize: '32px',
+                  fontWeight: '700',
+                  color: globalColors.text,
+                  lineHeight: '1.2',
+                  marginBottom: '8px',
+                  display: 'block'
+                }}
+              />
+              {formData.description && (
+                <InlineEditableText
+                  value={formData.description}
+                  onChange={(value) => setFormData({ ...formData, description: value })}
+                  placeholder="Add form description..."
+                  multiline={true}
+                  style={{
+                    fontSize: '16px',
+                    color: globalColors.text,
+                    opacity: 0.7,
+                    lineHeight: '1.5'
+                  }}
+                />
+              )}
+              {!formData.description && (
+                <div
+                  onClick={() => {
+                    // Add description on click
+                    const newDesc = prompt('Add form description:') || '';
+                    if (newDesc) {
+                      setFormData({ ...formData, description: newDesc });
+                    }
+                  }}
+                  style={{
+                    fontSize: '16px',
+                    color: globalColors.text,
+                    opacity: 0.4,
+                    lineHeight: '1.5',
+                    cursor: 'pointer',
+                    fontStyle: 'italic'
+                  }}
+                >
+                  Add description...
+                </div>
+              )}
+            </div>
+          </div>
+
           <div style={{
             maxWidth: '800px',
             margin: '0 auto',
@@ -1147,25 +1239,9 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
             flex: 1,
             display: 'flex',
             flexDirection: 'column',
-            paddingBottom: '100px',
+            padding: '0 24px 100px 64px',
             position: 'relative'
           }}>
-          {/* Form Title */}
-          <div style={{ marginBottom: '48px' }}>
-            <InlineEditableText
-              value={formData.title || 'Untitled Form'}
-              onChange={(value) => setFormData({ ...formData, title: value })}
-              placeholder="Form title"
-              isTitle={true}
-              style={{
-                fontSize: '32px',
-                fontWeight: '700',
-                color: globalColors.text,
-                lineHeight: '1.2',
-                marginBottom: '8px'
-              }}
-            />
-          </div>
           {isGenerating && (!formData.questions || formData.questions.length === 0) ? (
             <LoadingAnimation />
           ) : formData.questions && formData.questions.length > 0 ? (
@@ -1585,7 +1661,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
 
                 {/* Side Add Button After Last Question */}
                 {formData.questions && formData.questions.length > 0 && (
-                  <div style={{
+                <div style={{
                     position: 'relative',
                     padding: '48px 0',
                     marginTop: '24px'
@@ -1595,10 +1671,10 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                         setInsertAtIndex(null);
                         setShowComponentPicker(true);
                       }}
-                      disabled={isGenerating}
+                    disabled={isGenerating}
                       position="right"
-                    />
-                  </div>
+                  />
+                </div>
                 )}
 
               {/* Submit Button Preview */}

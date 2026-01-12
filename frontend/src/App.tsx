@@ -1,16 +1,20 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { config, getAuthHeaders } from './config';
 import { Navbar } from './components/Navbar';
+import { Sidebar } from './components/Sidebar';
 import { Landing } from './components/Landing';
 import { Account } from './components/Account';
 import { PricingPage } from './pages/PricingPage';
 import { SubscriptionResult } from './pages/SubscriptionResult';
 import { PublicForm } from './pages/PublicForm';
 import { FormResponses } from './pages/FormResponses';
+import { FormAnalytics } from './pages/FormAnalytics';
 import { FormPlanner } from './components/steps/FormPlanner';
 import { FormBuilder } from './components/steps/FormBuilder';
 import { CreditsProvider } from './contexts/CreditsContext';
 import { NotificationProvider } from './contexts/NotificationContext';
+import { SidebarProvider } from './contexts/SidebarContext';
 import { NewYearBanner } from './components/NewYearBanner';
 
 function AuthHandler() {
@@ -40,8 +44,51 @@ function AuthHandler() {
 }
 
 function FormBuilderPage() {
+  const location = useLocation();
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Check if we're loading an existing form from sidebar
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.formId) {
+      loadExistingForm(state.formId);
+    }
+  }, [location.state]);
+
+  const loadExistingForm = async (formId: number) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${config.backendUrl}/api/forms/${formId}`, {
+        headers: getAuthHeaders(),
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setFormData(data);
+        setCurrentStep(1);
+      }
+    } catch (error) {
+      console.error('Failed to load form:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div className="loading-spinner" style={{ width: 40, height: 40 }} />
+      </div>
+    );
+  }
 
   const renderStep = () => {
     switch (currentStep) {
@@ -75,16 +122,27 @@ function FormBuilderPage() {
 
 function AppRoutes() {
   const navigate = useNavigate();
+  const location = useLocation();
   const isAuthenticated = !!localStorage.getItem('auth_token');
+  
+  // Paths that should show sidebar
+  const showSidebar = isAuthenticated && ![
+    '/',
+    '/pricing',
+    '/subscription',
+    '/account'
+  ].includes(location.pathname) && !location.pathname.startsWith('/public/');
 
   return (
     <>
       <AuthHandler />
       <NewYearBanner />
       <Navbar onAccountClick={() => navigate('/account')} />
-      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <Routes>
-          <Route path="/" element={<Landing onStart={() => navigate('/build')} />} />
+      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'row' }}>
+        {showSidebar && <Sidebar />}
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <Routes>
+            <Route path="/" element={<Landing onStart={() => navigate('/build')} />} />
           
           {/* Form Builder Routes */}
           <Route 
@@ -102,6 +160,16 @@ function AppRoutes() {
             element={
               isAuthenticated ? (
                 <FormResponses />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            } 
+          />
+          <Route 
+            path="/forms/:formId/analytics" 
+            element={
+              isAuthenticated ? (
+                <FormAnalytics />
               ) : (
                 <Navigate to="/" replace />
               )
@@ -139,7 +207,8 @@ function AppRoutes() {
           />
           
           <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+          </Routes>
+        </div>
       </div>
     </>
   );
@@ -149,11 +218,13 @@ export default function App() {
   return (
     <Router>
       <NotificationProvider>
-        <CreditsProvider>
-      <div className="app-container">
-        <AppRoutes />
-      </div>
-        </CreditsProvider>
+        <SidebarProvider>
+          <CreditsProvider>
+            <div className="app-container">
+              <AppRoutes />
+            </div>
+          </CreditsProvider>
+        </SidebarProvider>
       </NotificationProvider>
     </Router>
   );

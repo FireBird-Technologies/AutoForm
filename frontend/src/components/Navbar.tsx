@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { config, getAuthHeaders, checkAuthResponse } from '../config';
 import { useCreditsContext } from '../contexts/CreditsContext';
 import { useNotification } from '../contexts/NotificationContext';
+import { useSidebar } from '../contexts/SidebarContext';
 import { RecentForms } from './RecentForms';
 
 interface NavbarProps {
@@ -19,12 +20,22 @@ export const Navbar: React.FC<NavbarProps> = ({ onAccountClick }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const notification = useNotification();
+  const { toggleSidebar } = useSidebar();
   const [user, setUser] = useState<UserInfo | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { credits, loading: creditsLoading } = useCreditsContext();
   
   const isBuildPage = location.pathname === '/build';
+  
+  // Check if sidebar should be available (authenticated pages only)
+  const isAuthenticated = !!localStorage.getItem('auth_token');
+  const showSidebarToggle = isAuthenticated && ![
+    '/',
+    '/pricing',
+    '/subscription',
+    '/account'
+  ].includes(location.pathname) && !location.pathname.startsWith('/public/');
 
   const handleLoadRecentForm = (metadata: any) => {
     // Navigate to build page with the form ID
@@ -122,16 +133,50 @@ export const Navbar: React.FC<NavbarProps> = ({ onAccountClick }) => {
 
   return (
     <nav className="navbar">
-      <div className="brand" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
-        <img 
-          src="/logo.svg" 
-          alt="Logo" 
-          className="logo" 
-          style={{
-            width: '150px',
-            height: 'auto'
-          }}
-        />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {showSidebarToggle && (
+          <button
+            onClick={toggleSidebar}
+            title="Toggle sidebar"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '6px',
+              color: '#6b7280',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#f3f4f6';
+              e.currentTarget.style.color = '#9333ea';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = '#6b7280';
+            }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+        )}
+        <div className="brand" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
+          <img 
+            src="/logo.svg" 
+            alt="Logo" 
+            className="logo" 
+            style={{
+              width: '150px',
+              height: 'auto'
+            }}
+          />
+        </div>
       </div>
 
       <div className="navbar-right">

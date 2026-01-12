@@ -204,21 +204,25 @@ export const AddQuestionButton: React.FC<AddQuestionButtonProps> = ({ onAdd, dis
                               <Listbox.Option
                                 key={type.id}
                                 value={type}
-                                style={({ active }) => ({
+                                className={({ active }: { active: boolean }) => 
+                                  active ? 'bg-purple-50' : ''
+                                }
+                                style={{
                                   padding: '12px 16px',
                                   cursor: 'pointer',
                                   display: 'flex',
                                   alignItems: 'center',
                                   gap: '12px',
-                                  background: active ? '#faf5ff' : 'transparent',
-                                  color: active ? '#9333ea' : '#1f2937',
                                   fontSize: '15px'
-                                })}
+                                }}
                               >
-                                {({ selected }) => (
+                                {({ selected, active }: { selected: boolean; active: boolean }) => (
                                   <>
                                     <span style={{ fontSize: '20px' }}>{type.icon}</span>
-                                    <span style={{ flex: 1 }}>{type.name}</span>
+                                    <span style={{ 
+                                      flex: 1,
+                                      color: active ? '#9333ea' : '#1f2937'
+                                    }}>{type.name}</span>
                                     {selected && (
                                       <svg
                                         width="16"

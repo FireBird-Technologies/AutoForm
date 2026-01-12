@@ -7,7 +7,6 @@ interface FormPlannerProps {
 export const FormPlanner: React.FC<FormPlannerProps> = ({ onComplete }) => {
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
-  const [isFocused, setIsFocused] = useState(false);
 
   const examples = [
     'Create a customer feedback form with rating and comments',
@@ -82,12 +81,10 @@ export const FormPlanner: React.FC<FormPlannerProps> = ({ onComplete }) => {
                 setError('');
               }}
               onFocus={(e) => {
-                setIsFocused(true);
                 e.target.style.borderColor = '#9333ea';
                 e.target.style.boxShadow = '0 4px 12px rgba(147, 51, 234, 0.25)';
               }}
               onBlur={(e) => {
-                setIsFocused(false);
                 e.target.style.borderColor = '#e5e7eb';
                 e.target.style.boxShadow = '0 2px 8px rgba(147, 51, 234, 0.15)';
               }}

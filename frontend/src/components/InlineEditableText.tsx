@@ -69,7 +69,7 @@ export const InlineEditableText: React.FC<InlineEditableTextProps> = ({
     width: '100%',
     padding: '8px 12px',
     fontSize: isTitle ? '18px' : isDescription ? '14px' : '16px',
-    fontWeight: isTitle ? '600' : '400',
+    fontWeight: isTitle ? (style.fontWeight || '700') : (style.fontWeight || '400'),
     fontFamily: 'inherit',
     border: '2px solid #9333ea',
     borderRadius: '6px',
@@ -85,7 +85,8 @@ export const InlineEditableText: React.FC<InlineEditableTextProps> = ({
     ...baseStyle,
     padding: '4px 8px',
     margin: '-4px -8px',
-    display: 'block'
+    display: 'block',
+    fontWeight: isTitle ? (style.fontWeight || '700') : (style.fontWeight || '400')
   };
 
   if (isEditing) {
