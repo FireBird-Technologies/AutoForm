@@ -9,11 +9,11 @@ interface FunnelStep {
 
 interface FunnelChartProps {
   stages: FunnelStep[];
-  totalViews: number;
+  totalViews?: number;
   height?: number;
 }
 
-export const FunnelChart: React.FC<FunnelChartProps> = ({ stages, totalViews, height = 400 }) => {
+export const FunnelChart: React.FC<FunnelChartProps> = ({ stages, height = 400 }) => {
   if (!stages || stages.length === 0) {
     return (
       <div style={{
@@ -32,7 +32,6 @@ export const FunnelChart: React.FC<FunnelChartProps> = ({ stages, totalViews, he
   return (
     <div style={{ width: '100%' }}>
       {stages.map((stage, index) => {
-        const isFirst = index === 0;
         const isLast = index === stages.length - 1;
         const showDropOff = !isLast && stage.dropOff !== undefined && stage.dropOff > 0;
 

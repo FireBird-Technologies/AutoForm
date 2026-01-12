@@ -237,7 +237,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
               Questions
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {questions.slice(0, 5).map((q, idx) => {
+              {questions.slice(0, 5).map((q) => {
                 const isActive = filters.questionIds?.includes(q.id) || false;
                 const label = q.question_text.substring(0, 20);
                 return (
