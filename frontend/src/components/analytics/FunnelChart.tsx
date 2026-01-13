@@ -138,7 +138,7 @@ export const FunnelChart: React.FC<FunnelChartProps> = ({ stages, height = 400 }
                 fontWeight: '500',
                 color: '#6b7280'
               }}>
-                {stage.dropOff && stage.dropOff > 0 ? `-${stage.dropOff.toFixed(0)}% drop-off` : ''}
+                {stage.dropOff && stage.dropOff > 0 ? `${stage.dropOff.toFixed(0)}% drop-off` : ''}
               </div>
             )}
           </div>

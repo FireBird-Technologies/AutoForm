@@ -365,11 +365,8 @@ export const FormAnalyticsNew: React.FC = () => {
             <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '6px', fontWeight: '600' }}>
               Total Submissions
             </div>
-            <div style={{ fontSize: '28px', fontWeight: '700', color: '#9333ea', marginBottom: '2px' }}>
+            <div style={{ fontSize: '28px', fontWeight: '700', color: '#9333ea' }}>
               {(summary?.total_responses || 0).toLocaleString()}
-            </div>
-            <div style={{ fontSize: '11px', color: '#10b981', fontWeight: '500' }}>
-              +12% from last period
             </div>
           </div>
 
@@ -383,11 +380,8 @@ export const FormAnalyticsNew: React.FC = () => {
             <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '6px', fontWeight: '600' }}>
               Total Views
             </div>
-            <div style={{ fontSize: '28px', fontWeight: '700', color: '#9333ea', marginBottom: '2px' }}>
+            <div style={{ fontSize: '28px', fontWeight: '700', color: '#9333ea' }}>
               {(funnel?.total_views || 0).toLocaleString()}
-            </div>
-            <div style={{ fontSize: '11px', color: '#10b981', fontWeight: '500' }}>
-              +8% from last period
             </div>
           </div>
 
@@ -401,11 +395,8 @@ export const FormAnalyticsNew: React.FC = () => {
             <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '6px', fontWeight: '600' }}>
               Conversion Rate
             </div>
-            <div style={{ fontSize: '28px', fontWeight: '700', color: '#9333ea', marginBottom: '2px' }}>
+            <div style={{ fontSize: '28px', fontWeight: '700', color: '#9333ea' }}>
               {conversionRate.toFixed(1)}%
-            </div>
-            <div style={{ fontSize: '11px', color: '#10b981', fontWeight: '500' }}>
-              +2.1% from last period
             </div>
           </div>
         </div>

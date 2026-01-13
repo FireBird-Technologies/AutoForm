@@ -312,31 +312,6 @@ export const FormResponsesNew: React.FC = () => {
                 padding: '10px 20px',
                 fontSize: '14px',
                 fontWeight: '600',
-                color: '#6b7280',
-                background: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                transition: 'all 0.15s'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >
-              ↓ Export CSV
-            </button>
-            <button
-              onClick={() => handleExport('json')}
-              style={{
-                padding: '10px 20px',
-                fontSize: '14px',
-                fontWeight: '600',
                 color: 'white',
                 background: '#9333ea',
                 border: 'none',
@@ -351,6 +326,31 @@ export const FormResponsesNew: React.FC = () => {
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = '#9333ea';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              ↓ Export CSV
+            </button>
+            <button
+              onClick={() => handleExport('json')}
+              style={{
+                padding: '10px 20px',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: '#6b7280',
+                background: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                transition: 'all 0.15s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
                 e.currentTarget.style.transform = 'translateY(0)';
               }}
             >
