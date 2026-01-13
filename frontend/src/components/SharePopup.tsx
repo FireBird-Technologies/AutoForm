@@ -97,7 +97,7 @@ export const SharePopup: React.FC<SharePopupProps> = ({
           color: '#6b7280',
           fontSize: '14px'
         }}>
-          Share this link to allow others to view your dashboard
+          Publish this link to allow others to view your dashboard
         </p>
 
         {expiresAt && (

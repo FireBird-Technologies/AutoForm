@@ -19,8 +19,8 @@ interface FormBuilderProps {
 export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormData, onBack }) => {
   const { isOpen: isSidebarOpen } = useSidebar();
   const [formData, setFormData] = useState(initialFormData);
-  const [showSharePopup, setShowSharePopup] = useState(false);
-  const [shareLink, setShareLink] = useState('');
+  const [showPublishPopup, setShowPublishPopup] = useState(false);
+  const [publishLink, setPublishLink] = useState('');
   const [showQuestionEditor, setShowQuestionEditor] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<any>(null);
   const [isGenerating, setIsGenerating] = useState(initialFormData.isGenerating || false);
@@ -452,9 +452,9 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
     }
   };
 
-  const handleShare = async () => {
+  const handlePublish = async () => {
     try {
-      const response = await fetch(`${config.backendUrl}/api/forms/${formData.id}/share`, {
+      const response = await fetch(`${config.backendUrl}/api/forms/${formData.id}/publish`, {
         method: 'POST',
         headers: getAuthHeaders({
           'Content-Type': 'application/json'
@@ -470,23 +470,23 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
       if (response.ok) {
         const data = await response.json();
         const link = `${window.location.origin}/forms/${data.share_token}`;
-        setShareLink(link);
-        setShowSharePopup(true);
+        setPublishLink(link);
+        setShowPublishPopup(true);
       } else {
         const errorData = await response.json().catch(() => ({}));
-        console.error('Share failed:', errorData);
-        alert('Failed to create share link. Please try again.');
+        console.error('Publish failed:', errorData);
+        alert('Failed to create publish link. Please try again.');
       }
     } catch (error) {
-      console.error('Failed to create share link:', error);
-      alert('Failed to create share link. Please try again.');
+      console.error('Failed to create publish link:', error);
+      alert('Failed to create publish link. Please try again.');
     }
   };
 
   const handlePreview = async () => {
     try {
-      // First create/get share link
-      const response = await fetch(`${config.backendUrl}/api/forms/${formData.id}/share`, {
+      // First create/get publish link
+      const response = await fetch(`${config.backendUrl}/api/forms/${formData.id}/publish`, {
         method: 'POST',
         headers: getAuthHeaders({
           'Content-Type': 'application/json'
@@ -512,8 +512,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
         }
   };
 
-  const copyShareLink = () => {
-    navigator.clipboard.writeText(shareLink);
+  const copyPublishLink = () => {
+    navigator.clipboard.writeText(publishLink);
     alert('Link copied to clipboard!');
   };
 
@@ -889,7 +889,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
         </div>
 
           <button
-            onClick={handleShare}
+            onClick={handlePublish}
             style={{
               padding: '8px 16px',
               fontSize: '14px',
@@ -901,7 +901,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
               cursor: 'pointer'
             }}
           >
-            Share
+            Publish
           </button>
         </div>
       </div>
@@ -1824,8 +1824,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
         </div>
       </div>
 
-      {/* Share Popup */}
-      {showSharePopup && (
+      {/* Publish Popup */}
+      {showPublishPopup && (
         <div style={{
           position: 'fixed',
           top: 0,
@@ -1851,7 +1851,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
               color: '#000000',
               marginBottom: '16px'
             }}>
-              Share Your Form
+              Publish Your Form
             </h3>
             <p style={{
               fontSize: '14px',
@@ -1867,7 +1867,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
             }}>
               <input
                 type="text"
-                value={shareLink}
+                value={publishLink}
                 readOnly
                 style={{
                   flex: 1,
@@ -1879,7 +1879,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                 }}
               />
               <button
-                onClick={copyShareLink}
+                onClick={copyPublishLink}
                 style={{
                   padding: '10px 20px',
                   fontSize: '14px',
@@ -1895,7 +1895,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
               </button>
             </div>
             <button
-              onClick={() => setShowSharePopup(false)}
+              onClick={() => setShowPublishPopup(false)}
               style={{
                 width: '100%',
                 padding: '10px',

@@ -50,9 +50,11 @@ dspy.configure(lm=default_lm)
 
 # CORS middleware - allow frontend to access backend
 frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+# Support multiple origins (local dev + production)
+allowed_origins = [origin.strip() for origin in frontend_url.split(",") if origin.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[frontend_url],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

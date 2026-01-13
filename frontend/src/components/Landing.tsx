@@ -141,7 +141,7 @@ export const Landing: React.FC<LandingProps> = ({ onStart }) => {
                 </svg>
               }
               title="Easy Sharing"
-              description="Generate shareable links instantly. No login required for respondents. Collect responses from anyone, anywhere."
+              description="Generate publishable links instantly. No login required for respondents. Collect responses from anyone, anywhere."
             />
             <FeatureCard
               icon={
@@ -211,10 +211,10 @@ export const Landing: React.FC<LandingProps> = ({ onStart }) => {
             />
             <WorkflowStep
               number="03"
-              title="Share & Collect"
+              title="Publish & Collect"
               description="Publish your form and start collecting responses."
               details={[
-                "Generate shareable link instantly",
+                "Generate publishable link instantly",
                 "No login required for respondents",
                 "Real-time response tracking",
                 "Export responses as CSV or JSON"
@@ -224,7 +224,7 @@ export const Landing: React.FC<LandingProps> = ({ onStart }) => {
         </div>
       </section>
 
-      {/* Share with the World */}
+      {/* Publish with the World */}
       <section className="sharing-section" style={{
         padding: '80px 20px',
         background: '#ffffff'
@@ -372,7 +372,7 @@ export const Landing: React.FC<LandingProps> = ({ onStart }) => {
                 textTransform: 'uppercase',
                 letterSpacing: '0.5px'
               }}>
-                Share Instantly
+                Publish Instantly
               </div>
               <h2 style={{
                 fontSize: '2.2rem',
@@ -381,7 +381,7 @@ export const Landing: React.FC<LandingProps> = ({ onStart }) => {
                 marginBottom: '16px',
                 lineHeight: 1.2
               }}>
-                Share your forms with anyone
+                Publish your forms with anyone
               </h2>
               <p style={{
                 fontSize: '1.1rem',
@@ -389,7 +389,7 @@ export const Landing: React.FC<LandingProps> = ({ onStart }) => {
                 lineHeight: 1.7,
                 marginBottom: '24px'
               }}>
-                Generate a public link and share your forms with anyone - no login required for respondents. 
+                Generate a public link and publish your forms with anyone - no login required for respondents. 
                 Perfect for surveys, registrations, applications, and collecting feedback from anyone.
               </p>
               <div style={{
@@ -411,7 +411,7 @@ export const Landing: React.FC<LandingProps> = ({ onStart }) => {
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                   </div>
-                  <span style={{ color: '#374151', fontSize: '15px' }}>One-click shareable links</span>
+                  <span style={{ color: '#374151', fontSize: '15px' }}>One-click publishable links</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{

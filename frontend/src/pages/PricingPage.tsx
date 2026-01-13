@@ -44,7 +44,7 @@ const FAQS: FAQ[] = [
   },
   {
     question: "What's the difference between Free and paid plans?",
-    answer: "Paid plans (Pro and Ultra) get access to the latest AI models, higher credit limits, priority support, and advanced features. Free plans use standard models with limited credits. Additionally, shared forms on free plans expire after 24 hours, while paid plans have permanent forms."
+    answer: "Paid plans (Pro and Ultra) get access to the latest AI models, higher credit limits, priority support, and advanced features. Free plans use standard models with limited credits. Additionally, published forms on free plans expire after 24 hours, while paid plans have permanent forms."
   },
   {
     question: "Can I cancel anytime?",

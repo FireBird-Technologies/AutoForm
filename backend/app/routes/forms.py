@@ -538,15 +538,15 @@ async def delete_conditional_rule(
     return None
 
 
-# Public sharing endpoint
-@router.post("/{form_id}/share", response_model=PublicFormResponse)
-async def share_form(
+# Public publishing endpoint
+@router.post("/{form_id}/publish", response_model=PublicFormResponse)
+async def publish_form(
     form_id: int,
     share_data: PublicFormCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Create a public shareable link for a form"""
+    """Create a public publishable link for a form"""
     form = db.query(Form).filter(
         Form.id == form_id,
         Form.user_id == current_user.id
@@ -566,7 +566,7 @@ async def share_form(
     if existing:
         return PublicFormResponse.model_validate(existing)
     
-    # Generate unique share token
+    # Generate unique publish token
     share_token = secrets.token_urlsafe(32)
     
     public_form = PublicForm(
@@ -587,13 +587,13 @@ async def share_form(
     return PublicFormResponse.model_validate(public_form)
 
 
-@router.get("/{form_id}/share", response_model=PublicFormResponse)
-async def get_share_info(
+@router.get("/{form_id}/publish", response_model=PublicFormResponse)
+async def get_publish_info(
     form_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get public share information for a form"""
+    """Get public publish information for a form"""
     form = db.query(Form).filter(
         Form.id == form_id,
         Form.user_id == current_user.id
