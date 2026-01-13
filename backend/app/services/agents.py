@@ -264,6 +264,96 @@ class FormEditorSignature(dspy.Signature):
     changes_made = dspy.OutputField(desc="Summary of changes applied")
 
 
+class QuestionEditorSignature(dspy.Signature):
+    """
+    Edit/regenerate a single question component based on user's edit instructions.
+    
+    This signature is specifically designed for editing individual questions/components.
+    It takes the current component state and user's edit prompt, then generates a new
+    component specification that may have a different type and/or updated metadata.
+    
+    INPUT:
+    - current_question_type: The current question type (e.g., "short_answer", "multiple_choice", "checkboxes")
+    - current_question_text: Current question text/label
+    - current_description: Current description/helper text (if any)
+    - current_settings: Current component settings as JSON (choices, validation, etc.)
+    - current_required: Whether the question is currently required
+    - user_edit_prompt: User's instruction for how to edit the question (e.g., "Make this a long text", "Add more options", "Change to multiple choice")
+    - form_context: Context about the form (title, description, other questions)
+    
+    OUTPUT FORMAT (JSON):
+    {
+        "question_type": "new_or_same_type",  // Can be same or different type based on user's request
+        "question_text": "Updated question text (markdown supported)",
+        "description": "Updated description (markdown supported, optional)",
+        "required": true/false,
+        "settings": {
+            // Type-specific settings matching the NEW question_type
+            "choices": ["Option 1", "Option 2"],  // For multiple_choice, checkboxes, dropdown
+            "min_value": 1,  // For number, linear_scale
+            "max_value": 10,
+            "placeholder": "Enter text here",  // For text inputs
+            "scale_min_label": "Not at all",  // For linear_scale
+            "scale_max_label": "Extremely",
+            "rows": ["Row 1", "Row 2"],  // For matrix (MUST be array of strings)
+            "columns": ["Col 1", "Col 2"],  // For matrix (MUST be array of strings)
+            "file_types": [".pdf", ".doc"],  // For file_upload
+            "max_file_size": 5242880,  // bytes
+            "ranking_items": ["Item 1", "Item 2"]  // For ranking (MUST be array of strings)
+        }
+    }
+    
+    QUESTION TYPES (use exact strings):
+    - short_answer: Single line text
+    - long_answer: Multi-line text
+    - multiple_choice: Radio buttons (one selection)
+    - checkboxes: Multiple selections
+    - dropdown: Select dropdown
+    - multi_select: Multi-select dropdown
+    - number: Numeric input
+    - email: Email validation
+    - phone: Phone number
+    - link: URL input
+    - file_upload: File attachment
+    - date: Date picker
+    - time: Time picker
+    - linear_scale: Scale (1-10)
+    - matrix: Grid questions
+    - rating: Star rating
+    - payment: Payment field
+    - signature: Digital signature
+    - ranking: Rank items
+    - wallet_connect: Web3 wallet
+    - button: Custom action button
+    
+    RULES:
+    1. **FOLLOW USER'S EDIT INSTRUCTIONS PRECISELY** - If user says "make this a long text", change type to "long_answer"
+    2. **PRESERVE EXISTING DATA WHEN APPROPRIATE** - If user doesn't specify changing type, keep the same type unless it makes sense to change
+    3. **UPDATE SETTINGS TO MATCH NEW TYPE** - If type changes, generate appropriate settings for the new type
+    4. **PRESERVE USER'S TERMINOLOGY** - Keep exact terms from current question unless user explicitly asks to change them
+    5. **GENERATE COMPLETE SETTINGS** - Always provide complete settings for the question type (e.g., all choices for multiple_choice)
+    6. **MAINTAIN CONSISTENCY** - Keep question text, description style consistent with form context
+    7. **SUPPORT MARKDOWN** - Question text and description support markdown (use **bold**, *italic*, etc.)
+    8. **CRITICAL: rows, columns, ranking_items MUST be arrays of strings**, never integers
+    9. If user asks to "add more options" or "add choices", expand the choices array
+    10. If user asks to change type, ensure settings match the new type requirements
+    
+    EXAMPLES:
+    - User says "Make this a long text" → Change type to "long_answer", remove choices if present
+    - User says "Add more options" → Keep type, add more items to choices array
+    - User says "Change to multiple choice" → Change type to "multiple_choice", generate appropriate choices
+    - User says "Make it required" → Keep everything same, set required=true
+    """
+    current_question_type = dspy.InputField(desc="Current question type")
+    current_question_text = dspy.InputField(desc="Current question text")
+    current_description = dspy.InputField(desc="Current description (can be empty)")
+    current_settings = dspy.InputField(desc="Current settings as JSON string")
+    current_required = dspy.InputField(desc="Whether question is currently required (true/false)")
+    user_edit_prompt = dspy.InputField(desc="User's instruction for editing the question")
+    form_context = dspy.InputField(desc="Form context (title, description, other questions)")
+    question_spec = dspy.OutputField(desc="Complete JSON question specification with potentially new type and metadata")
+
+
 class ComponentMatcherSignature(dspy.Signature):
     """Match user query to a specific component in the form. Return component_id or null."""
     query = dspy.InputField(desc="user query about a component")

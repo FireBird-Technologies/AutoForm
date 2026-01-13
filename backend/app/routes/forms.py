@@ -410,35 +410,35 @@ async def regenerate_question(
         # Get user's edit prompt
         user_prompt = context.get("prompt", context.get("context", "Improve this question"))
         
-        # Import the signature for question generation
-        from ..services.agents import FormQuestionGeneratorSignature
+        # Import the signature for question editing
+        from ..services.agents import QuestionEditorSignature
         import dspy
+        import json
         
-        # Create context for regeneration with user's instructions
-        question_context = {
-            "brief": f"Edit this question based on user instructions: '{user_prompt}'. Current question: '{question.question_text}'. Current type: {question.question_type}. Current description: '{question.description or 'None'}'",
-            "index": question.question_order,
-            "form_context": {
-                "title": form.title,
-                "description": form.description,
-                "existing_questions": [q.question_text for q in form.questions if q.id != question_id],
-                "user_edit_instructions": user_prompt
-            }
+        # Prepare form context
+        form_context = {
+            "title": form.title,
+            "description": form.description,
+            "existing_questions": [q.question_text for q in form.questions if q.id != question_id]
         }
         
-        # Generate new question spec
-        generator = dspy.Predict(FormQuestionGeneratorSignature)
-        result = generator(
-            question_context=str(question_context),
-            form_title=form.title
+        # Generate new question spec using the editor signature
+        editor = dspy.Predict(QuestionEditorSignature)
+        result = editor(
+            current_question_type=str(question.question_type.value),
+            current_question_text=question.question_text,
+            current_description=question.description or "",
+            current_settings=json.dumps(question.settings) if question.settings else "{}",
+            current_required=str(question.required).lower(),
+            user_edit_prompt=user_prompt,
+            form_context=json.dumps(form_context)
         )
         
         # Parse and validate the result
-        import json
         question_spec = json.loads(result.question_spec)
         
         # Update the question
-        question.question_text = question_spec.get("text", question.question_text)
+        question.question_text = question_spec.get("question_text", question.question_text)
         question.description = question_spec.get("description")
         question.required = question_spec.get("required", question.required)
         

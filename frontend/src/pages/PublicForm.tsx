@@ -362,7 +362,15 @@ export const PublicForm: React.FC = () => {
             marginBottom: '16px',
             lineHeight: '1.2'
           }}>
-            {formData.title}
+            <ReactMarkdown 
+              remarkPlugins={[remarkGfm]}
+              components={{
+                p: ({ children }) => <span style={{ margin: 0 }}>{children}</span>,
+                strong: ({ children }) => <strong style={{ color: boldTextColor }}>{children}</strong>
+              }}
+            >
+              {formData.title}
+            </ReactMarkdown>
           </h1>
           {formData.description && (
             <div style={{
@@ -371,7 +379,13 @@ export const PublicForm: React.FC = () => {
               opacity: 0.7,
               lineHeight: '1.6'
             }}>
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              <ReactMarkdown 
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  p: ({ children }) => <span style={{ margin: 0 }}>{children}</span>,
+                  strong: ({ children }) => <strong style={{ color: boldTextColor }}>{children}</strong>
+                }}
+              >
                 {formData.description}
               </ReactMarkdown>
             </div>
