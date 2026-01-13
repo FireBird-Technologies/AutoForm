@@ -6,8 +6,11 @@ export const WalletConnect: React.FC<QuestionProps> = ({
   value,
   onChange,
   disabled = false,
-  hideLabel = false
+  hideLabel = false,
+  accentColor = '#9333ea',
+  boldTextColor
 }) => {
+  const effectiveAccent = boldTextColor || accentColor;
   const [isConnected, setIsConnected] = useState(!!value?.wallet_address);
   const walletAddress = value?.wallet_address || '';
 
@@ -47,7 +50,7 @@ export const WalletConnect: React.FC<QuestionProps> = ({
             letterSpacing: '-0.01em'
           }}>
             {question.question_text}
-            {question.required && <span style={{ color: '#9333ea', marginLeft: '4px' }}>*</span>}
+            {question.required && <span style={{ color: effectiveAccent, marginLeft: '4px' }}>*</span>}
           </label>
           {question.description && (
             <p style={{
@@ -73,15 +76,15 @@ export const WalletConnect: React.FC<QuestionProps> = ({
               fontSize: '15px',
               fontWeight: '500',
               color: '#ffffff',
-              background: '#9333ea',
+              background: effectiveAccent,
               border: 'none',
               borderRadius: '8px',
               cursor: disabled ? 'not-allowed' : 'pointer',
               transition: 'all 0.2s',
               fontFamily: 'inherit'
             }}
-            onMouseEnter={(e) => !disabled && (e.currentTarget.style.background = '#7e22ce')}
-            onMouseLeave={(e) => !disabled && (e.currentTarget.style.background = '#9333ea')}
+            onMouseEnter={(e) => !disabled && (e.currentTarget.style.background = effectiveAccent + 'dd')}
+            onMouseLeave={(e) => !disabled && (e.currentTarget.style.background = effectiveAccent)}
           >
             Connect Wallet
           </button>
@@ -91,14 +94,14 @@ export const WalletConnect: React.FC<QuestionProps> = ({
             alignItems: 'center',
             gap: '12px',
             padding: '12px 16px',
-            background: '#faf5ff',
-            border: '1px solid #e9d5ff',
+            background: `${effectiveAccent}10`,
+            border: `1px solid ${effectiveAccent}40`,
             borderRadius: '8px'
           }}>
             <div style={{
               flex: 1,
               fontSize: '14px',
-              color: '#7e22ce',
+              color: effectiveAccent,
               fontFamily: 'monospace'
             }}>
               Connected: {walletAddress.substring(0, 6)}...{walletAddress.substring(38)}
@@ -120,8 +123,8 @@ export const WalletConnect: React.FC<QuestionProps> = ({
                   fontFamily: 'inherit'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = '#9333ea';
-                  e.currentTarget.style.color = '#9333ea';
+                  e.currentTarget.style.borderColor = effectiveAccent;
+                  e.currentTarget.style.color = effectiveAccent;
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.borderColor = '#e5e7eb';

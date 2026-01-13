@@ -6,8 +6,11 @@ export const Signature: React.FC<QuestionProps> = ({
   value,
   onChange,
   disabled = false,
-  hideLabel = false
+  hideLabel = false,
+  accentColor = '#9333ea',
+  boldTextColor
 }) => {
+  const effectiveAccent = boldTextColor || accentColor;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(!!value?.signature);
@@ -156,7 +159,7 @@ export const Signature: React.FC<QuestionProps> = ({
             letterSpacing: '-0.01em'
           }}>
             {question.question_text}
-            {question.required && <span style={{ color: '#9333ea', marginLeft: '4px' }}>*</span>}
+            {question.required && <span style={{ color: effectiveAccent, marginLeft: '4px' }}>*</span>}
           </label>
           {question.description && (
             <p style={{
@@ -211,8 +214,8 @@ export const Signature: React.FC<QuestionProps> = ({
               fontFamily: 'inherit'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = '#9333ea';
-              e.currentTarget.style.color = '#9333ea';
+              e.currentTarget.style.borderColor = effectiveAccent;
+              e.currentTarget.style.color = effectiveAccent;
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.borderColor = '#e5e7eb';

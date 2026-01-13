@@ -15,8 +15,11 @@ export const Matrix: React.FC<QuestionProps> = ({
   value,
   onChange,
   disabled = false,
-  hideLabel = false
+  hideLabel = false,
+  accentColor = '#9333ea',
+  boldTextColor
 }) => {
+  const effectiveAccent = boldTextColor || accentColor;
   const matrixAnswers = value?.matrix_answers || {};
   const rows = normalizeToArray(question.settings?.rows, 'Row');
   const columns = normalizeToArray(question.settings?.columns, 'Column');
@@ -46,7 +49,7 @@ export const Matrix: React.FC<QuestionProps> = ({
             letterSpacing: '-0.01em'
           }}>
             {question.question_text}
-            {question.required && <span style={{ color: '#9333ea', marginLeft: '4px' }}>*</span>}
+            {question.required && <span style={{ color: effectiveAccent, marginLeft: '4px' }}>*</span>}
           </label>
           {question.description && (
             <p style={{
@@ -113,7 +116,7 @@ export const Matrix: React.FC<QuestionProps> = ({
                       style={{
                         width: '18px',
                         height: '18px',
-                        accentColor: '#9333ea',
+                        accentColor: effectiveAccent,
                         cursor: disabled ? 'not-allowed' : 'pointer'
                       }}
                     />

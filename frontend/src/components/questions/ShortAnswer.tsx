@@ -12,6 +12,8 @@ export interface QuestionProps {
   onChange: (value: any) => void;
   disabled?: boolean;
   hideLabel?: boolean;
+  accentColor?: string;
+  boldTextColor?: string;
 }
 
 export const ShortAnswer: React.FC<QuestionProps> = ({
@@ -19,8 +21,11 @@ export const ShortAnswer: React.FC<QuestionProps> = ({
   value,
   onChange,
   disabled = false,
-  hideLabel = false
+  hideLabel = false,
+  accentColor = '#9333ea',
+  boldTextColor
 }) => {
+  const effectiveAccent = boldTextColor || accentColor;
   const textValue = value?.text || '';
   const placeholder = question.settings?.placeholder || 'Your answer';
   const maxLength = question.settings?.max_length;
@@ -41,7 +46,7 @@ export const ShortAnswer: React.FC<QuestionProps> = ({
             letterSpacing: '-0.01em'
           }}>
             {question.question_text}
-            {question.required && <span style={{ color: '#9333ea', marginLeft: '4px' }}>*</span>}
+            {question.required && <span style={{ color: effectiveAccent, marginLeft: '4px' }}>*</span>}
           </label>
           {question.description && (
             <p style={{
@@ -74,7 +79,7 @@ export const ShortAnswer: React.FC<QuestionProps> = ({
           transition: 'border-color 0.2s',
           fontFamily: 'inherit'
         }}
-        onFocus={(e) => e.currentTarget.style.borderBottomColor = '#9333ea'}
+        onFocus={(e) => e.currentTarget.style.borderBottomColor = effectiveAccent}
         onBlur={(e) => e.currentTarget.style.borderBottomColor = '#e5e7eb'}
       />
       {maxLength && (

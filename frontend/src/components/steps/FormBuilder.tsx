@@ -121,8 +121,27 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
         body: JSON.stringify({ message: userMessage })
       });
       
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      const isJson = contentType && contentType.includes('application/json');
+      
       if (!response.ok) {
-        throw new Error('Failed to process chat message');
+        let errorMessage = 'Failed to process chat message';
+        if (isJson) {
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.detail || errorMessage;
+          } catch (e) {
+            errorMessage = `Error ${response.status}: ${response.statusText}`;
+          }
+        } else {
+          errorMessage = `Server error (${response.status}). Please check if the backend is running correctly.`;
+        }
+        throw new Error(errorMessage);
+      }
+      
+      if (!isJson) {
+        throw new Error('Server returned non-JSON response. Please check backend configuration.');
       }
       
       const data = await response.json();
@@ -138,12 +157,15 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
       });
       
       if (formResponse.ok) {
-        const updatedForm = await formResponse.json();
-        setFormData(updatedForm);
+        const formContentType = formResponse.headers.get('content-type');
+        if (formContentType && formContentType.includes('application/json')) {
+          const updatedForm = await formResponse.json();
+          setFormData(updatedForm);
+        }
       }
     } catch (err: any) {
       console.error('Chat edit error:', err);
-      setChatMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I couldn\'t process that request. Please try again.' }]);
+      setChatMessages(prev => [...prev, { role: 'assistant', content: `Sorry, I couldn't process that request: ${err.message}` }]);
     } finally {
       setIsGenerating(false);
     }
@@ -200,9 +222,29 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
         })
       });
 
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      const isJson = contentType && contentType.includes('application/json');
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to generate form');
+        let errorMessage = 'Failed to generate form';
+        if (isJson) {
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.detail || errorMessage;
+          } catch (e) {
+            // If JSON parsing fails, use status text
+            errorMessage = `Error ${response.status}: ${response.statusText}`;
+          }
+        } else {
+          // If not JSON, it's probably an HTML error page
+          errorMessage = `Server error (${response.status}). Please check if the backend is running correctly.`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      if (!isJson) {
+        throw new Error('Server returned non-JSON response. Please check backend configuration.');
       }
 
       const data = await response.json();
@@ -300,9 +342,12 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
   const handleInlineQuestionUpdate = (questionId: number, field: string, value: any) => {
     const updatedQuestions = formData.questions.map((q: any) => {
       if (q.id === questionId) {
-        if (field === 'settings.choices') {
-          return { ...q, settings: { ...q.settings, choices: value } };
+        // Handle nested settings fields (e.g., 'settings.choices', 'settings.min_value')
+        if (field.startsWith('settings.')) {
+          const settingKey = field.split('.')[1];
+          return { ...q, settings: { ...q.settings, [settingKey]: value } };
         }
+        // Handle top-level fields
         return { ...q, [field]: value };
       }
       return q;
@@ -1398,9 +1443,401 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                         />
                       </div>
                     )}
+                    
+                    {/* Editable Options for ranking items */}
+                    {question.question_type === 'ranking' && question.settings?.ranking_items && (
+                      <div style={{ marginBottom: '16px' }}>
+                        <EditableOptions
+                          options={question.settings.ranking_items}
+                          onChange={(items) => handleInlineQuestionUpdate(question.id, 'settings.ranking_items', items)}
+                          placeholder="Item"
+                        />
+                      </div>
+                    )}
+                    
+                    {/* Editable Matrix as a visual table */}
+                    {question.question_type === 'matrix' && (
+                      <div style={{ marginBottom: '16px', overflowX: 'auto' }}>
+                        <table style={{
+                          width: '100%',
+                          borderCollapse: 'separate',
+                          borderSpacing: '0',
+                          fontSize: '14px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          overflow: 'hidden'
+                        }}>
+                          <thead>
+                            <tr>
+                              <th style={{
+                                padding: '12px',
+                                background: '#f9fafb',
+                                borderBottom: '2px solid #e5e7eb',
+                                borderRight: '2px solid #e5e7eb',
+                                minWidth: '120px'
+                              }}></th>
+                              {(question.settings?.columns || ['Column 1', 'Column 2', 'Column 3']).map((col: string, idx: number) => (
+                                <th key={idx} style={{
+                                  padding: '8px',
+                                  background: '#f9fafb',
+                                  borderBottom: '2px solid #e5e7eb',
+                                  borderRight: idx < (question.settings?.columns || []).length - 1 ? '1px solid #e5e7eb' : 'none',
+                                  minWidth: '150px'
+                                }}>
+                                  <input
+                                    type="text"
+                                    value={col}
+                                    onChange={(e) => {
+                                      const newColumns = [...(question.settings?.columns || [])];
+                                      newColumns[idx] = e.target.value;
+                                      handleInlineQuestionUpdate(question.id, 'settings.columns', newColumns);
+                                    }}
+                                    placeholder="Column name"
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 8px',
+                                      fontSize: '13px',
+                                      fontWeight: '500',
+                                      color: '#374151',
+                                      border: '1px solid transparent',
+                                      borderRadius: '4px',
+                                      outline: 'none',
+                                      background: 'transparent',
+                                      textAlign: 'center'
+                                    }}
+                                    onFocus={(e) => {
+                                      e.currentTarget.style.borderColor = globalColors.boldText || '#9333ea';
+                                      e.currentTarget.style.background = '#ffffff';
+                                    }}
+                                    onBlur={(e) => {
+                                      e.currentTarget.style.borderColor = 'transparent';
+                                      e.currentTarget.style.background = 'transparent';
+                                    }}
+                                  />
+                                  <button
+                                    onClick={() => {
+                                      const newColumns = (question.settings?.columns || []).filter((_: string, i: number) => i !== idx);
+                                      if (newColumns.length > 0) {
+                                        handleInlineQuestionUpdate(question.id, 'settings.columns', newColumns);
+                                      }
+                                    }}
+                                    style={{
+                                      marginTop: '4px',
+                                      padding: '2px 8px',
+                                      fontSize: '11px',
+                                      color: '#ef4444',
+                                      background: 'transparent',
+                                      border: '1px solid #fee2e2',
+                                      borderRadius: '4px',
+                                      cursor: 'pointer',
+                                      transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = '#fee2e2'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                  >
+                                    Remove
+                                  </button>
+                                </th>
+                              ))}
+                              <th style={{
+                                padding: '8px',
+                                background: '#f9fafb',
+                                borderBottom: '2px solid #e5e7eb',
+                                width: '60px',
+                                textAlign: 'center'
+                              }}>
+                                <button
+                                  onClick={() => {
+                                    const newColumns = [...(question.settings?.columns || []), `Column ${(question.settings?.columns || []).length + 1}`];
+                                    handleInlineQuestionUpdate(question.id, 'settings.columns', newColumns);
+                                  }}
+                                  style={{
+                                    padding: '4px 8px',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    color: globalColors.boldText || '#9333ea',
+                                    background: 'transparent',
+                                    border: `1px dashed ${globalColors.boldText || '#9333ea'}`,
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = `${globalColors.boldText || '#9333ea'}10`}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                >
+                                  + Col
+                                </button>
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(question.settings?.rows || ['Row 1', 'Row 2']).map((row: string, rowIdx: number) => (
+                              <tr key={rowIdx}>
+                                <td style={{
+                                  padding: '8px 12px',
+                                  background: '#f9fafb',
+                                  borderRight: '2px solid #e5e7eb',
+                                  borderBottom: rowIdx < (question.settings?.rows || []).length - 1 ? '1px solid #e5e7eb' : 'none'
+                                }}>
+                                  <input
+                                    type="text"
+                                    value={row}
+                                    onChange={(e) => {
+                                      const newRows = [...(question.settings?.rows || [])];
+                                      newRows[rowIdx] = e.target.value;
+                                      handleInlineQuestionUpdate(question.id, 'settings.rows', newRows);
+                                    }}
+                                    placeholder="Row name"
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 8px',
+                                      fontSize: '13px',
+                                      fontWeight: '500',
+                                      color: '#374151',
+                                      border: '1px solid transparent',
+                                      borderRadius: '4px',
+                                      outline: 'none',
+                                      background: 'transparent'
+                                    }}
+                                    onFocus={(e) => {
+                                      e.currentTarget.style.borderColor = globalColors.boldText || '#9333ea';
+                                      e.currentTarget.style.background = '#ffffff';
+                                    }}
+                                    onBlur={(e) => {
+                                      e.currentTarget.style.borderColor = 'transparent';
+                                      e.currentTarget.style.background = 'transparent';
+                                    }}
+                                  />
+                                  <button
+                                    onClick={() => {
+                                      const newRows = (question.settings?.rows || []).filter((_: string, i: number) => i !== rowIdx);
+                                      if (newRows.length > 0) {
+                                        handleInlineQuestionUpdate(question.id, 'settings.rows', newRows);
+                                      }
+                                    }}
+                                    style={{
+                                      marginTop: '4px',
+                                      padding: '2px 8px',
+                                      fontSize: '11px',
+                                      color: '#ef4444',
+                                      background: 'transparent',
+                                      border: '1px solid #fee2e2',
+                                      borderRadius: '4px',
+                                      cursor: 'pointer',
+                                      transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = '#fee2e2'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                  >
+                                    Remove
+                                  </button>
+                                </td>
+                                {(question.settings?.columns || []).map((_: string, colIdx: number) => (
+                                  <td key={colIdx} style={{
+                                    padding: '12px',
+                                    borderRight: colIdx < (question.settings?.columns || []).length - 1 ? '1px solid #e5e7eb' : 'none',
+                                    borderBottom: rowIdx < (question.settings?.rows || []).length - 1 ? '1px solid #e5e7eb' : 'none',
+                                    textAlign: 'center',
+                                    background: '#ffffff'
+                                  }}>
+                                    <input
+                                      type="radio"
+                                      disabled
+                                      style={{
+                                        width: '16px',
+                                        height: '16px',
+                                        accentColor: globalColors.boldText || '#9333ea',
+                                        cursor: 'not-allowed'
+                                      }}
+                                    />
+                                  </td>
+                                ))}
+                                <td style={{
+                                  padding: '8px',
+                                  borderBottom: rowIdx < (question.settings?.rows || []).length - 1 ? '1px solid #e5e7eb' : 'none',
+                                  textAlign: 'center',
+                                  background: '#ffffff'
+                                }}></td>
+                              </tr>
+                            ))}
+                            <tr>
+                              <td colSpan={(question.settings?.columns || []).length + 2} style={{
+                                padding: '8px',
+                                textAlign: 'center',
+                                background: '#f9fafb'
+                              }}>
+                                <button
+                                  onClick={() => {
+                                    const newRows = [...(question.settings?.rows || []), `Row ${(question.settings?.rows || []).length + 1}`];
+                                    handleInlineQuestionUpdate(question.id, 'settings.rows', newRows);
+                                  }}
+                                  style={{
+                                    padding: '4px 12px',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    color: globalColors.boldText || '#9333ea',
+                                    background: 'transparent',
+                                    border: `1px dashed ${globalColors.boldText || '#9333ea'}`,
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = `${globalColors.boldText || '#9333ea'}10`}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                >
+                                  + Add Row
+                                </button>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    
+                    {/* Editable Settings for linear scale */}
+                    {question.question_type === 'linear_scale' && (
+                      <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: '13px', fontWeight: '500', color: '#6b7280', marginBottom: '6px' }}>
+                              Min Value
+                            </div>
+                            <input
+                              type="number"
+                              value={question.settings?.min_value ?? ''}
+                              onChange={(e) => {
+                                // Allow temporary empty value while editing
+                                const val = e.target.value;
+                                if (val === '') {
+                                  // Store empty temporarily to allow user to clear field
+                                  const updatedQuestions = formData.questions.map((q: any) => {
+                                    if (q.id === question.id) {
+                                      return { ...q, settings: { ...q.settings, min_value: '' } };
+                                    }
+                                    return q;
+                                  });
+                                  setFormData({ ...formData, questions: updatedQuestions });
+                                } else {
+                                  const numVal = parseInt(val);
+                                  if (!isNaN(numVal)) {
+                                    handleInlineQuestionUpdate(question.id, 'settings.min_value', numVal);
+                                  }
+                                }
+                              }}
+                              onBlur={(e) => {
+                                // Restore to default if empty on blur
+                                if (e.target.value === '' || e.target.value === null) {
+                                  handleInlineQuestionUpdate(question.id, 'settings.min_value', 1);
+                                }
+                                e.currentTarget.style.borderColor = '#e5e7eb';
+                              }}
+                              style={{
+                                width: '100%',
+                                padding: '8px 12px',
+                                fontSize: '14px',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: '6px',
+                                outline: 'none'
+                              }}
+                              onFocus={(e) => e.currentTarget.style.borderColor = globalColors.boldText || '#9333ea'}
+                              placeholder="1"
+                            />
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: '13px', fontWeight: '500', color: '#6b7280', marginBottom: '6px' }}>
+                              Max Value
+                            </div>
+                            <input
+                              type="number"
+                              value={question.settings?.max_value ?? ''}
+                              onChange={(e) => {
+                                // Allow temporary empty value while editing
+                                const val = e.target.value;
+                                if (val === '') {
+                                  // Store empty temporarily to allow user to clear field
+                                  const updatedQuestions = formData.questions.map((q: any) => {
+                                    if (q.id === question.id) {
+                                      return { ...q, settings: { ...q.settings, max_value: '' } };
+                                    }
+                                    return q;
+                                  });
+                                  setFormData({ ...formData, questions: updatedQuestions });
+                                } else {
+                                  const numVal = parseInt(val);
+                                  if (!isNaN(numVal)) {
+                                    handleInlineQuestionUpdate(question.id, 'settings.max_value', numVal);
+                                  }
+                                }
+                              }}
+                              onBlur={(e) => {
+                                // Restore to default if empty on blur
+                                if (e.target.value === '' || e.target.value === null) {
+                                  handleInlineQuestionUpdate(question.id, 'settings.max_value', 5);
+                                }
+                                e.currentTarget.style.borderColor = '#e5e7eb';
+                              }}
+                              style={{
+                                width: '100%',
+                                padding: '8px 12px',
+                                fontSize: '14px',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: '6px',
+                                outline: 'none'
+                              }}
+                              onFocus={(e) => e.currentTarget.style.borderColor = globalColors.boldText || '#9333ea'}
+                              placeholder="5"
+                            />
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: '13px', fontWeight: '500', color: '#6b7280', marginBottom: '6px' }}>
+                              Min Label (optional)
+                            </div>
+                            <input
+                              type="text"
+                              value={question.settings?.scale_min_label || ''}
+                              onChange={(e) => handleInlineQuestionUpdate(question.id, 'settings.scale_min_label', e.target.value)}
+                              placeholder="e.g., Low"
+                              style={{
+                                width: '100%',
+                                padding: '8px 12px',
+                                fontSize: '14px',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: '6px',
+                                outline: 'none'
+                              }}
+                              onFocus={(e) => e.currentTarget.style.borderColor = globalColors.boldText || '#9333ea'}
+                              onBlur={(e) => e.currentTarget.style.borderColor = '#e5e7eb'}
+                            />
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: '13px', fontWeight: '500', color: '#6b7280', marginBottom: '6px' }}>
+                              Max Label (optional)
+                            </div>
+                            <input
+                              type="text"
+                              value={question.settings?.scale_max_label || ''}
+                              onChange={(e) => handleInlineQuestionUpdate(question.id, 'settings.scale_max_label', e.target.value)}
+                              placeholder="e.g., High"
+                              style={{
+                                width: '100%',
+                                padding: '8px 12px',
+                                fontSize: '14px',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: '6px',
+                                outline: 'none'
+                              }}
+                              onFocus={(e) => e.currentTarget.style.borderColor = globalColors.boldText || '#9333ea'}
+                              onBlur={(e) => e.currentTarget.style.borderColor = '#e5e7eb'}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Simple input preview for non-choice questions */}
-                    {!['multiple_choice', 'checkboxes', 'dropdown', 'multi_select'].includes(question.question_type) && (
+                    {!['multiple_choice', 'checkboxes', 'dropdown', 'multi_select', 'ranking', 'matrix'].includes(question.question_type) && (
                       <div style={{ marginTop: '8px' }}>
                         {question.question_type === 'short_answer' && (
                           <input
@@ -1561,28 +1998,54 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                             ))}
                     </div>
                         )}
-                        {question.question_type === 'linear_scale' && (
-                          <div style={{ display: 'flex', gap: '8px' }}>
-                            {[...Array(question.settings?.max_value || 5)].map((_, i) => (
-                              <span
-                                key={i}
+                        {question.question_type === 'linear_scale' && (() => {
+                          const minVal = question.settings?.min_value || 1;
+                          const maxVal = question.settings?.max_value || 5;
+                          const range = maxVal - minVal + 1;
+                          const useSlider = range > 10;
+                          
+                          return useSlider ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%' }}>
+                              <span style={{ fontSize: '13px', color: '#9ca3af', minWidth: '30px' }}>{minVal}</span>
+                              <input
+                                type="range"
+                                min={minVal}
+                                max={maxVal}
+                                disabled
                                 style={{
-                                  width: '40px',
-                                  height: '40px',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  border: '1px solid #e5e7eb',
-                                  borderRadius: '8px',
-                                  fontSize: '14px',
-                                  color: '#9ca3af'
+                                  flex: 1,
+                                  height: '6px',
+                                  borderRadius: '3px',
+                                  background: '#e5e7eb',
+                                  cursor: 'not-allowed',
+                                  accentColor: globalColors.boldText || '#9333ea'
                                 }}
-                              >
-                                {(question.settings?.min_value || 1) + i}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+                              />
+                              <span style={{ fontSize: '13px', color: '#9ca3af', minWidth: '30px', textAlign: 'right' }}>{maxVal}</span>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              {[...Array(range)].map((_, i) => (
+                                <span
+                                  key={i}
+                                  style={{
+                                    width: '40px',
+                                    height: '40px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '8px',
+                                    fontSize: '14px',
+                                    color: '#9ca3af'
+                                  }}
+                                >
+                                  {minVal + i}
+                                </span>
+                              ))}
+                            </div>
+                          );
+                        })()}
                         {question.question_type === 'signature' && (
                           <div
                             style={{
@@ -1611,6 +2074,127 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                             }}
                           >
                             Payment: ${question.settings?.payment_amount || '0.00'}
+                          </div>
+                        )}
+                        {question.question_type === 'matrix' && (
+                          <div style={{ overflowX: 'auto' }}>
+                            <table style={{
+                              width: '100%',
+                              borderCollapse: 'collapse',
+                              fontSize: '14px'
+                            }}>
+                              <thead>
+                                <tr>
+                                  <th style={{ padding: '8px', border: '1px solid #e5e7eb', background: '#f9fafb' }}></th>
+                                  {(question.settings?.columns || ['Column 1', 'Column 2', 'Column 3']).map((col: string, idx: number) => (
+                                    <th key={idx} style={{ padding: '8px', border: '1px solid #e5e7eb', background: '#f9fafb', color: '#6b7280', fontWeight: '500' }}>
+                                      {col}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {(question.settings?.rows || ['Row 1', 'Row 2']).map((row: string, rowIdx: number) => (
+                                  <tr key={rowIdx}>
+                                    <td style={{ padding: '8px', border: '1px solid #e5e7eb', color: '#6b7280', fontWeight: '500' }}>
+                                      {row}
+                                    </td>
+                                    {(question.settings?.columns || ['Column 1', 'Column 2', 'Column 3']).map((_: string, colIdx: number) => (
+                                      <td key={colIdx} style={{ padding: '8px', border: '1px solid #e5e7eb', textAlign: 'center' }}>
+                                        <input
+                                          type="radio"
+                                          disabled
+                                          style={{
+                                            width: '16px',
+                                            height: '16px',
+                                            accentColor: globalColors.boldText || '#9333ea',
+                                            cursor: 'not-allowed'
+                                          }}
+                                        />
+                                      </td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                        {question.question_type === 'ranking' && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {(question.settings?.ranking_items || ['Item 1', 'Item 2', 'Item 3']).map((item: string, idx: number) => (
+                              <div
+                                key={idx}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '12px',
+                                  padding: '12px',
+                                  border: '1px solid #e5e7eb',
+                                  borderRadius: '8px',
+                                  background: '#ffffff'
+                                }}
+                              >
+                                <span style={{
+                                  minWidth: '28px',
+                                  height: '28px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '13px',
+                                  fontWeight: '600',
+                                  color: globalColors.boldText || '#9333ea',
+                                  background: `${globalColors.boldText || '#9333ea'}10`,
+                                  borderRadius: '4px'
+                                }}>
+                                  {idx + 1}
+                                </span>
+                                <span style={{
+                                  flex: 1,
+                                  fontSize: '15px',
+                                  color: '#6b7280'
+                                }}>
+                                  {item}
+                                </span>
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                  <button
+                                    disabled
+                                    style={{
+                                      width: '28px',
+                                      height: '28px',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      fontSize: '16px',
+                                      color: '#d1d5db',
+                                      background: 'transparent',
+                                      border: '1px solid #e5e7eb',
+                                      borderRadius: '4px',
+                                      cursor: 'not-allowed'
+                                    }}
+                                  >
+                                    ↑
+                                  </button>
+                                  <button
+                                    disabled
+                                    style={{
+                                      width: '28px',
+                                      height: '28px',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      fontSize: '16px',
+                                      color: '#d1d5db',
+                                      background: 'transparent',
+                                      border: '1px solid #e5e7eb',
+                                      borderRadius: '4px',
+                                      cursor: 'not-allowed'
+                                    }}
+                                  >
+                                    ↓
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         )}
                       </div>

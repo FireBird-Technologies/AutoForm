@@ -456,6 +456,8 @@ export const PublicForm: React.FC = () => {
                       onChange={(value) => handleAnswerChange(question.id, value)}
                       disabled={false}
                       hideLabel={true}
+                      accentColor={accentColor}
+                      boldTextColor={boldTextColor}
                     />
                   </div>
                 </div>
