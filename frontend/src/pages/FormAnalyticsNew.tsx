@@ -275,6 +275,7 @@ export const FormAnalyticsNew: React.FC = () => {
   return (
     <div style={{
       padding: '24px',
+      paddingBottom: '80px',
       background: '#fafafa',
       minHeight: '100vh',
       maxHeight: '100vh',
@@ -447,16 +448,19 @@ export const FormAnalyticsNew: React.FC = () => {
                 dropOff: funnel.total_views > 0 ? ((funnel.total_views - funnel.total_starts) / funnel.total_views) * 100 : 0
               },
               {
-                label: 'Form Opened (Q1)',
+                label: 'Form Opened',
                 value: funnel.total_starts,
                 percentage: funnel.total_views > 0 ? (funnel.total_starts / funnel.total_views) * 100 : 0,
-                dropOff: 15
+                dropOff: funnel.total_starts > 0 && funnel.question_funnel.length > 0 ? 
+                  ((funnel.total_starts - funnel.question_funnel[0].answered) / funnel.total_starts) * 100 : 0
               },
-              ...funnel.question_funnel.slice(0, 2).map((q, idx) => ({
+              ...funnel.question_funnel.map((q, idx) => ({
                 label: `Q${idx + 1} Completed`,
                 value: q.answered,
                 percentage: funnel.total_views > 0 ? (q.answered / funnel.total_views) * 100 : 0,
-                dropOff: q.drop_off_rate
+                dropOff: idx < funnel.question_funnel.length - 1 && q.answered > 0 ?
+                  ((q.answered - funnel.question_funnel[idx + 1].answered) / q.answered) * 100 : 
+                  q.answered > 0 ? ((q.answered - funnel.total_completes) / q.answered) * 100 : 0
               })),
               {
                 label: 'Form Completed',

@@ -74,12 +74,12 @@ export const FormPlanner: React.FC<FormPlannerProps> = ({ onComplete }) => {
           width: '100%'
         }}>
           <div style={{ position: 'relative', width: '100%', marginBottom: '16px' }}>
-            <textarea
-              value={description}
-              onChange={(e) => {
-                setDescription(e.target.value);
-                setError('');
-              }}
+          <textarea
+            value={description}
+            onChange={(e) => {
+              setDescription(e.target.value);
+              setError('');
+            }}
               onFocus={(e) => {
                 e.target.style.borderColor = '#9333ea';
                 e.target.style.boxShadow = '0 4px 12px rgba(147, 51, 234, 0.25)';
@@ -88,18 +88,18 @@ export const FormPlanner: React.FC<FormPlannerProps> = ({ onComplete }) => {
                 e.target.style.borderColor = '#e5e7eb';
                 e.target.style.boxShadow = '0 2px 8px rgba(147, 51, 234, 0.15)';
               }}
-              placeholder="Example: Create a customer feedback form with rating and comments"
-              style={{
-                width: '100%',
-                minHeight: '140px',
+            placeholder="Example: Create a customer feedback form with rating and comments"
+            style={{
+              width: '100%',
+              minHeight: '140px',
                 padding: '20px 60px 20px 20px',
-                fontSize: '17px',
+              fontSize: '17px',
                 border: '1px solid #e5e7eb',
-                borderRadius: '12px',
-                resize: 'vertical',
-                fontFamily: 'inherit',
-                outline: 'none',
-                transition: 'all 0.2s',
+              borderRadius: '12px',
+              resize: 'vertical',
+              fontFamily: 'inherit',
+              outline: 'none',
+              transition: 'all 0.2s',
                 background: '#ffffff',
                 boxShadow: '0 2px 8px rgba(147, 51, 234, 0.15)'
               }}

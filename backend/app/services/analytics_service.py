@@ -226,18 +226,18 @@ class AnalyticsService:
         
         base_filter = and_(*filters)
         
-        # Count events by type
-        total_views = db.query(func.count(FormAnalyticsEvent.id)).filter(
+        # Count UNIQUE SESSIONS by event type (not total events)
+        total_views = db.query(func.count(func.distinct(FormAnalyticsEvent.session_id))).filter(
             base_filter,
             FormAnalyticsEvent.event_type == AnalyticsEventType.FORM_VIEWED.value
         ).scalar() or 0
         
-        total_starts = db.query(func.count(FormAnalyticsEvent.id)).filter(
+        total_starts = db.query(func.count(func.distinct(FormAnalyticsEvent.session_id))).filter(
             base_filter,
             FormAnalyticsEvent.event_type == AnalyticsEventType.FORM_STARTED.value
         ).scalar() or 0
         
-        total_completes = db.query(func.count(FormAnalyticsEvent.id)).filter(
+        total_completes = db.query(func.count(func.distinct(FormAnalyticsEvent.session_id))).filter(
             base_filter,
             FormAnalyticsEvent.event_type == AnalyticsEventType.FORM_SUBMITTED_COMPLETE.value
         ).scalar() or 0
@@ -253,19 +253,20 @@ class AnalyticsService:
         # Build question funnel
         question_funnel = []
         for question in sorted(form.questions, key=lambda q: q.question_order):
-            viewed = db.query(func.count(FormAnalyticsEvent.id)).filter(
+            # Count UNIQUE SESSIONS that viewed/answered/skipped each question
+            viewed = db.query(func.count(func.distinct(FormAnalyticsEvent.session_id))).filter(
                 base_filter,
                 FormAnalyticsEvent.question_id == question.id,
                 FormAnalyticsEvent.event_type == AnalyticsEventType.QUESTION_VIEWED.value
             ).scalar() or 0
             
-            answered = db.query(func.count(FormAnalyticsEvent.id)).filter(
+            answered = db.query(func.count(func.distinct(FormAnalyticsEvent.session_id))).filter(
                 base_filter,
                 FormAnalyticsEvent.question_id == question.id,
                 FormAnalyticsEvent.event_type == AnalyticsEventType.QUESTION_ANSWERED.value
             ).scalar() or 0
             
-            skipped = db.query(func.count(FormAnalyticsEvent.id)).filter(
+            skipped = db.query(func.count(func.distinct(FormAnalyticsEvent.session_id))).filter(
                 base_filter,
                 FormAnalyticsEvent.question_id == question.id,
                 FormAnalyticsEvent.event_type == AnalyticsEventType.QUESTION_SKIPPED.value
