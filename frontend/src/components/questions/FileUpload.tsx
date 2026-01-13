@@ -6,8 +6,11 @@ export const FileUpload: React.FC<QuestionProps> = ({
   value,
   onChange,
   disabled = false,
-  hideLabel = false
+  hideLabel = false,
+  accentColor = '#9333ea',
+  boldTextColor
 }) => {
+  const effectiveAccent = boldTextColor || accentColor;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileName = value?.text || '';
   const acceptedTypes = question.settings?.file_types?.join(',') || '*';
@@ -42,7 +45,7 @@ export const FileUpload: React.FC<QuestionProps> = ({
             letterSpacing: '-0.01em'
           }}>
             {question.question_text}
-            {question.required && <span style={{ color: '#9333ea', marginLeft: '4px' }}>*</span>}
+            {question.required && <span style={{ color: effectiveAccent, marginLeft: '4px' }}>*</span>}
           </label>
           {question.description && (
             <p style={{
@@ -74,15 +77,15 @@ export const FileUpload: React.FC<QuestionProps> = ({
             padding: '12px 24px',
             fontSize: '15px',
             fontWeight: '500',
-            color: '#9333ea',
+            color: effectiveAccent,
             background: 'transparent',
-            border: '1px solid #9333ea',
+            border: `1px solid ${effectiveAccent}`,
             borderRadius: '8px',
             cursor: disabled ? 'not-allowed' : 'pointer',
             transition: 'all 0.2s',
             fontFamily: 'inherit'
           }}
-          onMouseEnter={(e) => !disabled && (e.currentTarget.style.background = '#faf5ff')}
+          onMouseEnter={(e) => !disabled && (e.currentTarget.style.background = `${effectiveAccent}10`)}
           onMouseLeave={(e) => !disabled && (e.currentTarget.style.background = 'transparent')}
         >
           Choose File

@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime
+from pydantic import BaseModel
 
 from ..core.db import get_db
 from ..core.security import get_current_user
@@ -22,14 +23,19 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["analytics"])
 
 
+class TrackEventRequest(BaseModel):
+    """Request model for tracking analytics events"""
+    event_type: str
+    session_id: str
+    question_id: Optional[int] = None
+    time_spent: Optional[int] = None
+
+
 @router.post("/public/forms/{token}/track")
 async def track_public_event(
     token: str,
-    event_type: str,
-    session_id: str,
+    payload: TrackEventRequest,
     request: Request,
-    question_id: Optional[int] = None,
-    time_spent: Optional[int] = None,
     db: Session = Depends(get_db)
 ):
     """
@@ -51,18 +57,18 @@ async def track_public_event(
         # Track event
         await analytics_service.track_event(
             db=db,
-            event_type=event_type,
+            event_type=payload.event_type,
             form_id=public_form.form_id,
-            session_id=session_id,
+            session_id=payload.session_id,
             request=request,
-            question_id=question_id,
-            time_spent_seconds=time_spent
+            question_id=payload.question_id,
+            time_spent_seconds=payload.time_spent
         )
         
         return {"success": True, "message": "Event tracked"}
         
     except Exception as e:
-        logger.error(f"Analytics tracking failed: {e}")
+        logger.error(f"Analytics tracking failed: {e}", exc_info=True)
         # Silently fail - analytics shouldn't break form
         return {"success": False, "message": "Tracking failed"}
 

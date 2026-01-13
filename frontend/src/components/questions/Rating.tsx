@@ -6,8 +6,11 @@ export const Rating: React.FC<QuestionProps> = ({
   value,
   onChange,
   disabled = false,
-  hideLabel = false
+  hideLabel = false,
+  accentColor = '#9333ea',
+  boldTextColor
 }) => {
+  const effectiveAccent = boldTextColor || accentColor;
   const ratingValue = value?.rating || 0;
   const maxRating = question.settings?.max_value || 5;
 
@@ -27,7 +30,7 @@ export const Rating: React.FC<QuestionProps> = ({
             letterSpacing: '-0.01em'
           }}>
             {question.question_text}
-            {question.required && <span style={{ color: '#9333ea', marginLeft: '4px' }}>*</span>}
+            {question.required && <span style={{ color: effectiveAccent, marginLeft: '4px' }}>*</span>}
           </label>
           {question.description && (
             <p style={{
@@ -53,7 +56,7 @@ export const Rating: React.FC<QuestionProps> = ({
               disabled={disabled}
               style={{
                 fontSize: '32px',
-                color: isFilled ? '#9333ea' : '#e5e7eb',
+                color: isFilled ? effectiveAccent : '#e5e7eb',
                 background: 'transparent',
                 border: 'none',
                 cursor: disabled ? 'not-allowed' : 'pointer',

@@ -15,8 +15,11 @@ export const Ranking: React.FC<QuestionProps> = ({
   value,
   onChange,
   disabled = false,
-  hideLabel = false
+  hideLabel = false,
+  accentColor = '#9333ea',
+  boldTextColor
 }) => {
+  const effectiveAccent = boldTextColor || accentColor;
   const rankingItems = normalizeToArray(question.settings?.ranking_items, 'Item');
   const [items, setItems] = useState<string[]>(value?.ranked_items || [...rankingItems]);
 
@@ -53,7 +56,7 @@ export const Ranking: React.FC<QuestionProps> = ({
         letterSpacing: '-0.01em'
       }}>
         {question.question_text}
-        {question.required && <span style={{ color: '#9333ea', marginLeft: '4px' }}>*</span>}
+        {question.required && <span style={{ color: effectiveAccent, marginLeft: '4px' }}>*</span>}
       </label>
       {question.description && (
         <p style={{
@@ -89,8 +92,8 @@ export const Ranking: React.FC<QuestionProps> = ({
               justifyContent: 'center',
               fontSize: '13px',
               fontWeight: '600',
-              color: '#9333ea',
-              background: '#faf5ff',
+              color: effectiveAccent,
+              background: `${effectiveAccent}10`,
               borderRadius: '4px'
             }}>
               {index + 1}
@@ -121,7 +124,7 @@ export const Ranking: React.FC<QuestionProps> = ({
                   cursor: disabled || index === 0 ? 'not-allowed' : 'pointer',
                   transition: 'all 0.2s'
                 }}
-                onMouseEnter={(e) => !(disabled || index === 0) && (e.currentTarget.style.borderColor = '#9333ea')}
+                onMouseEnter={(e) => !(disabled || index === 0) && (e.currentTarget.style.borderColor = effectiveAccent)}
                 onMouseLeave={(e) => !(disabled || index === 0) && (e.currentTarget.style.borderColor = '#e5e7eb')}
               >
                 ↑
@@ -144,7 +147,7 @@ export const Ranking: React.FC<QuestionProps> = ({
                   cursor: disabled || index === items.length - 1 ? 'not-allowed' : 'pointer',
                   transition: 'all 0.2s'
                 }}
-                onMouseEnter={(e) => !(disabled || index === items.length - 1) && (e.currentTarget.style.borderColor = '#9333ea')}
+                onMouseEnter={(e) => !(disabled || index === items.length - 1) && (e.currentTarget.style.borderColor = effectiveAccent)}
                 onMouseLeave={(e) => !(disabled || index === items.length - 1) && (e.currentTarget.style.borderColor = '#e5e7eb')}
               >
                 ↓

@@ -5,14 +5,19 @@ interface QuestionProps {
   value: any;
   onChange: (value: any) => void;
   disabled?: boolean;
+  accentColor?: string;
+  boldTextColor?: string;
 }
 
 export const Button: React.FC<QuestionProps> = ({
   question,
   value,
   onChange,
-  disabled = false
+  disabled = false,
+  accentColor = '#9333ea',
+  boldTextColor
 }) => {
+  const effectiveAccent = boldTextColor || accentColor;
   const buttonText = question.settings?.button_text || 'Click Me';
   const buttonStyle = question.settings?.button_style || 'primary';
   const [isClicked, setIsClicked] = React.useState(false);
@@ -37,9 +42,9 @@ export const Button: React.FC<QuestionProps> = ({
           padding: '14px 28px',
           fontSize: '16px',
           fontWeight: '600',
-          color: buttonStyle === 'primary' ? '#ffffff' : buttonStyle === 'secondary' ? '#9333ea' : '#6b7280',
-          background: buttonStyle === 'primary' ? '#9333ea' : buttonStyle === 'secondary' ? 'transparent' : '#f3f4f6',
-          border: buttonStyle === 'primary' ? 'none' : `2px solid ${buttonStyle === 'secondary' ? '#9333ea' : '#e5e7eb'}`,
+          color: buttonStyle === 'primary' ? '#ffffff' : buttonStyle === 'secondary' ? effectiveAccent : '#6b7280',
+          background: buttonStyle === 'primary' ? effectiveAccent : buttonStyle === 'secondary' ? 'transparent' : '#f3f4f6',
+          border: buttonStyle === 'primary' ? 'none' : `2px solid ${buttonStyle === 'secondary' ? effectiveAccent : '#e5e7eb'}`,
           borderRadius: '8px',
           cursor: disabled ? 'not-allowed' : 'pointer',
           opacity: disabled ? 0.6 : 1,
@@ -50,10 +55,10 @@ export const Button: React.FC<QuestionProps> = ({
         onMouseEnter={(e) => {
           if (!disabled) {
             if (buttonStyle === 'primary') {
-              e.currentTarget.style.background = '#7e22ce';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(147, 51, 234, 0.3)';
+              e.currentTarget.style.background = effectiveAccent + 'dd';
+              e.currentTarget.style.boxShadow = `0 4px 12px ${effectiveAccent}4d`;
             } else if (buttonStyle === 'secondary') {
-              e.currentTarget.style.background = '#faf5ff';
+              e.currentTarget.style.background = `${effectiveAccent}10`;
             } else {
               e.currentTarget.style.background = '#e5e7eb';
             }
@@ -62,8 +67,8 @@ export const Button: React.FC<QuestionProps> = ({
         onMouseLeave={(e) => {
           if (!disabled) {
             if (buttonStyle === 'primary') {
-              e.currentTarget.style.background = '#9333ea';
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(147, 51, 234, 0.2)';
+              e.currentTarget.style.background = effectiveAccent;
+              e.currentTarget.style.boxShadow = `0 2px 8px ${effectiveAccent}33`;
             } else if (buttonStyle === 'secondary') {
               e.currentTarget.style.background = 'transparent';
             } else {

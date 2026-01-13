@@ -34,6 +34,8 @@ interface QuestionRendererProps {
   onChange: (value: any) => void;
   disabled?: boolean;
   hideLabel?: boolean;
+  accentColor?: string;
+  boldTextColor?: string;
 }
 
 export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
@@ -41,14 +43,18 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
   value,
   onChange,
   disabled = false,
-  hideLabel = false
+  hideLabel = false,
+  accentColor,
+  boldTextColor
 }) => {
   const questionProps = {
     question,
     value,
     onChange,
     disabled,
-    hideLabel
+    hideLabel,
+    accentColor,
+    boldTextColor
   };
 
   switch (question.question_type) {

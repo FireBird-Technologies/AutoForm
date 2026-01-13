@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
 import { config, getAuthHeaders } from '../config';
 import { useSidebar } from '../contexts/SidebarContext';
 
@@ -9,6 +10,12 @@ interface Form {
   created_at: string;
   updated_at: string;
   questions: any[];
+  settings?: {
+    background_color?: string;
+    text_color?: string;
+    accent_color?: string;
+    bold_text_color?: string;
+  };
 }
 
 export const Sidebar: React.FC = () => {
@@ -170,10 +177,14 @@ export const Sidebar: React.FC = () => {
           <div style={{
             padding: '20px',
             textAlign: 'center',
-            color: '#9ca3af',
-            fontSize: '13px'
+            color: '#6b7280',
+            fontSize: '13px',
+            lineHeight: '1.5'
           }}>
-            No forms yet
+            <div style={{ marginBottom: '8px', fontWeight: '500' }}>No forms yet</div>
+            <div style={{ fontSize: '12px', color: '#9ca3af' }}>
+              Create a new form or refresh to see your latest forms
+            </div>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
@@ -220,7 +231,21 @@ export const Sidebar: React.FC = () => {
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap'
                   }}>
-                    {form.title}
+                    <ReactMarkdown
+                      components={{
+                        p: ({ children }) => <span>{children}</span>,
+                        strong: ({ children }) => (
+                          <strong style={{ 
+                            fontWeight: '700', 
+                            color: form.settings?.bold_text_color || form.settings?.accent_color || '#9333ea'
+                          }}>
+                            {children}
+                          </strong>
+                        )
+                      }}
+                    >
+                      {form.title}
+                    </ReactMarkdown>
                   </div>
                   <div style={{
                     display: 'flex',

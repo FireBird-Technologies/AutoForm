@@ -6,8 +6,11 @@ export const TimePicker: React.FC<QuestionProps> = ({
   value,
   onChange,
   disabled = false,
-  hideLabel = false
+  hideLabel = false,
+  accentColor = '#9333ea',
+  boldTextColor
 }) => {
+  const effectiveAccent = boldTextColor || accentColor;
   const timeValue = value?.date || '';
 
   return (
@@ -26,7 +29,7 @@ export const TimePicker: React.FC<QuestionProps> = ({
             letterSpacing: '-0.01em'
           }}>
             {question.question_text}
-            {question.required && <span style={{ color: '#9333ea', marginLeft: '4px' }}>*</span>}
+            {question.required && <span style={{ color: effectiveAccent, marginLeft: '4px' }}>*</span>}
           </label>
           {question.description && (
             <p style={{
@@ -57,7 +60,7 @@ export const TimePicker: React.FC<QuestionProps> = ({
           transition: 'border-color 0.2s',
           fontFamily: 'inherit'
         }}
-        onFocus={(e) => e.currentTarget.style.borderColor = '#9333ea'}
+        onFocus={(e) => e.currentTarget.style.borderColor = effectiveAccent}
         onBlur={(e) => e.currentTarget.style.borderColor = '#e5e7eb'}
       />
     </div>

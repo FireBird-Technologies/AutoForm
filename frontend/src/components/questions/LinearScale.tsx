@@ -6,8 +6,11 @@ export const LinearScale: React.FC<QuestionProps> = ({
   value,
   onChange,
   disabled = false,
-  hideLabel = false
+  hideLabel = false,
+  accentColor = '#9333ea',
+  boldTextColor
 }) => {
+  const effectiveAccent = boldTextColor || accentColor;
   const scaleValue = value?.number || 0;
   const minValue = question.settings?.min_value || 1;
   const maxValue = question.settings?.max_value || 10;
@@ -30,7 +33,7 @@ export const LinearScale: React.FC<QuestionProps> = ({
             letterSpacing: '-0.01em'
           }}>
             {question.question_text}
-            {question.required && <span style={{ color: '#9333ea', marginLeft: '4px' }}>*</span>}
+            {question.required && <span style={{ color: effectiveAccent, marginLeft: '4px' }}>*</span>}
           </label>
           {question.description && (
             <p style={{
@@ -96,8 +99,8 @@ export const LinearScale: React.FC<QuestionProps> = ({
                   fontSize: '15px',
                   fontWeight: '500',
                   color: isSelected ? '#ffffff' : '#000000',
-                  background: isSelected ? '#9333ea' : 'transparent',
-                  border: `1px solid ${isSelected ? '#9333ea' : '#e5e7eb'}`,
+                  background: isSelected ? effectiveAccent : 'transparent',
+                  border: `1px solid ${isSelected ? effectiveAccent : '#e5e7eb'}`,
                   borderRadius: '8px',
                   transition: 'all 0.2s'
                 }}>

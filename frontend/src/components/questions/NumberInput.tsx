@@ -6,8 +6,11 @@ export const NumberInput: React.FC<QuestionProps> = ({
   value,
   onChange,
   disabled = false,
-  hideLabel = false
+  hideLabel = false,
+  accentColor = '#9333ea',
+  boldTextColor
 }) => {
+  const effectiveAccent = boldTextColor || accentColor;
   const numberValue = value?.number !== undefined ? value.number : '';
   const minValue = question.settings?.min_value;
   const maxValue = question.settings?.max_value;
@@ -29,7 +32,7 @@ export const NumberInput: React.FC<QuestionProps> = ({
             letterSpacing: '-0.01em'
           }}>
             {question.question_text}
-            {question.required && <span style={{ color: '#9333ea', marginLeft: '4px' }}>*</span>}
+            {question.required && <span style={{ color: effectiveAccent, marginLeft: '4px' }}>*</span>}
           </label>
           {question.description && (
             <p style={{
@@ -63,7 +66,7 @@ export const NumberInput: React.FC<QuestionProps> = ({
           transition: 'border-color 0.2s',
           fontFamily: 'inherit'
         }}
-        onFocus={(e) => e.currentTarget.style.borderBottomColor = '#9333ea'}
+        onFocus={(e) => e.currentTarget.style.borderBottomColor = effectiveAccent}
         onBlur={(e) => e.currentTarget.style.borderBottomColor = '#e5e7eb'}
       />
       {(minValue !== undefined || maxValue !== undefined) && (

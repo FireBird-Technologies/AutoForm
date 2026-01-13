@@ -6,8 +6,11 @@ export const Checkboxes: React.FC<QuestionProps> = ({
   value,
   onChange,
   disabled = false,
-  hideLabel = false
+  hideLabel = false,
+  accentColor = '#9333ea',
+  boldTextColor
 }) => {
+  const effectiveAccent = boldTextColor || accentColor;
   const selectedChoices = value?.choices || [];
   const choices = question.settings?.choices || [];
 
@@ -34,7 +37,7 @@ export const Checkboxes: React.FC<QuestionProps> = ({
         letterSpacing: '-0.01em'
       }}>
         {question.question_text}
-        {question.required && <span style={{ color: '#9333ea', marginLeft: '4px' }}>*</span>}
+        {question.required && <span style={{ color: effectiveAccent, marginLeft: '4px' }}>*</span>}
       </label>
       {question.description && (
         <p style={{
@@ -61,9 +64,9 @@ export const Checkboxes: React.FC<QuestionProps> = ({
               borderRadius: '8px',
               cursor: disabled ? 'not-allowed' : 'pointer',
               transition: 'all 0.2s',
-              background: selectedChoices.includes(choice) ? '#faf5ff' : 'transparent'
+              background: selectedChoices.includes(choice) ? `${effectiveAccent}10` : 'transparent'
             }}
-            onMouseEnter={(e) => !disabled && (e.currentTarget.style.borderColor = '#9333ea')}
+            onMouseEnter={(e) => !disabled && (e.currentTarget.style.borderColor = effectiveAccent)}
             onMouseLeave={(e) => !disabled && (e.currentTarget.style.borderColor = '#e5e7eb')}
           >
             <input
@@ -74,7 +77,7 @@ export const Checkboxes: React.FC<QuestionProps> = ({
               style={{
                 width: '18px',
                 height: '18px',
-                accentColor: '#9333ea',
+                accentColor: effectiveAccent,
                 cursor: disabled ? 'not-allowed' : 'pointer'
               }}
             />
