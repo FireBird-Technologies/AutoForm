@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FeatureCard } from './landing/FeatureCard';
 import { WorkflowStep } from './landing/WorkflowStep';
 import { GoogleAuthButton } from './GoogleAuthButton';
-// import { DemoForms } from './landing/DemoForms';
+import { InteractiveDemo } from './landing/InteractiveDemo';
 
 interface LandingProps {
   onStart: () => void;
@@ -149,8 +149,8 @@ export const Landing: React.FC<LandingProps> = ({ onStart }) => {
                   <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
                 </svg>
               }
-              title="Response Management"
-              description="Track all submissions in one place. View individual responses and export data in CSV or JSON format."
+              title="Analytics & Submissions"
+              description="Built-in analytics dashboard shows views, completion rates, and conversion funnels. Browse submissions in an easy table view with sorting and export options."
             />
             <FeatureCard
               icon={
@@ -474,172 +474,16 @@ export const Landing: React.FC<LandingProps> = ({ onStart }) => {
             <span className="demo-badge">Live Interactive Demo</span>
             <h2 className="section-heading">See It in Action</h2>
             <p className="section-subheading">
-              Experience how easy it is to create forms with AI. 
-              <strong> Describe what you need</strong> and watch as intelligent forms are generated instantly!
-              Build surveys, registration forms, applications, and more - all from natural language.
+              Try our fully functional demo! Fill out the form, explore analytics, and see sample submissions.
+              <br />
+              <strong>All components are real and interactive</strong> - exactly what you'll build with AutoForm.
             </p>
           </div>
-          <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '32px', boxShadow: '0 4px 24px rgba(147, 51, 234, 0.08)', position: 'relative' }}>
-            {/* Form Examples Demo */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-              {/* Customer Feedback Form */}
-              <div style={{ 
-                background: '#ffffff', 
-                border: '2px solid #e9d5ff', 
-                borderRadius: '12px', 
-                padding: '20px',
-                boxShadow: '0 2px 8px rgba(147, 51, 234, 0.06)'
-              }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#000', marginBottom: '16px' }}>
-                  Customer Feedback Survey
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div>
-                    <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '6px' }}>
-                      How satisfied are you with our service? *
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      {[1,2,3,4,5].map(n => (
-                        <div key={n} style={{
-                          width: '36px',
-                          height: '36px',
-                          borderRadius: '50%',
-                          border: '2px solid #e9d5ff',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '14px',
-                          color: '#9333ea'
-                        }}>
-                          {n}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '6px' }}>
-                      Additional comments
-                    </div>
-                    <div style={{
-                      height: '60px',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '6px',
-                      background: '#faf5ff'
-                    }}></div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Event Registration Form */}
-              <div style={{ 
-                background: '#ffffff', 
-                border: '2px solid #e9d5ff', 
-                borderRadius: '12px', 
-                padding: '20px',
-                boxShadow: '0 2px 8px rgba(147, 51, 234, 0.06)'
-              }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#000', marginBottom: '16px' }}>
-                  Event Registration
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div>
-                    <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '6px' }}>
-                      Full Name *
-                    </div>
-                    <div style={{
-                      height: '38px',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '6px',
-                      background: '#faf5ff'
-                    }}></div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '6px' }}>
-                      Email Address *
-                    </div>
-                    <div style={{
-                      height: '38px',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '6px',
-                      background: '#faf5ff'
-                    }}></div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '6px' }}>
-                      Ticket Type *
-                    </div>
-                    <div style={{
-                      height: '38px',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '6px',
-                      background: '#faf5ff',
-                      display: 'flex',
-                      alignItems: 'center',
-                      padding: '0 12px',
-                      fontSize: '14px',
-                      color: '#9333ea'
-                    }}>
-                      Select...
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Contact Form */}
-              <div style={{ 
-                background: '#ffffff', 
-                border: '2px solid #e9d5ff', 
-                borderRadius: '12px', 
-                padding: '20px',
-                boxShadow: '0 2px 8px rgba(147, 51, 234, 0.06)'
-              }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#000', marginBottom: '16px' }}>
-                  Contact Us
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div>
-                    <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '6px' }}>
-                      Subject *
-                    </div>
-                    <div style={{
-                      height: '38px',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '6px',
-                      background: '#faf5ff'
-                    }}></div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '6px' }}>
-                      Message *
-                    </div>
-                    <div style={{
-                      height: '80px',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '6px',
-                      background: '#faf5ff'
-                    }}></div>
-                  </div>
-                  <div style={{
-                    height: '38px',
-                    background: '#9333ea',
-                    borderRadius: '6px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    fontSize: '14px',
-                    fontWeight: '500'
-                  }}>
-                    Submit
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <InteractiveDemo />
           <div className="demo-cta">
             <p className="demo-cta-text">
-              <strong>🚀 Intelligent Forms:</strong> Add conditional logic, validation rules, and custom field types. 
-              These are just examples. You can create <strong>any form you can imagine</strong> - just describe it in plain English.
+              <strong>🚀 Powerful Features:</strong> The demo shows just a few of our 20+ question types. 
+              Add conditional logic, validation rules, custom themes, and advanced analytics to any form you create.
             </p>
             <GoogleAuthButton
               onSuccess={(token) => {
@@ -742,8 +586,8 @@ export const Landing: React.FC<LandingProps> = ({ onStart }) => {
         <div className="section-container">
           <div className="benefits-grid">
             <div className="benefit-card">
-              <h3>No Code Required</h3>
-              <p>Built for everyone - from analysts to executives. If you can describe it, we can visualize it.</p>
+            <h3>Simple Analytics & Submissions</h3>
+            <p>Built-in analytics and submission views make it easy to track responses. View completion rates, analyze trends, and export data - all without any setup.</p>
             </div>
             <div className="benefit-card">
               <h3>Lightning Fast</h3>

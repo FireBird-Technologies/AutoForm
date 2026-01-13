@@ -1704,15 +1704,29 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                             </div>
                             <input
                               type="number"
-                              value={question.settings?.min_value ?? 1}
+                              value={question.settings?.min_value ?? ''}
                               onChange={(e) => {
-                                const val = e.target.value === '' ? 1 : parseInt(e.target.value);
-                                if (!isNaN(val)) {
-                                  handleInlineQuestionUpdate(question.id, 'settings.min_value', val);
+                                // Allow temporary empty value while editing
+                                const val = e.target.value;
+                                if (val === '') {
+                                  // Store empty temporarily to allow user to clear field
+                                  const updatedQuestions = formData.questions.map((q: any) => {
+                                    if (q.id === question.id) {
+                                      return { ...q, settings: { ...q.settings, min_value: '' } };
+                                    }
+                                    return q;
+                                  });
+                                  setFormData({ ...formData, questions: updatedQuestions });
+                                } else {
+                                  const numVal = parseInt(val);
+                                  if (!isNaN(numVal)) {
+                                    handleInlineQuestionUpdate(question.id, 'settings.min_value', numVal);
+                                  }
                                 }
                               }}
                               onBlur={(e) => {
-                                if (e.target.value === '') {
+                                // Restore to default if empty on blur
+                                if (e.target.value === '' || e.target.value === null) {
                                   handleInlineQuestionUpdate(question.id, 'settings.min_value', 1);
                                 }
                                 e.currentTarget.style.borderColor = '#e5e7eb';
@@ -1726,6 +1740,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                                 outline: 'none'
                               }}
                               onFocus={(e) => e.currentTarget.style.borderColor = globalColors.boldText || '#9333ea'}
+                              placeholder="1"
                             />
                           </div>
                           <div style={{ flex: 1 }}>
@@ -1734,15 +1749,29 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                             </div>
                             <input
                               type="number"
-                              value={question.settings?.max_value ?? 5}
+                              value={question.settings?.max_value ?? ''}
                               onChange={(e) => {
-                                const val = e.target.value === '' ? 5 : parseInt(e.target.value);
-                                if (!isNaN(val)) {
-                                  handleInlineQuestionUpdate(question.id, 'settings.max_value', val);
+                                // Allow temporary empty value while editing
+                                const val = e.target.value;
+                                if (val === '') {
+                                  // Store empty temporarily to allow user to clear field
+                                  const updatedQuestions = formData.questions.map((q: any) => {
+                                    if (q.id === question.id) {
+                                      return { ...q, settings: { ...q.settings, max_value: '' } };
+                                    }
+                                    return q;
+                                  });
+                                  setFormData({ ...formData, questions: updatedQuestions });
+                                } else {
+                                  const numVal = parseInt(val);
+                                  if (!isNaN(numVal)) {
+                                    handleInlineQuestionUpdate(question.id, 'settings.max_value', numVal);
+                                  }
                                 }
                               }}
                               onBlur={(e) => {
-                                if (e.target.value === '') {
+                                // Restore to default if empty on blur
+                                if (e.target.value === '' || e.target.value === null) {
                                   handleInlineQuestionUpdate(question.id, 'settings.max_value', 5);
                                 }
                                 e.currentTarget.style.borderColor = '#e5e7eb';
@@ -1756,6 +1785,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                                 outline: 'none'
                               }}
                               onFocus={(e) => e.currentTarget.style.borderColor = globalColors.boldText || '#9333ea'}
+                              placeholder="5"
                             />
                           </div>
                         </div>
@@ -1968,28 +1998,54 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                             ))}
                     </div>
                         )}
-                        {question.question_type === 'linear_scale' && (
-                          <div style={{ display: 'flex', gap: '8px' }}>
-                            {[...Array(question.settings?.max_value || 5)].map((_, i) => (
-                              <span
-                                key={i}
+                        {question.question_type === 'linear_scale' && (() => {
+                          const minVal = question.settings?.min_value || 1;
+                          const maxVal = question.settings?.max_value || 5;
+                          const range = maxVal - minVal + 1;
+                          const useSlider = range > 10;
+                          
+                          return useSlider ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%' }}>
+                              <span style={{ fontSize: '13px', color: '#9ca3af', minWidth: '30px' }}>{minVal}</span>
+                              <input
+                                type="range"
+                                min={minVal}
+                                max={maxVal}
+                                disabled
                                 style={{
-                                  width: '40px',
-                                  height: '40px',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  border: '1px solid #e5e7eb',
-                                  borderRadius: '8px',
-                                  fontSize: '14px',
-                                  color: '#9ca3af'
+                                  flex: 1,
+                                  height: '6px',
+                                  borderRadius: '3px',
+                                  background: '#e5e7eb',
+                                  cursor: 'not-allowed',
+                                  accentColor: globalColors.boldText || '#9333ea'
                                 }}
-                              >
-                                {(question.settings?.min_value || 1) + i}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+                              />
+                              <span style={{ fontSize: '13px', color: '#9ca3af', minWidth: '30px', textAlign: 'right' }}>{maxVal}</span>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              {[...Array(range)].map((_, i) => (
+                                <span
+                                  key={i}
+                                  style={{
+                                    width: '40px',
+                                    height: '40px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '8px',
+                                    fontSize: '14px',
+                                    color: '#9ca3af'
+                                  }}
+                                >
+                                  {minVal + i}
+                                </span>
+                              ))}
+                            </div>
+                          );
+                        })()}
                         {question.question_type === 'signature' && (
                           <div
                             style={{
