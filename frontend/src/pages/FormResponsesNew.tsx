@@ -387,7 +387,7 @@ export const FormResponsesNew: React.FC = () => {
               fontSize: '14px',
               color: '#6b7280'
             }}>
-              Share your form to start collecting responses
+              Publish your form to start collecting responses
             </p>
           </div>
         ) : (
