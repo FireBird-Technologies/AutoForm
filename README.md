@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <div align="center">
   <img src="backend/images/AutoForm.svg" alt="AutoForm Logo" width="300" />
   
@@ -293,3 +294,17 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 </div>
 
 
+=======
+---
+title: Autoform Backend
+emoji: 💻
+colorFrom: green
+colorTo: indigo
+sdk: docker
+pinned: false
+license: mit
+short_description: Backend for autoform
+---
+
+Check out the configuration reference at https://huggingface.co/docs/hub/spaces-config-reference
+>>>>>>> a13bf61ece506240d090d39da8a49fcc9ec7eaac

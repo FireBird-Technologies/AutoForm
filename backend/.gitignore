@@ -1,32 +1,80 @@
-.env
-*.ipynb
-
-app/.env
-*.db 
-
-.venv
-
-# Python cache
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+env.bak/
+venv.bak/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+chat.db
+*.db-journal
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# User uploaded images (exclude, keep only logos)
+images/*.png
+!images/AutoForm.png
+!images/favicon.png
+images/*.jpg
+images/*.jpeg
+images/*.gif
 
 # Testing
 .pytest_cache/
 .coverage
 htmlcov/
+.tox/
 
-# Type checking
-.mypy_cache/
-.dmypy.json
-dmypy.json
+# OS
+.DS_Store
+Thumbs.db
 
-app/schemas/__pycache__/
-app/services/__pycache__/
-**/__pycache__/
-
-*.db
-STRIPE_SETUP.md
-SUBSCRIPTION_SYSTEM.md
+# Keep these logo files
+!images/AutoForm.svg
