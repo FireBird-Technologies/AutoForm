@@ -445,6 +445,21 @@ class ExportService:
         if "ranked_items" in answer_value and answer_value["ranked_items"]:
             return ", ".join(answer_value["ranked_items"])
         
+        # File uploads
+        if "files" in answer_value and answer_value["files"]:
+            file_labels = []
+            for file_item in answer_value["files"]:
+                if not isinstance(file_item, dict):
+                    file_labels.append(str(file_item))
+                    continue
+                file_labels.append(
+                    file_item.get("filename")
+                    or file_item.get("original_filename")
+                    or file_item.get("s3_key")
+                    or str(file_item.get("upload_id", ""))
+                )
+            return ", ".join([label for label in file_labels if label])
+        
         # File upload
         if "file_url" in answer_value and answer_value["file_url"]:
             return answer_value["file_url"]

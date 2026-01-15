@@ -16,7 +16,7 @@ from datetime import datetime
 
 from ..core.db import get_db
 from ..core.security import get_current_user
-from ..models import User, Form, FormQuestion, FormResponse, ResponseAnswer, PublicForm
+from ..models import User, Form, FormQuestion, FormResponse, ResponseAnswer, PublicForm, FormUpload, QuestionType
 from ..schemas.form import (
     SubmissionCreate, SubmissionResponse,
     FormResponseDetail, FormResponsesList, ResponseAnswerDetail,
@@ -26,6 +26,7 @@ from ..schemas.validation import PartialSubmissionCreate, AutoSaveResponse
 from ..services.validation_service import validation_service
 from ..services.analytics_service import analytics_service
 from ..services.webhook_service import webhook_service
+from ..services.s3_service import s3_service
 from ..middleware.rate_limiter import rate_limiter
 
 import logging
@@ -34,6 +35,116 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["responses"])
 
+
+def _extract_upload_ids(answer_value: dict) -> List[int]:
+    if not isinstance(answer_value, dict):
+        return []
+    files = answer_value.get("files") or []
+    upload_ids = []
+    for item in files:
+        upload_id = None
+        if isinstance(item, dict):
+            upload_id = item.get("upload_id")
+        elif isinstance(item, int):
+            upload_id = item
+        elif isinstance(item, str) and item.isdigit():
+            upload_id = int(item)
+        if isinstance(upload_id, int):
+            upload_ids.append(upload_id)
+    return upload_ids
+
+
+def _attach_uploads(
+    db: Session,
+    upload_ids: List[int],
+    form_id: int,
+    response_id: int,
+    question_id: int
+) -> None:
+    if not upload_ids:
+        return
+    if not question_id:
+        return
+    try:
+        question_id = int(question_id)
+    except (TypeError, ValueError):
+        return
+    uploads = db.query(FormUpload).filter(FormUpload.id.in_(upload_ids)).all()
+    upload_map = {upload.id: upload for upload in uploads}
+    
+    for upload_id in upload_ids:
+        upload = upload_map.get(upload_id)
+        if not upload:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid upload reference"
+            )
+        if upload.form_id != form_id or upload.form_question_id != question_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Upload does not match form or question"
+            )
+        if upload.status not in ["pending", "uploaded", "attached"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Upload is not ready"
+            )
+        
+        upload.form_response_id = response_id
+        upload.status = "attached"
+        upload.attached_at = datetime.utcnow()
+
+
+def _enrich_answer_files(
+    answer_value: dict,
+    upload_map: dict,
+    include_download_url: bool = True
+) -> dict:
+    if not isinstance(answer_value, dict):
+        return answer_value
+    files = answer_value.get("files") or []
+    if not files:
+        return answer_value
+    
+    enriched = []
+    for item in files:
+        upload_id = None
+        if isinstance(item, dict):
+            upload_id = item.get("upload_id")
+        elif isinstance(item, int):
+            upload_id = item
+        elif isinstance(item, str) and item.isdigit():
+            upload_id = int(item)
+        
+        if not isinstance(upload_id, int):
+            continue
+        
+        upload = upload_map.get(upload_id)
+        if not upload:
+            continue
+        
+        file_entry = {
+            "upload_id": upload.id,
+            "filename": upload.original_filename,
+            "content_type": upload.content_type,
+            "size_bytes": upload.size_bytes,
+            "s3_key": upload.s3_key
+        }
+        
+        if include_download_url:
+            try:
+                file_entry["download_url"] = s3_service.generate_presigned_download_url(
+                    key=upload.s3_key,
+                    filename=upload.original_filename
+                )
+            except Exception:
+                pass
+        
+        enriched.append(file_entry)
+    
+    updated = dict(answer_value)
+    updated["files"] = enriched
+    return updated
 
 @router.post("/public/forms/{token}/submit", response_model=SubmissionResponse)
 async def submit_form(
@@ -89,10 +200,19 @@ async def submit_form(
         
         # Create answers
         for answer_data in submission.answers:
+            answer_value = answer_data.answer_value.model_dump()
+            upload_ids = _extract_upload_ids(answer_value)
+            _attach_uploads(
+                db=db,
+                upload_ids=upload_ids,
+                form_id=form.id,
+                response_id=form_response.id,
+                question_id=answer_data.question_id
+            )
             answer = ResponseAnswer(
                 form_response_id=form_response.id,
                 form_question_id=answer_data.question_id,
-                answer_value=answer_data.answer_value.model_dump()
+                answer_value=answer_value
             )
             db.add(answer)
         
@@ -106,6 +226,9 @@ async def submit_form(
             message=public_form.custom_thank_you_message or "Thank you for your submission!"
         )
         
+    except HTTPException:
+        db.rollback()
+        raise
     except Exception as e:
         db.rollback()
         logger.error(f"Form submission failed: {e}")
@@ -171,15 +294,25 @@ async def autosave_submission(
                     ResponseAnswer.form_question_id == answer_data.get('question_id')
                 ).first()
                 
+                answer_value = answer_data.get('answer_value', {})
+                upload_ids = _extract_upload_ids(answer_value)
+                _attach_uploads(
+                    db=db,
+                    upload_ids=upload_ids,
+                    form_id=form.id,
+                    response_id=existing_response.id,
+                    question_id=answer_data.get('question_id')
+                )
+                
                 if existing_answer:
                     # Update existing answer
-                    existing_answer.answer_value = answer_data.get('answer_value', {})
+                    existing_answer.answer_value = answer_value
                 else:
                     # Create new answer
                     new_answer = ResponseAnswer(
                         form_response_id=existing_response.id,
                         form_question_id=answer_data.get('question_id'),
-                        answer_value=answer_data.get('answer_value', {})
+                        answer_value=answer_value
                     )
                     db.add(new_answer)
             
@@ -205,10 +338,19 @@ async def autosave_submission(
             
             # Create answers
             for answer_data in submission.answers:
+                answer_value = answer_data.get('answer_value', {})
+                upload_ids = _extract_upload_ids(answer_value)
+                _attach_uploads(
+                    db=db,
+                    upload_ids=upload_ids,
+                    form_id=form.id,
+                    response_id=form_response.id,
+                    question_id=answer_data.get('question_id')
+                )
                 answer = ResponseAnswer(
                     form_response_id=form_response.id,
                     form_question_id=answer_data.get('question_id'),
-                    answer_value=answer_data.get('answer_value', {})
+                    answer_value=answer_value
                 )
                 db.add(answer)
         
@@ -230,6 +372,9 @@ async def autosave_submission(
             message="Auto-saved successfully"
         )
         
+    except HTTPException:
+        db.rollback()
+        raise
     except Exception as e:
         db.rollback()
         logger.error(f"Auto-save failed: {e}")
@@ -314,6 +459,16 @@ async def get_form_responses(
         FormResponse.form_id == form_id
     ).order_by(desc(FormResponse.submitted_at)).limit(limit).offset(offset).all()
     
+    upload_ids = set()
+    for response in responses:
+        for answer in response.answers:
+            upload_ids.update(_extract_upload_ids(answer.answer_value or {}))
+    
+    upload_map = {}
+    if upload_ids:
+        uploads = db.query(FormUpload).filter(FormUpload.id.in_(upload_ids)).all()
+        upload_map = {upload.id: upload for upload in uploads}
+    
     # Build detailed response list
     response_details = []
     for response in responses:
@@ -324,11 +479,16 @@ async def get_form_responses(
             ).first()
             
             if question:
+                answer_value = _enrich_answer_files(
+                    answer.answer_value or {},
+                    upload_map,
+                    include_download_url=True
+                )
                 answers.append(ResponseAnswerDetail(
                     question_id=question.id,
                     question_text=question.question_text,
                     question_type=question.question_type,
-                    answer_value=answer.answer_value or {}
+                    answer_value=answer_value
                 ))
         
         response_details.append(FormResponseDetail(
@@ -378,17 +538,31 @@ async def get_single_response(
     
     # Build answer details
     answers = []
+    upload_ids = set()
+    for answer in response.answers:
+        upload_ids.update(_extract_upload_ids(answer.answer_value or {}))
+    
+    upload_map = {}
+    if upload_ids:
+        uploads = db.query(FormUpload).filter(FormUpload.id.in_(upload_ids)).all()
+        upload_map = {upload.id: upload for upload in uploads}
+    
     for answer in response.answers:
         question = db.query(FormQuestion).filter(
             FormQuestion.id == answer.form_question_id
         ).first()
         
         if question:
+            answer_value = _enrich_answer_files(
+                answer.answer_value or {},
+                upload_map,
+                include_download_url=True
+            )
             answers.append(ResponseAnswerDetail(
                 question_id=question.id,
                 question_text=question.question_text,
                 question_type=question.question_type,
-                answer_value=answer.answer_value or {}
+                answer_value=answer_value
             ))
     
     return FormResponseDetail(
@@ -403,6 +577,7 @@ async def get_single_response(
 @router.get("/forms/{form_id}/responses/export/csv")
 async def export_responses_csv(
     form_id: int,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -431,15 +606,40 @@ async def export_responses_csv(
         FormResponse.form_id == form_id
     ).order_by(desc(FormResponse.submitted_at)).all()
     
+    upload_ids = set()
+    for response in responses:
+        for answer in response.answers:
+            upload_ids.update(_extract_upload_ids(answer.answer_value or {}))
+    
+    upload_map = {}
+    if upload_ids:
+        uploads = db.query(FormUpload).filter(FormUpload.id.in_(upload_ids)).all()
+        upload_map = {upload.id: upload for upload in uploads}
+    
+    upload_ids = set()
+    for response in responses:
+        for answer in response.answers:
+            upload_ids.update(_extract_upload_ids(answer.answer_value or {}))
+    
+    upload_map = {}
+    if upload_ids:
+        uploads = db.query(FormUpload).filter(FormUpload.id.in_(upload_ids)).all()
+        upload_map = {upload.id: upload for upload in uploads}
+    
     # Create CSV in memory
     output = io.StringIO()
     writer = csv.writer(output)
     
     # Write headers
     headers = ["Response ID", "Submitted At", "IP Address"]
-    headers.extend([q.question_text for q in questions])
+    for question in questions:
+        headers.append(question.question_text)
+        if question.question_type == QuestionType.FILE_UPLOAD:
+            headers.append(f"{question.question_text} (download_url)")
     writer.writerow(headers)
     
+    base_url = str(request.base_url).rstrip("/")
+
     # Write data rows
     for response in responses:
         row = [
@@ -457,6 +657,12 @@ async def export_responses_csv(
         # Add answers in question order
         for question in questions:
             answer_value = answer_map.get(question.id, {})
+            if isinstance(answer_value, dict):
+                answer_value = _enrich_answer_files(
+                    answer_value,
+                    upload_map,
+                    include_download_url=True
+                )
             
             # Format answer based on type
             if isinstance(answer_value, dict):
@@ -471,10 +677,42 @@ async def export_responses_csv(
                     row.append(answer_value["date"])
                 elif "rating" in answer_value:
                     row.append(str(answer_value["rating"]))
+                elif "files" in answer_value and answer_value["files"]:
+                    file_labels = []
+                    file_links = []
+                    for file_item in answer_value["files"]:
+                        if not isinstance(file_item, dict):
+                            file_labels.append(str(file_item))
+                            file_links.append(str(file_item))
+                            continue
+                        file_labels.append(
+                            file_item.get("download_url")
+                            or file_item.get("filename")
+                            or file_item.get("original_filename")
+                            or file_item.get("s3_key")
+                            or str(file_item.get("upload_id", ""))
+                        )
+                        if file_item.get("download_url"):
+                            file_links.append(file_item["download_url"])
+                        elif file_item.get("upload_id"):
+                            file_links.append(
+                                f"{base_url}/api/forms/{form_id}/uploads/{file_item['upload_id']}/download"
+                            )
+                    row.append(", ".join([label for label in file_labels if label]))
+                    if question.question_type == QuestionType.FILE_UPLOAD:
+                        row.append(", ".join([link for link in file_links if link]))
+                elif "file_url" in answer_value:
+                    row.append(answer_value["file_url"])
+                    if question.question_type == QuestionType.FILE_UPLOAD:
+                        row.append(answer_value["file_url"])
                 else:
                     row.append(json.dumps(answer_value))
+                    if question.question_type == QuestionType.FILE_UPLOAD:
+                        row.append("")
             else:
                 row.append(str(answer_value))
+                if question.question_type == QuestionType.FILE_UPLOAD:
+                    row.append("")
         
         writer.writerow(row)
     
@@ -493,6 +731,7 @@ async def export_responses_csv(
 @router.get("/forms/{form_id}/responses/export/json")
 async def export_responses_json(
     form_id: int,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -516,6 +755,18 @@ async def export_responses_json(
         FormResponse.form_id == form_id
     ).order_by(desc(FormResponse.submitted_at)).all()
     
+    upload_ids = set()
+    for response in responses:
+        for answer in response.answers:
+            upload_ids.update(_extract_upload_ids(answer.answer_value or {}))
+    
+    upload_map = {}
+    if upload_ids:
+        uploads = db.query(FormUpload).filter(FormUpload.id.in_(upload_ids)).all()
+        upload_map = {upload.id: upload for upload in uploads}
+    
+    base_url = str(request.base_url).rstrip("/")
+
     # Build export data
     export_data = {
         "form_id": form_id,
@@ -539,11 +790,30 @@ async def export_responses_json(
             ).first()
             
             if question:
+                answer_value = _enrich_answer_files(
+                    answer.answer_value or {},
+                    upload_map,
+                    include_download_url=True
+                )
+                if isinstance(answer_value, dict) and "files" in answer_value:
+                    updated_files = []
+                    for file_item in answer_value.get("files") or []:
+                        if not isinstance(file_item, dict):
+                            updated_files.append(file_item)
+                            continue
+                        if not file_item.get("download_url") and file_item.get("upload_id"):
+                            file_item = dict(file_item)
+                            file_item["download_url"] = (
+                                f"{base_url}/api/forms/{form_id}/uploads/{file_item['upload_id']}/download"
+                            )
+                        updated_files.append(file_item)
+                    answer_value = dict(answer_value)
+                    answer_value["files"] = updated_files
                 response_data["answers"].append({
                     "question_id": question.id,
                     "question_text": question.question_text,
                     "question_type": question.question_type.value,
-                    "answer_value": answer.answer_value
+                    "answer_value": answer_value
                 })
         
         export_data["responses"].append(response_data)
@@ -591,4 +861,3 @@ async def delete_response(
     db.commit()
     
     return None
-

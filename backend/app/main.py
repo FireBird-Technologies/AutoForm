@@ -28,6 +28,7 @@ from .routes.forms import router as forms_router
 from .routes.responses import router as responses_router
 from .routes.analytics import router as analytics_router
 from .routes.users import router as users_router
+from .routes.uploads import router as uploads_router
 
 app = FastAPI(title="Backend", version="0.1.0")
 
@@ -107,6 +108,7 @@ app.include_router(forms_router)
 app.include_router(responses_router)
 app.include_router(analytics_router)
 app.include_router(users_router)
+app.include_router(uploads_router)
 
 # Initialize DB
 if os.getenv("AUTO_MIGRATE", "1") == "1":
@@ -122,5 +124,4 @@ if os.getenv("AUTO_MIGRATE", "1") == "1":
         logging.info("Default subscription plans initialized")
     except Exception as e:
         logging.error(f"Failed to initialize subscription plans: {e}")
-
 

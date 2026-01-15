@@ -14,6 +14,9 @@ export interface QuestionProps {
   hideLabel?: boolean;
   accentColor?: string;
   boldTextColor?: string;
+  uploadContext?: {
+    token?: string;
+  };
 }
 
 export const ShortAnswer: React.FC<QuestionProps> = ({
@@ -94,4 +97,3 @@ export const ShortAnswer: React.FC<QuestionProps> = ({
     </div>
   );
 };
-
