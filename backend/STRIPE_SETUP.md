@@ -1,10 +1,10 @@
 # Stripe Subscription System Setup Guide
 
-This guide will help you set up Stripe for the AutoDash subscription system.
+This guide will help you set up Stripe for the AutoForm subscription system.
 
 ## Overview
 
-The AutoDash subscription system includes three tiers:
+The AutoForm subscription system includes three tiers:
 - **Free Tier**: $0/month, 25 credits
 - **Pro Tier**: $20/month, 500 credits
 - **Ultra Tier**: Custom pricing, 1000 credits
@@ -25,7 +25,7 @@ Go to https://dashboard.stripe.com and log in to your account.
 Navigate to **Products** → **Add Product** and create three products:
 
 #### Free Tier
-- **Name**: AutoDash Free
+- **Name**: AutoForm Free
 - **Description**: Free tier with 25 credits per month
 - **Pricing**:
   - Price: $0.00
@@ -33,14 +33,14 @@ Navigate to **Products** → **Add Product** and create three products:
   - Note: This is for tracking only, users won't be charged
 
 #### Pro Tier
-- **Name**: AutoDash Pro
+- **Name**: AutoForm Pro
 - **Description**: Professional tier with 500 credits per month
 - **Pricing**:
   - Price: $20.00
   - Billing period: Monthly (recurring)
 
 #### Ultra Tier
-- **Name**: AutoDash Ultra
+- **Name**: AutoForm Ultra
 - **Description**: Ultra tier with 1000 credits per month
 - **Pricing**:
   - Price: $29.99 (or your preferred amount)
