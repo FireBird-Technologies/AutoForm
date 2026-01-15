@@ -188,4 +188,3 @@ const TimeBlock: React.FC<{ value: number; label: string }> = ({ value, label })
     <span style={{ fontSize: '10px', color: '#999', marginLeft: '2px' }}>{label}</span>
   </div>
 );
-

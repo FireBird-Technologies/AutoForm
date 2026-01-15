@@ -140,7 +140,7 @@ function AppRoutes() {
   return (
     <>
       <AuthHandler />
-      <NewYearBanner />
+      {showNavbar && <NewYearBanner />}
       {showNavbar && <Navbar onAccountClick={() => navigate('/account')} />}
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'row' }}>
         {showSidebar && <Sidebar />}

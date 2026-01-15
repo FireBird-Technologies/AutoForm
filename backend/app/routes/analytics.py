@@ -34,13 +34,13 @@ class TrackEventRequest(BaseModel):
 @router.post("/public/forms/{token}/track")
 async def track_public_event(
     token: str,
-    payload: TrackEventRequest,
+    payload: TrackEventRequest,  # Expects JSON body with event_type, session_id, question_id, time_spent
     request: Request,
     db: Session = Depends(get_db)
 ):
     """
     Public endpoint for client-side analytics tracking.
-    No authentication required.
+    No authentication required. Accepts JSON body with tracking data.
     """
     # Find public form by token
     public_form = db.query(PublicForm).filter(
