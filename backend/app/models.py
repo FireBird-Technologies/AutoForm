@@ -91,6 +91,7 @@ class User(Base):
     public_dashboards: Mapped[list["PublicDashboard"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     forms: Mapped[list["Form"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     public_forms: Mapped[list["PublicForm"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    form_uploads: Mapped[list["FormUpload"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
 class Subscription(Base):
@@ -297,6 +298,7 @@ class Form(Base):
     chat_messages_form: Mapped[list["ChatMessageForm"]] = relationship(back_populates="form", cascade="all, delete-orphan")
     versions: Mapped[list["FormVersion"]] = relationship(back_populates="form", cascade="all, delete-orphan")
     analytics_events: Mapped[list["FormAnalyticsEvent"]] = relationship(back_populates="form", cascade="all, delete-orphan")
+    uploads: Mapped[list["FormUpload"]] = relationship(back_populates="form", cascade="all, delete-orphan")
 
 
 class FormQuestion(Base):
@@ -322,6 +324,7 @@ class FormQuestion(Base):
     target_rules: Mapped[list["ConditionalRule"]] = relationship(foreign_keys="ConditionalRule.target_question_id", back_populates="target_question", cascade="all, delete-orphan")
     answers: Mapped[list["ResponseAnswer"]] = relationship(back_populates="question", cascade="all, delete-orphan")
     analytics_events: Mapped[list["FormAnalyticsEvent"]] = relationship(back_populates="question", cascade="all, delete-orphan")
+    uploads: Mapped[list["FormUpload"]] = relationship(back_populates="question", cascade="all, delete-orphan")
 
 
 class ConditionalRule(Base):
@@ -381,6 +384,7 @@ class FormResponse(Base):
     form: Mapped[Form] = relationship(back_populates="responses")
     answers: Mapped[list["ResponseAnswer"]] = relationship(back_populates="response", cascade="all, delete-orphan")
     analytics_events: Mapped[list["FormAnalyticsEvent"]] = relationship(back_populates="submission", cascade="all, delete-orphan")
+    uploads: Mapped[list["FormUpload"]] = relationship(back_populates="response", cascade="all, delete-orphan")
 
 
 class ResponseAnswer(Base):
@@ -398,6 +402,32 @@ class ResponseAnswer(Base):
     # Relationships
     response: Mapped[FormResponse] = relationship(back_populates="answers")
     question: Mapped[FormQuestion] = relationship(back_populates="answers")
+
+
+class FormUpload(Base):
+    """Uploaded files for form responses"""
+    __tablename__ = "form_uploads"
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    form_id: Mapped[int] = mapped_column(ForeignKey("forms.id"), index=True)
+    form_response_id: Mapped[int | None] = mapped_column(ForeignKey("form_responses.id"), nullable=True, index=True)
+    form_question_id: Mapped[int] = mapped_column(ForeignKey("form_questions.id"), index=True)
+    
+    status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
+    original_filename: Mapped[str] = mapped_column(String(512))
+    content_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    s3_key: Mapped[str] = mapped_column(String(1024), unique=True, index=True)
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    uploaded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    attached_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    
+    user: Mapped[User] = relationship(back_populates="form_uploads")
+    form: Mapped[Form] = relationship(back_populates="uploads")
+    response: Mapped["FormResponse"] = relationship(back_populates="uploads")
+    question: Mapped[FormQuestion] = relationship(back_populates="uploads")
 
 
 class PublicForm(Base):
@@ -538,4 +568,3 @@ class WebhookConfig(Base):
     # Relationships
     form: Mapped[Form] = relationship()
     user: Mapped[User] = relationship()
-

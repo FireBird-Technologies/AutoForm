@@ -153,6 +153,7 @@ class AnswerValue(BaseModel):
     date: Optional[str] = None  # For date/time
     choices: Optional[List[str]] = None  # For multiple choice, checkboxes
     file_url: Optional[str] = None  # For file uploads
+    files: Optional[List[Dict[str, Any]]] = None  # For file uploads
     rating: Optional[int] = None  # For ratings
     signature: Optional[str] = None  # Base64 signature image
     wallet_address: Optional[str] = None  # For wallet connect
