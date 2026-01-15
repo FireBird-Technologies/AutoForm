@@ -77,13 +77,19 @@ class ValidationService:
         
         # Create answer map for quick lookup
         answer_map = {ans.get('question_id'): ans.get('answer_value', {}) for ans in answers}
+        visible_question_ids = self._get_visible_question_ids(form, answer_map)
         
         # Validate each question
         for question in form.questions:
             answer_value = answer_map.get(question.id)
             
             # Check required fields (only if is_complete)
-            if is_complete and question.required and not self._has_value(answer_value):
+            if (
+                is_complete
+                and question.required
+                and question.id in visible_question_ids
+                and not self._has_value(answer_value)
+            ):
                 errors.append(FieldValidationError(
                     question_id=question.id,
                     field="value",
@@ -106,6 +112,74 @@ class ValidationService:
             errors=errors,
             warnings=warnings
         )
+
+    def _get_visible_question_ids(
+        self,
+        form: Form,
+        answer_map: Dict[int, Dict[str, Any]]
+    ) -> set[int]:
+        """Determine which questions are visible based on conditional rules."""
+        visible = {q.id for q in form.questions}
+        if not getattr(form, "conditional_rules", None):
+            return visible
+        
+        for rule in form.conditional_rules:
+            trigger_answer = answer_map.get(rule.trigger_question_id, {})
+            condition_met = self._is_condition_met(trigger_answer, rule.condition_type, rule.condition_value)
+            
+            if condition_met:
+                if rule.action == "show":
+                    visible.add(rule.target_question_id)
+                elif rule.action == "hide":
+                    visible.discard(rule.target_question_id)
+            else:
+                if rule.action == "show":
+                    visible.discard(rule.target_question_id)
+        
+        return visible
+
+    def _is_condition_met(
+        self,
+        answer_value: Dict[str, Any],
+        condition_type: str,
+        condition_value: Optional[str]
+    ) -> bool:
+        """Evaluate conditional logic against an answer value."""
+        if not isinstance(answer_value, dict):
+            return False
+        
+        text = answer_value.get("text")
+        number = answer_value.get("number")
+        choices = answer_value.get("choices") or []
+        
+        if condition_type == "equals":
+            if isinstance(text, str) and text == condition_value:
+                return True
+            if number is not None and str(number) == condition_value:
+                return True
+            if choices and condition_value in choices:
+                return True
+            return False
+        
+        if condition_type == "not_equals":
+            if isinstance(text, str):
+                return text != condition_value
+            if number is not None:
+                return str(number) != condition_value
+            if choices:
+                return condition_value not in choices
+            return True
+        
+        if condition_type == "contains":
+            return isinstance(text, str) and condition_value is not None and condition_value in text
+        
+        if condition_type == "is_not_empty":
+            return self._has_value(answer_value)
+        
+        if condition_type == "is_empty":
+            return not self._has_value(answer_value)
+        
+        return False
     
     def validate_field(
         self, 
@@ -318,12 +392,13 @@ class ValidationService:
             return False
         
         # Check all possible value fields
-        text = answer_value.get('text', '').strip()
+        raw_text = answer_value.get('text')
+        text = raw_text.strip() if isinstance(raw_text, str) else ""
         number = answer_value.get('number')
         date = answer_value.get('date')
-        choices = answer_value.get('choices', [])
+        choices = answer_value.get('choices') or []
         rating = answer_value.get('rating')
-        files = answer_value.get('files', [])
+        files = answer_value.get('files') or []
         file_url = answer_value.get('file_url')
         
         return bool(text or number is not None or date or choices or rating is not None or files or file_url)

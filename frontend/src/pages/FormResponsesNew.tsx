@@ -36,6 +36,7 @@ export const FormResponsesNew: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedResponse, setSelectedResponse] = useState<Response | null>(null);
+  const [activeTab, setActiveTab] = useState<'all' | 'complete' | 'partial'>('all');
   
   const ITEMS_PER_PAGE = 50;
 
@@ -126,26 +127,54 @@ export const FormResponsesNew: React.FC = () => {
     
     if (value.files && Array.isArray(value.files)) {
       return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
           {value.files.map((file: any, idx: number) => {
             const label = file?.filename || file?.original_filename || file?.s3_key || `File ${idx + 1}`;
-            if (file?.download_url) {
+            if (file?.download_url || file?.s3_url || file?.url) {
+              const downloadUrl = file?.download_url || file?.s3_url || file?.url;
               return (
-                <a
+                <button
                   key={idx}
-                  href={file.download_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: '#9333ea', textDecoration: 'none', fontWeight: 500 }}
-                  onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
-                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(downloadUrl, '_blank');
+                  }}
+                  title={`Download ${label}`}
+                  style={{
+                    padding: '6px 12px',
+                    background: '#9333ea',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'all 0.15s',
+                    boxShadow: '0 1px 3px rgba(147,51,234,0.3)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#7e22ce';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 4px 8px rgba(147,51,234,0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#9333ea';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 1px 3px rgba(147,51,234,0.3)';
+                  }}
                 >
-                  {label}
-                </a>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                  </svg>
+                  {label.length > 15 ? label.substring(0, 15) + '...' : label}
+                </button>
               );
             }
             return (
-              <span key={idx}>
+              <span key={idx} style={{ fontSize: '13px', color: '#6b7280' }}>
                 {label}
               </span>
             );
@@ -155,21 +184,49 @@ export const FormResponsesNew: React.FC = () => {
     }
 
     if (value.text) return value.text;
-    if (value.file_url) {
+    if (value.file_url || value.s3_url || value.url) {
+      const downloadUrl = value.file_url || value.s3_url || value.url;
       return (
-        <a
-          href={value.file_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ color: '#9333ea', textDecoration: 'none', fontWeight: 500 }}
-          onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
-          onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            window.open(downloadUrl, '_blank');
+          }}
+          title="Download file"
+          style={{
+            padding: '6px 12px',
+            background: '#9333ea',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '12px',
+            fontWeight: '600',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            transition: 'all 0.15s',
+            boxShadow: '0 1px 3px rgba(147,51,234,0.3)'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#7e22ce';
+            e.currentTarget.style.transform = 'translateY(-1px)';
+            e.currentTarget.style.boxShadow = '0 4px 8px rgba(147,51,234,0.4)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = '#9333ea';
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 1px 3px rgba(147,51,234,0.3)';
+          }}
         >
-          {value.file_url}
-        </a>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+          Download File
+        </button>
       );
     }
-    if (value.number !== undefined) return value.number.toString();
+    if (value.number !== undefined && value.number !== null) return value.number.toString();
     if (value.choices) return Array.isArray(value.choices) ? value.choices.join(', ') : String(value.choices);
     if (value.date) return value.date;
     if (value.rating) return `${'⭐'.repeat(value.rating)}`;
@@ -178,17 +235,29 @@ export const FormResponsesNew: React.FC = () => {
         .map(([row, col]) => `${row}: ${col}`)
         .join('; ');
     }
-    if (value.ranked_items) return value.ranked_items.join(' → ');
+    if (value.ranked_items && Array.isArray(value.ranked_items)) return value.ranked_items.join(' → ');
     if (value.wallet_address) return value.wallet_address;
     
-    return String(value);
+    // Handle null/undefined values
+    if (value === null || value === undefined) return '-';
+    
+    // Fallback for other types
+    return typeof value === 'object' ? JSON.stringify(value) : String(value);
   };
 
+  // Filter responses by status
+  const filteredResponses = responses.filter(response => {
+    if (activeTab === 'all') return true;
+    if (activeTab === 'complete') return response.status === 'complete';
+    if (activeTab === 'partial') return response.status === 'partial' || response.status === 'in_progress';
+    return true;
+  });
+
   // Pagination
-  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(filteredResponses.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
-  const paginatedResponses = responses.slice(startIndex, endIndex);
+  const paginatedResponses = filteredResponses.slice(startIndex, endIndex);
 
   if (loading && !formData) {
     return (
@@ -403,8 +472,69 @@ export const FormResponsesNew: React.FC = () => {
           </div>
         </div>
 
+        {/* Tabs */}
+        <div style={{
+          background: 'white',
+          borderRadius: '12px',
+          padding: '8px',
+          marginBottom: '16px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          display: 'inline-flex',
+          gap: '4px'
+        }}>
+          {[
+            { key: 'all' as const, label: 'All', count: responses.length },
+            { key: 'complete' as const, label: 'Complete', count: responses.filter(r => r.status === 'complete').length },
+            { key: 'partial' as const, label: 'Partial', count: responses.filter(r => r.status === 'partial' || r.status === 'in_progress').length }
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => {
+                setActiveTab(tab.key);
+                setCurrentPage(1);
+              }}
+              style={{
+                padding: '8px 16px',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: activeTab === tab.key ? '#9333ea' : '#6b7280',
+                background: activeTab === tab.key ? '#f3e8ff' : 'transparent',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+              onMouseEnter={(e) => {
+                if (activeTab !== tab.key) {
+                  e.currentTarget.style.background = '#f9fafb';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (activeTab !== tab.key) {
+                  e.currentTarget.style.background = 'transparent';
+                }
+              }}
+            >
+              {tab.label}
+              <span style={{
+                fontSize: '12px',
+                fontWeight: '700',
+                padding: '2px 8px',
+                borderRadius: '12px',
+                background: activeTab === tab.key ? '#9333ea' : '#e5e7eb',
+                color: activeTab === tab.key ? 'white' : '#6b7280'
+              }}>
+                {tab.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
         {/* Table */}
-        {responses.length === 0 ? (
+        {filteredResponses.length === 0 ? (
           <div style={{
             background: 'white',
             borderRadius: '16px',
@@ -425,120 +555,142 @@ export const FormResponsesNew: React.FC = () => {
               color: '#111827',
               marginBottom: '8px'
             }}>
-              No Responses Yet
+              {activeTab === 'all' ? 'No Responses Yet' : `No ${activeTab === 'complete' ? 'Complete' : 'Partial'} Responses`}
             </h3>
             <p style={{
               fontSize: '14px',
               color: '#6b7280'
             }}>
-              Publish your form to start collecting responses
+              {activeTab === 'all' 
+                ? 'Publish your form to start collecting responses' 
+                : `There are no ${activeTab} responses for this form`}
             </p>
           </div>
         ) : (
           <>
             <div style={{
               background: 'white',
-              borderRadius: '16px',
-              overflow: 'hidden',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+              borderRadius: '12px',
+              overflow: 'auto',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+              border: '1px solid #e5e7eb'
             }}>
-              {/* Table Header */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '80px 180px 120px 1fr 150px',
-                padding: '16px 24px',
-                background: '#fafafa',
-                borderBottom: '1px solid #e5e7eb',
-                fontSize: '12px',
-                fontWeight: '700',
-                color: '#6b7280',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em'
+              <table style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                fontSize: '13px'
               }}>
-                <div>ID</div>
-                <div>Submitted</div>
-                <div>Status</div>
-                <div>Location</div>
-                <div>Answers</div>
-              </div>
-
-              {/* Table Body */}
-              {paginatedResponses.map((response) => (
-                <div
-                  key={response.id}
-                  onClick={() => setSelectedResponse(response)}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '80px 180px 120px 1fr 150px',
-                    padding: '18px 24px',
-                    borderBottom: '1px solid #f3f4f6',
-                    cursor: 'pointer',
-                    transition: 'background 0.15s'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#fafafa'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                >
-                  <div style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#9333ea'
+                <thead>
+                  <tr style={{
+                    background: '#f9fafb',
+                    borderBottom: '2px solid #e5e7eb'
                   }}>
-                    #{response.id}
-                  </div>
-                  <div style={{
-                    fontSize: '13px',
-                    color: '#374151',
-                    fontWeight: '500'
-                  }}>
-                    {new Date(response.submitted_at).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric'
-                    })}
-                    <br />
-                    <span style={{ fontSize: '12px', color: '#9ca3af' }}>
-                      {new Date(response.submitted_at).toLocaleTimeString('en-US', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </span>
-                  </div>
-                  <div>
-                    <span style={{
-                      fontSize: '11px',
+                    <th style={{
+                      padding: '12px 16px',
+                      textAlign: 'left',
                       fontWeight: '600',
-                      color: response.status === 'complete' ? '#10b981' : '#f59e0b',
-                      background: response.status === 'complete' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-                      padding: '4px 10px',
-                      borderRadius: '12px',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em'
+                      color: '#374151',
+                      fontSize: '12px',
+                      whiteSpace: 'nowrap',
+                      position: 'sticky',
+                      left: 0,
+                      background: '#f9fafb',
+                      zIndex: 10,
+                      borderRight: '1px solid #e5e7eb'
                     }}>
-                      {response.status}
-                    </span>
-                  </div>
-                  <div style={{
-                    fontSize: '13px',
-                    color: '#6b7280',
-                    fontWeight: '500'
-                  }}>
-                    {response.country || 'Unknown'}
-                  </div>
-                  <div style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#374151',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}>
-                    {response.answers.length} answers
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M9 18l6-6-6-6" />
-                    </svg>
-                  </div>
-                </div>
-              ))}
+                      Submitted at
+                    </th>
+                    {formData?.questions.map((question) => (
+                      <th
+                        key={question.id}
+                        style={{
+                          padding: '12px 16px',
+                          textAlign: 'left',
+                          fontWeight: '600',
+                          color: '#374151',
+                          fontSize: '12px',
+                          minWidth: '200px',
+                          maxWidth: '300px',
+                          whiteSpace: 'normal',
+                          lineHeight: '1.4'
+                        }}
+                      >
+                        {question.question_text}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedResponses.map((response, idx) => (
+                    <tr
+                      key={response.id}
+                      style={{
+                        background: idx % 2 === 0 ? 'white' : '#fafafa',
+                        borderBottom: '1px solid #e5e7eb',
+                        transition: 'background 0.15s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = idx % 2 === 0 ? 'white' : '#fafafa'}
+                    >
+                      <td style={{
+                        padding: '12px 16px',
+                        fontWeight: '500',
+                        color: '#111827',
+                        whiteSpace: 'nowrap',
+                        position: 'sticky',
+                        left: 0,
+                        background: 'inherit',
+                        zIndex: 5,
+                        borderRight: '1px solid #e5e7eb'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {activeTab === 'all' && response.status !== 'complete' && (
+                            <span
+                              title="Partial response"
+                              style={{
+                                width: '6px',
+                                height: '6px',
+                                borderRadius: '50%',
+                                background: '#f59e0b',
+                                display: 'inline-block'
+                              }}
+                            />
+                          )}
+                          <span>
+                            {new Date(response.submitted_at).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            })}
+                            {' '}
+                            {new Date(response.submitted_at).toLocaleTimeString('en-US', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                      </td>
+                      {formData?.questions.map((question) => {
+                        const answer = response.answers.find((a) => a.question_id === question.id);
+                        return (
+                          <td
+                            key={question.id}
+                            style={{
+                              padding: '12px 16px',
+                              color: '#374151',
+                              verticalAlign: 'top',
+                              maxWidth: '300px',
+                              overflow: 'hidden'
+                            }}
+                          >
+                            {answer ? formatAnswer(answer.answer_value) : '-'}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
 
             {/* Pagination */}
@@ -558,7 +710,7 @@ export const FormResponsesNew: React.FC = () => {
                   color: '#6b7280',
                   fontWeight: '500'
                 }}>
-                  Showing {startIndex + 1}-{Math.min(endIndex, totalCount)} of {totalCount}
+                  Showing {startIndex + 1}-{Math.min(endIndex, filteredResponses.length)} of {filteredResponses.length}
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button
