@@ -45,7 +45,7 @@ def get_current_user_info(
 ):
     """Get current authenticated user's profile information"""
     # Get user's subscription info
-    from ..models import Subscription, Dataset
+    from ..models import Subscription, Form
     from datetime import datetime, timezone
     
     subscription = db.query(Subscription).filter(
@@ -62,13 +62,13 @@ def get_current_user_info(
             "created_at": subscription.created_at.isoformat()
         }
     
-    # Calculate dashboards created this month
+    # Calculate forms created this month
     now = datetime.now(timezone.utc)
     start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     
-    dashboards_this_month = db.query(Dataset).filter(
-        Dataset.user_id == current_user.id,
-        Dataset.created_at >= start_of_month
+    forms_this_month = db.query(Form).filter(
+        Form.user_id == current_user.id,
+        Form.created_at >= start_of_month
     ).count()
     
     return {
@@ -79,7 +79,7 @@ def get_current_user_info(
         "provider": current_user.provider,
         "is_active": current_user.is_active,
         "created_at": current_user.created_at.isoformat(),
-        "dashboards_this_month": dashboards_this_month,
+        "forms_this_month": forms_this_month,
         "subscription": subscription_info or {
             "tier": "free",
             "status": "inactive",

@@ -106,7 +106,7 @@ class FormPlannerSignature(dspy.Signature):
     6. Choose appropriate component types based on the data being collected
     7. Mark essential components as required
     8. Order components logically (general to specific)
-    9. Include 3-5 components typically
+    9. **INCLUDE AT LEAST 5 COMPONENTS** - Forms should have a minimum of 5 questions/components. You can reuse the same component type multiple times if appropriate (e.g., multiple short_answer fields for different information)
     10. Add conditional logic where it makes sense (e.g., show follow-up based on previous answer)
     11. Generate component_ids like "comp_1", "comp_2", etc.
     12. **PREFER STRUCTURED INPUTS** over text when possible (use checkboxes, dropdowns, ratings instead of open text)

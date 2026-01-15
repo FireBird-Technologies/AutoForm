@@ -215,9 +215,7 @@ class PlanService:
                 "stripe_price_id_yearly": os.getenv("STRIPE_FREE_PRICE_YEARLY_ID"),
                 "stripe_product_id": os.getenv("STRIPE_FREE_PRODUCT_ID"),
                 "features": {
-                    "max_datasets": 3,
-                    "max_file_size_mb": 10,
-                    "export_formats": ["png", "csv"]
+                    "export_formats": ["csv", "json"]
                 },
                 "sort_order": 0
             },
@@ -233,9 +231,7 @@ class PlanService:
                 "stripe_price_id_yearly": os.getenv("STRIPE_PRO_PRICE_YEARLY_ID"),
                 "stripe_product_id": os.getenv("STRIPE_PRO_PRODUCT_ID"),
                 "features": {
-                    "max_datasets": 50,
-                    "max_file_size_mb": 100,
-                    "export_formats": ["png", "csv", "pdf", "xlsx"],
+                    "export_formats": ["csv", "json", "pdf"],
                     "priority_support": True
                 },
                 "sort_order": 1
@@ -252,9 +248,7 @@ class PlanService:
                 "stripe_price_id_yearly": os.getenv("STRIPE_ULTRA_PRICE_YEARLY_ID"),
                 "stripe_product_id": os.getenv("STRIPE_ULTRA_PRODUCT_ID"),
                 "features": {
-                    "max_datasets": -1,  # Unlimited
-                    "max_file_size_mb": 500,
-                    "export_formats": ["png", "csv", "pdf", "xlsx", "json"],
+                    "export_formats": ["csv", "json", "pdf"],
                     "priority_support": True,
                     "custom_branding": True,
                     "api_access": True
