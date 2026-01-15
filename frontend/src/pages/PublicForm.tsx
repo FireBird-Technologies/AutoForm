@@ -138,19 +138,20 @@ export const PublicForm: React.FC = () => {
     
     // Validate required questions
     const visibleQuestions = formData.questions.filter((q: any) => visibleQuestionIds.has(q.id));
-    const missingRequired = visibleQuestions.filter((q: any) => {
-      if (!q.required) return false;
-      const answer = answers[q.id];
-      if (!answer) return true;
-      
-      // Check if answer is empty based on type
-      if (answer.text !== undefined) return !answer.text;
-      if (answer.number !== undefined) return answer.number === null;
-      if (answer.choices !== undefined) return answer.choices.length === 0;
-      if (answer.rating !== undefined) return !answer.rating;
-      
-      return false;
-    });
+      const missingRequired = visibleQuestions.filter((q: any) => {
+        if (!q.required) return false;
+        const answer = answers[q.id];
+        if (!answer) return true;
+        
+        // Check if answer is empty based on type
+        if (answer.text !== undefined) return !answer.text;
+        if (answer.number !== undefined) return answer.number === null;
+        if (answer.choices !== undefined) return answer.choices.length === 0;
+        if (answer.rating !== undefined) return !answer.rating;
+        if (answer.files !== undefined) return !answer.files || answer.files.length === 0;
+        
+        return false;
+      });
 
     if (missingRequired.length > 0) {
       setError('Please answer all required questions');
@@ -458,6 +459,7 @@ export const PublicForm: React.FC = () => {
                       hideLabel={true}
                       accentColor={accentColor}
                       boldTextColor={boldTextColor}
+                      uploadContext={{ token }}
                     />
                   </div>
                 </div>

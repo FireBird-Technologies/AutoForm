@@ -323,8 +323,10 @@ class ValidationService:
         date = answer_value.get('date')
         choices = answer_value.get('choices', [])
         rating = answer_value.get('rating')
+        files = answer_value.get('files', [])
+        file_url = answer_value.get('file_url')
         
-        return bool(text or number is not None or date or choices or rating is not None)
+        return bool(text or number is not None or date or choices or rating is not None or files or file_url)
     
     def generate_validation_token(
         self, 

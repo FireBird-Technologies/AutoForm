@@ -121,10 +121,54 @@ export const FormResponsesNew: React.FC = () => {
     }
   };
 
-  const formatAnswer = (value: any): string => {
+  const formatAnswer = (value: any): React.ReactNode => {
     if (!value) return '-';
     
+    if (value.files && Array.isArray(value.files)) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {value.files.map((file: any, idx: number) => {
+            const label = file?.filename || file?.original_filename || file?.s3_key || `File ${idx + 1}`;
+            if (file?.download_url) {
+              return (
+                <a
+                  key={idx}
+                  href={file.download_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: '#9333ea', textDecoration: 'none', fontWeight: 500 }}
+                  onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+                >
+                  {label}
+                </a>
+              );
+            }
+            return (
+              <span key={idx}>
+                {label}
+              </span>
+            );
+          })}
+        </div>
+      );
+    }
+
     if (value.text) return value.text;
+    if (value.file_url) {
+      return (
+        <a
+          href={value.file_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: '#9333ea', textDecoration: 'none', fontWeight: 500 }}
+          onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+          onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+        >
+          {value.file_url}
+        </a>
+      );
+    }
     if (value.number !== undefined) return value.number.toString();
     if (value.choices) return Array.isArray(value.choices) ? value.choices.join(', ') : String(value.choices);
     if (value.date) return value.date;

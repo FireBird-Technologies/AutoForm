@@ -36,6 +36,9 @@ interface QuestionRendererProps {
   hideLabel?: boolean;
   accentColor?: string;
   boldTextColor?: string;
+  uploadContext?: {
+    token?: string;
+  };
 }
 
 export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
@@ -45,7 +48,8 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
   disabled = false,
   hideLabel = false,
   accentColor,
-  boldTextColor
+  boldTextColor,
+  uploadContext
 }) => {
   const questionProps = {
     question,
@@ -54,7 +58,8 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
     disabled,
     hideLabel,
     accentColor,
-    boldTextColor
+    boldTextColor,
+    uploadContext
   };
 
   switch (question.question_type) {
@@ -110,4 +115,3 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
       );
   }
 };
-
