@@ -173,6 +173,11 @@ class SubmissionCreate(BaseModel):
     """Schema for submitting a form response"""
     answers: List[SubmitAnswer]
     metadata: Optional[Dict[str, Any]] = None
+    session_id: Optional[str] = None
+    form_version: Optional[int] = None
+    utm_source: Optional[str] = None
+    utm_medium: Optional[str] = None
+    utm_campaign: Optional[str] = None
 
 
 class SubmissionResponse(BaseModel):
@@ -201,6 +206,7 @@ class FormResponseDetail(BaseModel):
     """Detailed view of a single form response"""
     id: int
     form_id: int
+    status: Optional[str] = None
     submitted_at: datetime
     ip_address: Optional[str]
     answers: List[ResponseAnswerDetail]

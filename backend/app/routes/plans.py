@@ -15,8 +15,6 @@ router = APIRouter(prefix="/api/plans", tags=["plans"])
 
 class PlanFeatures(BaseModel):
     """Plan features model"""
-    max_datasets: int | None = None
-    max_file_size_mb: int | None = None
     export_formats: List[str] | None = None
     priority_support: bool | None = None
     custom_branding: bool | None = None

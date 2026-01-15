@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { QuestionRenderer } from '../components/QuestionRenderer';
 import ReactMarkdown from 'react-markdown';
@@ -15,6 +15,16 @@ export const PublicForm: React.FC = () => {
   const [error, setError] = useState('');
   const [thankYouMessage, setThankYouMessage] = useState('');
   const [sessionId] = useState(() => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
+  const [utmParams] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return {
+      utm_source: params.get('utm_source') || undefined,
+      utm_medium: params.get('utm_medium') || undefined,
+      utm_campaign: params.get('utm_campaign') || undefined
+    };
+  });
+  const autosaveTimerRef = useRef<number | null>(null);
+  const autosaveInFlightRef = useRef(false);
 
   // Extract colors from form settings
   const backgroundColor = formData?.settings?.background_color || '#ffffff';
@@ -25,6 +35,14 @@ export const PublicForm: React.FC = () => {
   useEffect(() => {
     loadForm();
   }, [token]);
+
+  useEffect(() => {
+    return () => {
+      if (autosaveTimerRef.current) {
+        window.clearTimeout(autosaveTimerRef.current);
+      }
+    };
+  }, []);
 
   const loadForm = async () => {
     try {
@@ -116,13 +134,50 @@ export const PublicForm: React.FC = () => {
 
   const visibleQuestionIds = formData ? evaluateConditionalLogic() : new Set();
 
+  const scheduleAutosave = (nextAnswers: Record<number, any>) => {
+    if (submitted || submitting || !formData) return;
+    if (autosaveTimerRef.current) {
+      window.clearTimeout(autosaveTimerRef.current);
+    }
+    
+    autosaveTimerRef.current = window.setTimeout(async () => {
+      if (autosaveInFlightRef.current) return;
+      if (Object.keys(nextAnswers).length === 0) return;
+      
+      autosaveInFlightRef.current = true;
+      try {
+        const payload = {
+          session_id: sessionId,
+          form_version: formData?.version,
+          answers: Object.entries(nextAnswers).map(([questionId, value]) => ({
+            question_id: parseInt(questionId, 10),
+            answer_value: value
+          })),
+          ...utmParams
+        };
+        
+        await fetch(`${config.backendUrl}/api/public/forms/${token}/autosave`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      } catch (err) {
+        console.error('Autosave failed:', err);
+      } finally {
+        autosaveInFlightRef.current = false;
+      }
+    }, 800);
+  };
+
   const handleAnswerChange = (questionId: number, value: any) => {
     const isFirstAnswer = Object.keys(answers).length === 0;
     
-    setAnswers(prev => ({
-      ...prev,
+    const updatedAnswers = {
+      ...answers,
       [questionId]: value
-    }));
+    };
+    
+    setAnswers(updatedAnswers);
 
     // Track first answer as form started
     if (isFirstAnswer) {
@@ -131,6 +186,8 @@ export const PublicForm: React.FC = () => {
     
     // Track question answered
     trackEvent('question_answered', questionId);
+    
+    scheduleAutosave(updatedAnswers);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -154,7 +211,13 @@ export const PublicForm: React.FC = () => {
       });
 
     if (missingRequired.length > 0) {
-      setError('Please answer all required questions');
+      const missingNames = missingRequired.map((q: any) => q.question_text).slice(0, 3);
+      const moreCount = missingRequired.length - 3;
+      let errorMsg = `Please complete: ${missingNames.join(', ')}`;
+      if (moreCount > 0) {
+        errorMsg += ` and ${moreCount} more required field${moreCount > 1 ? 's' : ''}`;
+      }
+      setError(errorMsg);
       return;
     }
 
@@ -166,7 +229,9 @@ export const PublicForm: React.FC = () => {
         answers: Object.entries(answers).map(([questionId, value]) => ({
           question_id: parseInt(questionId),
           answer_value: value
-        }))
+        })),
+        session_id: sessionId,
+        ...utmParams
       };
 
       const response = await fetch(`${config.backendUrl}/api/public/forms/${token}/submit`, {

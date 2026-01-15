@@ -120,7 +120,6 @@ Pro: $192/year
 |---------|------|-----|-------|------------|
 | **Credits/month** | 25 | 500 | 1000 | Unlimited |
 | **AI Models** | Standard | Latest | Latest | Latest |
-| **Datasets** | 3 | 50 | Unlimited | Unlimited |
 | **Support** | Community | Priority | Priority | Dedicated |
 | **Price** | $0 | $20/mo | Custom | Custom |
 

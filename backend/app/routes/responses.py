@@ -189,16 +189,43 @@ async def submit_form(
     client_ip = request.client.host if request.client else None
     
     try:
-        # Create form response
-        form_response = FormResponse(
-            form_id=form.id,
-            ip_address=client_ip,
-            submission_metadata=submission.metadata or {}
-        )
-        db.add(form_response)
-        db.flush()
+        # Try to reuse existing in-progress response for this session (if provided)
+        form_response = None
+        if submission.session_id:
+            form_response = db.query(FormResponse).filter(
+                FormResponse.form_id == form.id,
+                FormResponse.session_id == submission.session_id,
+                FormResponse.status.in_(["in_progress", "partial"])
+            ).first()
         
-        # Create answers
+        if form_response:
+            form_response.last_updated_at = datetime.utcnow()
+            form_response.submitted_at = datetime.utcnow()
+            form_response.ip_address = client_ip
+            form_response.utm_source = submission.utm_source
+            form_response.utm_medium = submission.utm_medium
+            form_response.utm_campaign = submission.utm_campaign
+            if submission.metadata:
+                form_response.submission_metadata = submission.metadata
+        else:
+            # Create new form response
+            form_response = FormResponse(
+                form_id=form.id,
+                session_id=submission.session_id,
+                status="complete",
+                form_version=submission.form_version,
+                started_at=datetime.utcnow(),
+                submitted_at=datetime.utcnow(),
+                ip_address=client_ip,
+                utm_source=submission.utm_source,
+                utm_medium=submission.utm_medium,
+                utm_campaign=submission.utm_campaign,
+                submission_metadata=submission.metadata or {}
+            )
+            db.add(form_response)
+            db.flush()
+        
+        # Create/update answers
         for answer_data in submission.answers:
             answer_value = answer_data.answer_value.model_dump()
             upload_ids = _extract_upload_ids(answer_value)
@@ -209,12 +236,36 @@ async def submit_form(
                 response_id=form_response.id,
                 question_id=answer_data.question_id
             )
-            answer = ResponseAnswer(
-                form_response_id=form_response.id,
-                form_question_id=answer_data.question_id,
-                answer_value=answer_value
-            )
-            db.add(answer)
+            
+            existing_answer = db.query(ResponseAnswer).filter(
+                ResponseAnswer.form_response_id == form_response.id,
+                ResponseAnswer.form_question_id == answer_data.question_id
+            ).first()
+            
+            if existing_answer:
+                existing_answer.answer_value = answer_value
+            else:
+                answer = ResponseAnswer(
+                    form_response_id=form_response.id,
+                    form_question_id=answer_data.question_id,
+                    answer_value=answer_value
+                )
+                db.add(answer)
+        
+        # Validate and set status based on whether all required fields are answered
+        validation_result = validation_service.validate_submission(
+            db=db,
+            form_id=form.id,
+            answers=[
+                {"question_id": a.question_id, "answer_value": a.answer_value.model_dump()}
+                for a in submission.answers
+            ],
+            is_complete=True,
+            form_version=submission.form_version
+        )
+        
+        # Set status: "complete" if all required fields answered, "partial" otherwise
+        form_response.status = "complete" if validation_result.is_valid else "partial"
         
         db.commit()
         db.refresh(form_response)
@@ -494,6 +545,7 @@ async def get_form_responses(
         response_details.append(FormResponseDetail(
             id=response.id,
             form_id=response.form_id,
+            status=response.status,
             submitted_at=response.submitted_at,
             ip_address=response.ip_address,
             answers=answers
