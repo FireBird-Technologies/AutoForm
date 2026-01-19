@@ -22,7 +22,12 @@ import dspy
 import json
 import logging
 import os
+import warnings
 from typing import Dict, Any, List, Optional
+
+# Suppress Pydantic serialization warnings from DSPy/LiteLLM
+warnings.filterwarnings("ignore", message="Pydantic serializer warnings")
+warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
 
 # Set up logger for the module
 logger = logging.getLogger("dspy_forms")
@@ -110,6 +115,7 @@ class FormPlannerSignature(dspy.Signature):
     10. Add conditional logic where it makes sense (e.g., show follow-up based on previous answer)
     11. Generate component_ids like "comp_1", "comp_2", etc.
     12. **PREFER STRUCTURED INPUTS** over text when possible (use checkboxes, dropdowns, ratings instead of open text)
+    13. **KEEP IT CONCISE** - Descriptions should be 1-2 sentences max. Option lists should have 3-8 items max, not exhaustive lists.
     
     **IMPORTANT: PRESERVE USER'S TERMINOLOGY**
     - If user mentions specific event names (Valima, Nikkah, Barat, etc.), use those EXACT names
@@ -201,6 +207,8 @@ class ComponentSignatureGenerator(dspy.Signature):
     10. CRITICAL: rows, columns, and ranking_items MUST be arrays of strings, never integers
     11. Question text and descriptions support markdown (use **bold**, *italic*, lists, etc.)
     12. Keep text clear and conversational - the design is minimal and clean
+    13. **KEEP OPTIONS SHORT** - Maximum 8 choices for dropdowns/checkboxes. Do NOT generate exhaustive lists.
+    14. **DESCRIPTIONS BRIEF** - Keep descriptions to 1-2 short sentences max. No long explanations.
     13. **GENERATE COMPLETE CHOICES** - Always provide actual choice options, not placeholders like "Option 1", "Option 2"
     
     EXAMPLES OF PRESERVING USER TERMINOLOGY:
@@ -374,7 +382,7 @@ class FormChatRouterSignature(dspy.Signature):
       Keywords: "change", "modify", "update", "edit", "make it", "adjust"
       Examples: "Change the email field to required", "Update the rating scale to 1-5"
     
-    - **general_form_query**: General questions about the form structure or capabilities, or questions that may be irrelevant to form editing.
+    - **general_query**: General questions about the form structure or capabilities, or questions that may be irrelevant to form editing.
       Examples: "What fields are in this form?", "How does conditional logic work?", "What time is it?", "Who won the game last night?"
     
     - **need_more_clarity**: Query is ambiguous, unclear, or possibly irrelevant.
@@ -385,6 +393,21 @@ class FormChatRouterSignature(dspy.Signature):
     form_context = dspy.InputField(desc="Context about the form structure")
     query_type = dspy.OutputField(desc="One of: 'add_component', 'edit_component', 'general_form_query', 'need_more_clarity'")
     reasoning = dspy.OutputField(desc="Brief explanation of why this route was chosen")
+
+
+class GeneralFormQASignature(dspy.Signature):
+    """Answer general questions about the form briefly and concisely.
+    
+    IMPORTANT RULES:
+    - Keep answers SHORT - maximum 2-3 sentences
+    - Be direct and to the point
+    - Do NOT provide long explanations or lists
+    - If asked about something unrelated to the form, briefly redirect to form editing
+    - NEVER generate long content like lists of items, detailed descriptions, or educational content
+    """
+    user_query = dspy.InputField(desc="The user's question (max 1000 chars)")
+    form_context = dspy.InputField(desc="Current form structure")
+    answer = dspy.OutputField(desc="Brief answer in 2-3 sentences MAX. Keep under 500 characters.")
 
 
 CLARITY_RESPONSE = (
@@ -403,7 +426,7 @@ class FormChatFunction(dspy.Module):
     def __init__(self):
         self.add_component_mod = dspy.Predict(ComponentSignatureGenerator)
         self.edit_form_mod = dspy.Predict(FormEditorSignature)
-        self.general_qa = dspy.Predict("user_query, form_context -> answer")
+        self.general_qa = dspy.Predict(GeneralFormQASignature)
         self.router = dspy.Predict(FormChatRouterSignature)
         self.recheck_router = dspy.Predict(FormChatRouterSignature)
         self.CLARITY_RESPONSE = CLARITY_RESPONSE
@@ -420,7 +443,10 @@ class FormChatFunction(dspy.Module):
         Returns:
             dict with 'route' and 'response' keys
         """
-        with dspy.context(lm=dspy.LM('openai/gpt-4o-mini', api_key=os.getenv('OPENAI_API_KEY'), max_tokens=1500, temperature=1)):
+        # Truncate input to 1000 characters
+        user_query = user_query[:1000] if len(user_query) > 1000 else user_query
+        
+        with dspy.context(lm=dspy.LM('openai/gpt-4o-mini', api_key=os.getenv('OPENAI_API_KEY'), max_tokens=800, temperature=0.7)):
             route = self.router(user_query=user_query, form_context=form_context)
             query_type = route.query_type
             
@@ -472,12 +498,18 @@ class FormChatFunction(dspy.Module):
                 )
             else:
                 response = "No form available to edit."
-        elif 'general_form_query' in query_type:
+        elif 'general_query' in query_type:
             response = self.general_qa(user_query=user_query, form_context=form_context)
+            # Truncate response to 1000 chars max
+            if hasattr(response, 'answer') and isinstance(response.answer, str) and len(response.answer) > 1000:
+                response.answer = response.answer[:1000] + "..."
         elif 'need_more_clarity' in query_type:
             response = self.CLARITY_RESPONSE
         else:
             response = self.general_qa(user_query=user_query, form_context=form_context)
+            # Truncate response to 1000 chars max
+            if hasattr(response, 'answer') and isinstance(response.answer, str) and len(response.answer) > 1000:
+                response.answer = response.answer[:1000] + "..."
         
         route.query_type = query_type
         return_dict = {'route': route, 'response': response}
