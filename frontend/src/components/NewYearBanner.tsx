@@ -96,7 +96,7 @@ export const NewYearBanner: React.FC = () => {
           fontSize: '14px',
           letterSpacing: '0.5px',
         }}>
-          50% OFF
+          30% OFF
         </span>
         <span style={{ fontSize: '13px', color: '#666' }}>
           Use code: <code style={{ 
