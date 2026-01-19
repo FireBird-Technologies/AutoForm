@@ -482,7 +482,7 @@ export const Landing: React.FC<LandingProps> = ({ onStart }) => {
           <InteractiveDemo />
           <div className="demo-cta">
             <p className="demo-cta-text">
-              <strong>🚀 Powerful Features:</strong> The demo shows just a few of our 20+ question types. 
+              <strong>Powerful Features:</strong> The demo shows just a few of our 20+ question types. 
               Add conditional logic, validation rules, custom themes, and advanced analytics to any form you create.
             </p>
             <GoogleAuthButton

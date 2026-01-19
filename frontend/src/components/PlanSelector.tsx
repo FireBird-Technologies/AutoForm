@@ -88,12 +88,9 @@ export const PlanSelector: React.FC<PlanSelectorProps> = ({
 
   const handleSelectPlan = (planId: number) => {
     setSelectedPlanId(planId);
-    if (promoCode.trim()) {
-      handleValidatePromoCode(planId).then(() => {
-        if (promoCodeValid) {
-          onSelectPlan(planId, billingPeriod, promoCode.trim().toUpperCase());
-        }
-      });
+    // Always proceed to pricing - pass promo code only if it's valid
+    if (promoCode.trim() && promoCodeValid === true) {
+      onSelectPlan(planId, billingPeriod, promoCode.trim().toUpperCase());
     } else {
       onSelectPlan(planId, billingPeriod);
     }
@@ -212,7 +209,7 @@ export const PlanSelector: React.FC<PlanSelectorProps> = ({
                   <button
                     className="plan-button"
                     onClick={() => handleSelectPlan(plan.id)}
-                    disabled={loading || (promoCode.trim() !== '' && promoCodeValid === false)}
+                    disabled={loading}
                   >
                     {loading && selectedPlanId === plan.id ? 'Switching...' : 'Switch to this plan'}
                   </button>
