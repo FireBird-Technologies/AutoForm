@@ -83,7 +83,7 @@ def create_checkout_session(
         
         # Known promotion codes mapping (code -> Stripe promotion code ID)
         KNOWN_PROMO_CODES = {
-            "NEWYEARS": "promo_1SdYMPBACqQSnujJodV5nZyH",
+            "FIRST100": "promo_1SrJbKBACqQSnujJriPjszSv",
         }
         
         # Apply promo code if provided
