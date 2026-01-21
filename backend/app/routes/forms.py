@@ -634,7 +634,7 @@ async def chat_stream(
     from sqlalchemy import func
     import json
     import asyncio
-    from ..models import FormResponse as FormResponseModel
+    from ..models import FormResponse as FormResponseModel, ChatMessage as ChatMessageModel
     from ..services.response_chat_service import response_chat_service
     from ..services.agents import FormChatFunction
     
@@ -703,9 +703,28 @@ async def chat_stream(
         except Exception as e:
             logger.warning(f"Could not load responses: {e}")
     
+    # Determine chat type based on whether this is likely a response analysis
+    chat_type = "form_editing"  # Default
+    
+    # Save user message to database
+    user_chat_message = ChatMessageModel(
+        form_id=form_id,
+        user_id=current_user.id,
+        chat_type=chat_type,
+        role="user",
+        content=chat_data.message
+    )
+    db.add(user_chat_message)
+    db.commit()
+    
+    # Variables to collect response for saving
+    collected_response = {"content": "", "route": "", "query_type": None, "sql_query": None, "result_data": None}
+    
     async def event_generator():
+        nonlocal collected_response
         conn = conn_preloaded
         response_data = response_data_preloaded
+        assistant_content_parts = []  # Collect all content chunks
         try:
             # Initialize chat module
             chat_module = FormChatFunction()
@@ -720,6 +739,17 @@ async def chat_stream(
             )
             
             route = result.get('route', 'unknown')
+            collected_response['route'] = route
+            
+            # Update chat type based on route
+            if route == 'analyze_responses':
+                collected_response['query_type'] = 'response_analysis'
+            elif route == 'add_component':
+                collected_response['query_type'] = 'add_component'
+            elif route == 'edit_component':
+                collected_response['query_type'] = 'edit_component'
+            else:
+                collected_response['query_type'] = route
             
             # Send route event
             yield f"event: route\ndata: {json.dumps({'route': route})}\n\n"
@@ -761,6 +791,7 @@ async def chat_stream(
                 
                 # Stream content in chunks
                 if assistant_response:
+                    assistant_content_parts.append(assistant_response)
                     words = assistant_response.split(' ')
                     chunk_size = 5
                     for i in range(0, len(words), chunk_size):
@@ -772,7 +803,12 @@ async def chat_stream(
                 
                 # Send data if available
                 if result_data:
+                    collected_response['result_data'] = result_data
                     yield f"event: data\ndata: {json.dumps(result_data)}\n\n"
+                
+                # Store SQL query if used
+                if sql_query:
+                    collected_response['sql_query'] = sql_query
                 
             # Handle add_component
             elif route == 'add_component':
@@ -800,10 +836,13 @@ async def chat_stream(
                         db.refresh(new_question)
                         
                         msg = f"Added new **{component_spec.get('question_type', 'question')}** field: {component_spec.get('question_text', 'New Question')}"
+                        assistant_content_parts.append(msg)
                         yield f"event: content\ndata: {json.dumps({'content': msg})}\n\n"
                         yield f"event: form_updated\ndata: {json.dumps({'action': 'add', 'question_id': new_question.id})}\n\n"
                     except Exception as e:
-                        yield f"event: content\ndata: {json.dumps({'content': f'Error adding component: {str(e)}'})}\n\n"
+                        error_msg = f'Error adding component: {str(e)}'
+                        assistant_content_parts.append(error_msg)
+                        yield f"event: content\ndata: {json.dumps({'content': error_msg})}\n\n"
             
             # Handle edit_component
             elif route == 'edit_component':
@@ -841,14 +880,18 @@ async def chat_stream(
                             
                             db.commit()
                         
+                        assistant_content_parts.append(str(changes_desc))
                         yield f"event: content\ndata: {json.dumps({'content': str(changes_desc)})}\n\n"
                         yield f"event: form_updated\ndata: {json.dumps({'action': 'edit'})}\n\n"
                     except Exception as e:
-                        yield f"event: content\ndata: {json.dumps({'content': f'Error editing: {str(e)}'})}\n\n"
+                        error_msg = f'Error editing: {str(e)}'
+                        assistant_content_parts.append(error_msg)
+                        yield f"event: content\ndata: {json.dumps({'content': error_msg})}\n\n"
             
             # Handle no_responses
             elif route == 'no_responses':
                 response = result.get('response', '')
+                assistant_content_parts.append(response)
                 yield f"event: content\ndata: {json.dumps({'content': response})}\n\n"
             
             # Handle general query or other routes
@@ -864,6 +907,8 @@ async def chat_stream(
                     else:
                         msg = str(response)
                     
+                    assistant_content_parts.append(msg)
+                    
                     # Stream in chunks
                     words = msg.split(' ')
                     chunk_size = 5
@@ -874,18 +919,58 @@ async def chat_stream(
                         yield f"event: content\ndata: {json.dumps({'content': chunk})}\n\n"
                         await asyncio.sleep(0.02)
             
+            # Collect final content
+            collected_response['content'] = ' '.join(assistant_content_parts)
+            
             # Send done event
             yield f"event: done\ndata: {json.dumps({'status': 'complete'})}\n\n"
             
         except Exception as e:
             logger.error(f"Stream error: {e}", exc_info=True)
+            collected_response['content'] = f"Error: {str(e)}"
             yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
         finally:
             if conn:
                 conn.close()
     
+    async def save_assistant_message_background():
+        """Save assistant message after stream completes"""
+        # Create a new db session for background task
+        from ..core.db import SessionLocal
+        try:
+            background_db = SessionLocal()
+            if collected_response.get('content'):
+                # Update user message with correct chat_type if it was response analysis
+                if collected_response.get('route') == 'analyze_responses':
+                    user_chat_message.chat_type = "response_analysis"
+                    background_db.merge(user_chat_message)
+                
+                assistant_message = ChatMessageModel(
+                    form_id=form_id,
+                    user_id=current_user.id,
+                    chat_type="response_analysis" if collected_response.get('route') == 'analyze_responses' else "form_editing",
+                    role="assistant",
+                    content=collected_response.get('content', ''),
+                    query_type=collected_response.get('query_type'),
+                    sql_query=collected_response.get('sql_query'),
+                    result_data=collected_response.get('result_data')
+                )
+                background_db.add(assistant_message)
+                background_db.commit()
+        except Exception as e:
+            logger.error(f"Failed to save chat message: {e}")
+        finally:
+            background_db.close()
+    
+    async def streaming_with_save():
+        """Wrap generator to save message after completion"""
+        async for event in event_generator():
+            yield event
+        # Save after streaming completes
+        await save_assistant_message_background()
+    
     return StreamingResponse(
-        event_generator(),
+        streaming_with_save(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

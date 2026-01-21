@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useRef, useEffect } from 'react';
 import { QuestionProps } from './ShortAnswer';
 
 export const Checkboxes: React.FC<QuestionProps> = ({
@@ -11,15 +11,31 @@ export const Checkboxes: React.FC<QuestionProps> = ({
   boldTextColor
 }) => {
   const effectiveAccent = boldTextColor || accentColor;
-  const selectedChoices = value?.choices || [];
   const choices = question.settings?.choices || [];
+  
+  // Use ref to always have the latest choices value, preventing race conditions
+  const choicesRef = useRef<string[]>(value?.choices || []);
+  
+  // Keep ref in sync with props
+  useEffect(() => {
+    choicesRef.current = value?.choices || [];
+  }, [value?.choices]);
+  
+  // Display value from props for rendering
+  const selectedChoices = value?.choices || [];
 
-  const handleToggle = (choice: string) => {
-    const newChoices = selectedChoices.includes(choice)
-      ? selectedChoices.filter((c: string) => c !== choice)
-      : [...selectedChoices, choice];
+  const handleToggle = useCallback((choice: string) => {
+    // Use ref to get the absolute latest state, even if React hasn't re-rendered yet
+    const currentChoices = [...choicesRef.current];
+    const newChoices = currentChoices.includes(choice)
+      ? currentChoices.filter((c: string) => c !== choice)
+      : [...currentChoices, choice];
+    
+    // Update ref immediately for next rapid click
+    choicesRef.current = newChoices;
+    
     onChange({ choices: newChoices });
-  };
+  }, [onChange]);
 
   return (
     <div style={{
