@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { config, getAuthHeaders } from '../config';
+import { FormChatPanel } from '../components/FormChatPanel';
+import { useSidebar } from '../contexts/SidebarContext';
 
 interface Response {
   id: number;
@@ -28,6 +30,7 @@ interface FormData {
 export const FormResponsesNew: React.FC = () => {
   const { formId } = useParams<{ formId: string }>();
   const navigate = useNavigate();
+  const { isOpen: isSidebarOpen, setSidebarOpen } = useSidebar();
   
   const [formData, setFormData] = useState<FormData | null>(null);
   const [responses, setResponses] = useState<Response[]>([]);
@@ -37,8 +40,22 @@ export const FormResponsesNew: React.FC = () => {
   const [error, setError] = useState('');
   const [selectedResponse, setSelectedResponse] = useState<Response | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'complete' | 'partial'>('all');
+  const [showChat, setShowChat] = useState(false);
   
   const ITEMS_PER_PAGE = 50;
+
+  // Close chat when sidebar opens
+  useEffect(() => {
+    if (isSidebarOpen) {
+      setShowChat(false);
+    }
+  }, [isSidebarOpen]);
+
+  // Handler to open chat and close sidebar
+  const handleOpenChat = () => {
+    setSidebarOpen(false);
+    setShowChat(true);
+  };
 
   useEffect(() => {
     loadForm();
@@ -342,84 +359,153 @@ export const FormResponsesNew: React.FC = () => {
     <div style={{
       minHeight: '100vh',
       height: '100vh',
-      background: '#fafafa',
-      padding: '24px',
-      overflowY: 'auto'
+      display: 'flex',
+      overflow: 'hidden',
+      background: '#fafafa'
     }}>
-      <div style={{
-        maxWidth: '1600px',
-        margin: '0 auto'
-      }}>
-        {/* Header */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '24px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <button
-              onClick={() => navigate(-1)}
-              style={{
-                width: '40px',
-                height: '40px',
-                background: 'white',
-                border: 'none',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                transition: 'all 0.15s'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M19 12H5M12 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <div>
-              <h1 style={{
-                fontSize: '28px',
-                fontWeight: '700',
-                color: '#111827',
-                margin: '0 0 4px 0',
-                letterSpacing: '-0.02em'
-              }}>
-                Responses
-              </h1>
-              <p style={{
-                fontSize: '14px',
-                color: '#6b7280',
-                margin: 0,
-                fontWeight: '500'
-              }}>
-                {formData?.title}
-              </p>
-            </div>
+      {/* Collapsed Chat Toggle */}
+      {!showChat && (
+        <button
+          onClick={handleOpenChat}
+          style={{
+            width: '44px',
+            background: 'linear-gradient(180deg, #faf5ff 0%, #ffffff 100%)',
+            border: 'none',
+            borderRight: '1px solid #e5e7eb',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexDirection: 'column',
+            gap: '8px',
+            padding: '16px 0',
+            transition: 'all 0.15s',
+            flexShrink: 0
+          }}
+          title="Open chat panel"
+          onMouseEnter={(e) => e.currentTarget.style.background = '#faf5ff'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(180deg, #faf5ff 0%, #ffffff 100%)'}
+        >
+          <div style={{
+            width: '32px',
+            height: '32px',
+            borderRadius: '8px',
+            background: '#9333ea',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
           </div>
+          <span style={{
+            writingMode: 'vertical-rl',
+            textOrientation: 'mixed',
+            fontSize: '11px',
+            fontWeight: '600',
+            color: '#9333ea',
+            letterSpacing: '0.05em'
+          }}>
+            CHAT
+          </span>
+        </button>
+      )}
 
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <div style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#6b7280',
-              padding: '10px 16px',
-              background: 'white',
-              borderRadius: '8px',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-            }}>
-              {totalCount} {totalCount === 1 ? 'Response' : 'Responses'}
+      {/* Inline Chat Panel */}
+      {showChat && (
+        <FormChatPanel
+          formId={parseInt(formId || '0')}
+          isOpen={true}
+          onClose={() => setShowChat(false)}
+          mode="responses"
+          accentColor="#9333ea"
+          inline={true}
+          width={400}
+        />
+      )}
+
+      {/* Main Content */}
+      <div style={{
+        flex: 1,
+        overflowY: 'auto',
+        padding: '24px'
+      }}>
+        <div style={{
+          maxWidth: '1600px',
+          margin: '0 auto'
+        }}>
+          {/* Header */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '24px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <button
+                onClick={() => navigate(-1)}
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  background: 'white',
+                  border: 'none',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                  transition: 'all 0.15s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <div>
+                <h1 style={{
+                  fontSize: '28px',
+                  fontWeight: '700',
+                  color: '#111827',
+                  margin: '0 0 4px 0',
+                  letterSpacing: '-0.02em'
+                }}>
+                  Responses
+                </h1>
+                <p style={{
+                  fontSize: '14px',
+                  color: '#6b7280',
+                  margin: 0,
+                  fontWeight: '500'
+                }}>
+                  {formData?.title}
+                </p>
+              </div>
             </div>
-            <button
+
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <div style={{
+                fontSize: '14px',
+                fontWeight: '600',
+                color: '#6b7280',
+                padding: '10px 16px',
+                background: 'white',
+                borderRadius: '8px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+              }}>
+                {totalCount} {totalCount === 1 ? 'Response' : 'Responses'}
+              </div>
+              
+              <button
               onClick={() => handleExport('csv')}
               style={{
                 padding: '10px 20px',
@@ -962,6 +1048,8 @@ export const FormResponsesNew: React.FC = () => {
           </div>
         </div>
       )}
+
+      </div>
     </div>
   );
 };

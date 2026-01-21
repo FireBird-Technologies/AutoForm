@@ -1,6 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import React, { useState, useEffect } from 'react';
 import { QuestionEditor } from '../QuestionEditor';
 import { LoadingAnimation } from '../LoadingAnimation';
 import { ConditionModal } from '../ConditionModal';
@@ -10,6 +8,7 @@ import { InlineEditableText, EditableOptions } from '../InlineEditableText';
 import { ComponentPicker } from '../ComponentPicker';
 import { useSidebar } from '../../contexts/SidebarContext';
 import { config, getAuthHeaders } from '../../config';
+import { FormChatPanel } from '../FormChatPanel';
 
 interface FormBuilderProps {
   formData: any;
@@ -17,15 +16,13 @@ interface FormBuilderProps {
 }
 
 export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormData, onBack }) => {
-  const { isOpen: isSidebarOpen } = useSidebar();
+  const { isOpen: isSidebarOpen, setSidebarOpen } = useSidebar();
   const [formData, setFormData] = useState(initialFormData);
   const [showPublishPopup, setShowPublishPopup] = useState(false);
   const [publishLink, setPublishLink] = useState('');
   const [showQuestionEditor, setShowQuestionEditor] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<any>(null);
   const [isGenerating, setIsGenerating] = useState(initialFormData.isGenerating || false);
-  const [chatMessages, setChatMessages] = useState<Array<{role: string, content: string}>>([]);
-  const [chatInput, setChatInput] = useState('');
   const [hoveredQuestion, setHoveredQuestion] = useState<number | null>(null);
   const [showConditionModal, setShowConditionModal] = useState(false);
   const [conditionForQuestion, setConditionForQuestion] = useState<any>(null);
@@ -42,17 +39,20 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
   const [insertAtIndex, setInsertAtIndex] = useState<number | null>(null);
   const [showBgColorPicker, setShowBgColorPicker] = useState(false);
   const [showTextColorPicker, setShowTextColorPicker] = useState(false);
-  const [isChatCollapsed, setIsChatCollapsed] = useState(false);
-  const [chatPanelWidth, setChatPanelWidth] = useState(400);
-  const [isResizing, setIsResizing] = useState(false);
-  const chatPanelRef = useRef<HTMLDivElement>(null);
+  const [showChat, setShowChat] = useState(true); // Chat visible by default in builder
 
-  // Auto-minimize chat when sidebar opens
+  // Close chat when sidebar opens
   useEffect(() => {
     if (isSidebarOpen) {
-      setIsChatCollapsed(true);
+      setShowChat(false);
     }
   }, [isSidebarOpen]);
+
+  // Handler to open chat and close sidebar
+  const handleOpenChat = () => {
+    setSidebarOpen(false);
+    setShowChat(true);
+  };
 
   // Save global colors to form settings when they change
   useEffect(() => {
@@ -104,70 +104,20 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
     }
   };
 
-  // Handle chat editing
-  const handleChatEdit = async () => {
-    if (!chatInput.trim() || isGenerating) return;
-    
-    const userMessage = chatInput.trim();
-    setChatInput('');
-    setChatMessages(prev => [...prev, { role: 'user', content: userMessage }]);
-    setIsGenerating(true);
-    
+  // Handler when form is updated via chat
+  const handleFormUpdatedFromChat = async () => {
     try {
-      const response = await fetch(`${config.backendUrl}/api/forms/${formData.id}/chat`, {
-        method: 'POST',
-        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
-        credentials: 'include',
-        body: JSON.stringify({ message: userMessage })
-      });
-      
-      // Check if response is JSON
-      const contentType = response.headers.get('content-type');
-      const isJson = contentType && contentType.includes('application/json');
-      
-      if (!response.ok) {
-        let errorMessage = 'Failed to process chat message';
-        if (isJson) {
-          try {
-            const errorData = await response.json();
-            errorMessage = errorData.detail || errorMessage;
-          } catch (e) {
-            errorMessage = `Error ${response.status}: ${response.statusText}`;
-          }
-        } else {
-          errorMessage = `Server error (${response.status}). Please check if the backend is running correctly.`;
-        }
-        throw new Error(errorMessage);
-      }
-      
-      if (!isJson) {
-        throw new Error('Server returned non-JSON response. Please check backend configuration.');
-      }
-      
-      const data = await response.json();
-      
-      // Add AI response to chat
-      const aiMessage = data.changes_made || data.response?.message || 'Changes applied';
-      setChatMessages(prev => [...prev, { role: 'assistant', content: aiMessage }]);
-      
-      // Refresh form data to get updated questions
       const formResponse = await fetch(`${config.backendUrl}/api/forms/${formData.id}`, {
         headers: getAuthHeaders(),
         credentials: 'include'
       });
       
       if (formResponse.ok) {
-        const formContentType = formResponse.headers.get('content-type');
-        if (formContentType && formContentType.includes('application/json')) {
-          const updatedForm = await formResponse.json();
-          setFormData(updatedForm);
-        }
+        const updatedForm = await formResponse.json();
+        setFormData(updatedForm);
       }
-    } catch (err: any) {
-      console.error('Chat edit error:', err);
-      setChatMessages(prev => [...prev, { role: 'assistant', content: `Sorry, I couldn't process that request: ${err.message}` }]);
-    } finally {
-      setIsGenerating(false);
+    } catch (err) {
+      console.error('Failed to refresh form:', err);
     }
   };
 
@@ -177,35 +127,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
       generateForm(initialFormData.user_query);
     }
   }, []);
-
-  // Handle chat panel resize
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing) return;
-      const newWidth = e.clientX;
-      if (newWidth >= 300 && newWidth <= 600) {
-        setChatPanelWidth(newWidth);
-      }
-    };
-
-    const handleMouseUp = () => {
-      setIsResizing(false);
-      document.body.style.cursor = 'default';
-      document.body.style.userSelect = 'auto';
-    };
-
-    if (isResizing) {
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    }
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isResizing]);
 
   const generateForm = async (userQuery: string) => {
     setIsGenerating(true);
@@ -249,16 +170,9 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
 
       const data = await response.json();
       setFormData(data.form);
-      setChatMessages([
-        { role: 'user', content: userQuery },
-        { role: 'assistant', content: `I've created your form with ${data.form.questions.length} questions. You can edit questions by clicking on them or chat with me to make changes.` }
-      ]);
     } catch (err: any) {
       console.error('Form generation error:', err);
-      setChatMessages([
-        { role: 'user', content: userQuery },
-        { role: 'assistant', content: `Sorry, I couldn't generate the form: ${err.message}` }
-      ]);
+      // Form generation failed - user can see the error in the console
     } finally {
       setIsGenerating(false);
     }
@@ -384,7 +298,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
       setShowComponentPicker(false);
       setIsGenerating(true);
       const aiMessage = `Add a ${questionType.replace(/_/g, ' ')} question: ${customization.aiPrompt}`;
-      setChatMessages(prev => [...prev, { role: 'user', content: aiMessage }]);
       
       try {
         const response = await fetch(`${config.backendUrl}/api/forms/${formData.id}/chat`, {
@@ -395,9 +308,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
         });
         
         if (!response.ok) throw new Error('Failed to generate component');
-        
-        const data = await response.json();
-        setChatMessages(prev => [...prev, { role: 'assistant', content: data.changes_made || 'Component added' }]);
         
         // Refresh form data
         const formResponse = await fetch(`${config.backendUrl}/api/forms/${formData.id}`, {
@@ -411,7 +321,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
         }
       } catch (err) {
         console.error('AI generate error:', err);
-        setChatMessages(prev => [...prev, { role: 'assistant', content: 'Failed to generate component. Please try again.' }]);
       } finally {
         setIsGenerating(false);
       }
@@ -960,33 +869,46 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
         minHeight: 0
       }}>
         {/* Collapsed Chat Toggle */}
-        {isChatCollapsed && (
+        {!showChat && (
           <button
-            onClick={() => setIsChatCollapsed(false)}
+            onClick={handleOpenChat}
             style={{
-              width: '40px',
-          background: '#ffffff',
+              width: '44px',
+              background: 'linear-gradient(180deg, #faf5ff 0%, #ffffff 100%)',
               border: 'none',
               borderRight: '1px solid #e5e7eb',
               cursor: 'pointer',
-          display: 'flex',
+              display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               flexDirection: 'column',
               gap: '8px',
-              padding: '16px 0'
+              padding: '16px 0',
+              transition: 'all 0.15s'
             }}
-            title="Expand chat panel"
+            title="Open chat panel"
+            onMouseEnter={(e) => e.currentTarget.style.background = '#faf5ff'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(180deg, #faf5ff 0%, #ffffff 100%)'}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2">
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              background: '#9333ea',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+            </div>
             <span style={{
               writingMode: 'vertical-rl',
               textOrientation: 'mixed',
-              fontSize: '12px',
+              fontSize: '11px',
               fontWeight: '600',
-              color: '#6b7280',
+              color: '#9333ea',
               letterSpacing: '0.05em'
             }}>
               CHAT
@@ -994,289 +916,19 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
           </button>
         )}
 
-        {/* Chat Panel */}
-        {!isChatCollapsed && (
-          <div
-            ref={chatPanelRef}
-            style={{
-              width: `${chatPanelWidth}px`,
-              minWidth: '300px',
-              maxWidth: '600px',
-              borderRight: '1px solid #e5e7eb',
-              background: '#ffffff',
-              position: 'relative',
-              height: '100%',
-              flexShrink: 0,
-              overflow: 'hidden'
-            }}
-          >
-            {/* Resize Handle */}
-            <div
-              onMouseDown={() => setIsResizing(true)}
-              style={{
-                position: 'absolute',
-                top: 0,
-                right: 0,
-                bottom: 0,
-                width: '4px',
-                cursor: 'col-resize',
-                background: isResizing ? '#9333ea' : 'transparent',
-                transition: 'background 0.15s',
-                zIndex: 10
-              }}
-              onMouseEnter={(e) => {
-                if (!isResizing) {
-                  e.currentTarget.style.background = '#e5e7eb';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isResizing) {
-                  e.currentTarget.style.background = 'transparent';
-                }
-              }}
-            />
-
-            {/* Header - Fixed at top */}
-          <div style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-            padding: '16px 20px',
-              borderBottom: '1px solid #e5e7eb',
-              background: '#ffffff',
-              zIndex: 5,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between'
-          }}>
-              <div>
-            <h3 style={{
-              fontSize: '16px',
-              fontWeight: '600',
-              color: '#000000',
-              margin: 0
-            }}>
-              Form Assistant
-            </h3>
-            <p style={{
-              fontSize: '13px',
-              color: '#6b7280',
-              margin: '4px 0 0 0'
-            }}>
-              Chat to edit or add questions
-            </p>
-              </div>
-              <button
-                onClick={() => setIsChatCollapsed(true)}
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '6px',
-                  background: 'transparent',
-                  border: '1px solid #e5e7eb',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-                title="Collapse chat panel"
-                onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2">
-                  <polyline points="15 18 9 12 15 6" />
-                </svg>
-              </button>
-          </div>
-
-            {/* Chat Messages - Scrollable middle area */}
-          <div style={{
-              position: 'absolute',
-              top: '70px',
-              left: 0,
-              right: 0,
-              bottom: '130px',
-              overflowY: 'auto',
-              overflowX: 'hidden',
-              padding: '16px 20px'
-            }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {chatMessages.map((msg, idx) => (
-              <div
-                key={idx}
-                style={{
-                  padding: '12px 16px',
-                  borderRadius: '8px',
-                  background: msg.role === 'user' ? '#faf5ff' : '#f9fafb',
-                  border: `1px solid ${msg.role === 'user' ? '#e9d5ff' : '#e5e7eb'}`
-                }}
-              >
-                <div style={{
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  color: msg.role === 'user' ? '#9333ea' : '#6b7280',
-                  marginBottom: '6px'
-                }}>
-                  {msg.role === 'user' ? 'You' : 'Assistant'}
-                </div>
-                <div style={{
-                  fontSize: '14px',
-                  color: '#000000',
-                  lineHeight: '1.6'
-                }}>
-                  <ReactMarkdown 
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      p: ({ children }) => <div style={{ margin: '0 0 8px 0' }}>{children}</div>,
-                      strong: ({ children }) => <strong style={{ fontWeight: '600', color: globalColors.boldText || '#9333ea' }}>{children}</strong>,
-                      em: ({ children }) => <em style={{ fontStyle: 'italic' }}>{children}</em>,
-                      code: ({ children }) => (
-                        <code style={{
-                          background: '#f3f4f6',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          fontSize: '13px',
-                          fontFamily: 'monospace'
-                        }}>
-                          {children}
-                        </code>
-                      ),
-                      ul: ({ children }) => <ul style={{ margin: '4px 0', paddingLeft: '20px' }}>{children}</ul>,
-                      ol: ({ children }) => <ol style={{ margin: '4px 0', paddingLeft: '20px' }}>{children}</ol>,
-                      li: ({ children }) => <li style={{ margin: '2px 0' }}>{children}</li>
-                    }}
-                  >
-                  {msg.content}
-                  </ReactMarkdown>
-                </div>
-              </div>
-            ))}
-            {isGenerating && (
-              <div style={{
-                padding: '12px 16px',
-                borderRadius: '8px',
-                background: '#f9fafb',
-                border: '1px solid #e5e7eb',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}>
-                <div className="loading-spinner" style={{ width: 16, height: 16 }} />
-                <span style={{ fontSize: '14px', color: '#6b7280' }}>Generating form...</span>
-              </div>
-            )}
-              </div>
-          </div>
-
-            {/* Chat Input - Fixed at bottom */}
-          <div style={{
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              padding: '12px 20px 16px',
-            borderTop: '1px solid #e5e7eb',
-            background: '#ffffff',
-              zIndex: 5
-          }}>
-            <div style={{
-                fontSize: '11px',
-              fontWeight: '600',
-              color: '#6b7280',
-              textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                marginBottom: '6px'
-            }}>
-              What changes do you need?
-            </div>
-              <div style={{ position: 'relative' }}>
-            <textarea
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-                  placeholder="Describe changes..."
-              disabled={isGenerating}
-              style={{
-                width: '100%',
-                    height: '60px',
-                    padding: '10px 44px 10px 12px',
-                    fontSize: '14px',
-                fontFamily: 'inherit',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
-                outline: 'none',
-                resize: 'none',
-                    background: '#ffffff',
-                    color: '#1f2937',
-                    boxShadow: '0 2px 8px rgba(147, 51, 234, 0.15)'
-              }}
-              onFocus={(e) => {
-                    e.target.style.borderColor = '#9333ea';
-                    e.target.style.boxShadow = '0 4px 12px rgba(147, 51, 234, 0.25)';
-              }}
-              onBlur={(e) => {
-                    e.target.style.borderColor = '#e5e7eb';
-                    e.target.style.boxShadow = '0 2px 8px rgba(147, 51, 234, 0.15)';
-              }}
-              onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey && chatInput.trim() && !isGenerating) {
-                      e.preventDefault();
-                      handleChatEdit();
-                }
-              }}
-            />
-            <button
-                onClick={handleChatEdit}
-              disabled={!chatInput.trim() || isGenerating}
-              style={{
-                  position: 'absolute',
-                  bottom: '8px',
-                  right: '8px',
-                  width: '32px',
-                  height: '32px',
-                  padding: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                color: '#ffffff',
-                background: (!chatInput.trim() || isGenerating) ? '#d1d5db' : '#9333ea',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: (!chatInput.trim() || isGenerating) ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s'
-              }}
-                onMouseEnter={(e) => {
-                  if (chatInput.trim() && !isGenerating) {
-                    e.currentTarget.style.background = '#7e22ce';
-                    e.currentTarget.style.transform = 'scale(1.05)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (chatInput.trim() && !isGenerating) {
-                    e.currentTarget.style.background = '#9333ea';
-                    e.currentTarget.style.transform = 'scale(1)';
-                  }
-                }}
-              >
-                {isGenerating ? (
-                  <div style={{
-                    width: '14px',
-                    height: '14px',
-                    border: '2px solid #ffffff',
-                    borderTopColor: 'transparent',
-                    borderRadius: '50%',
-                    animation: 'spin 1s linear infinite'
-                  }} />
-                ) : (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <line x1="22" y1="2" x2="11" y2="13" />
-                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                  </svg>
-                )}
-            </button>
-          </div>
-        </div>
-        </div>
+        {/* Inline Chat Panel for Builder - Using shared component */}
+        {showChat && (
+          <FormChatPanel
+            formId={formData.id}
+            isOpen={true}
+            onClose={() => setShowChat(false)}
+            onFormUpdated={handleFormUpdatedFromChat}
+            position="right"
+            width={400}
+            mode="builder"
+            accentColor={globalColors.accent || '#9333ea'}
+            inline={true}
+          />
         )}
 
         {/* Form Edit Area */}
@@ -2554,7 +2206,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
           // Use the chat API to generate the component
           setShowComponentPicker(false);
           setIsGenerating(true);
-          setChatMessages(prev => [...prev, { role: 'user', content: prompt }]);
           
           try {
             const response = await fetch(`${config.backendUrl}/api/forms/${formData.id}/chat`, {
@@ -2565,9 +2216,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
             });
             
             if (!response.ok) throw new Error('Failed to generate component');
-            
-            const data = await response.json();
-            setChatMessages(prev => [...prev, { role: 'assistant', content: data.changes_made || 'Component added' }]);
             
             // Refresh form data
             const formResponse = await fetch(`${config.backendUrl}/api/forms/${formData.id}`, {
@@ -2581,12 +2229,19 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
             }
           } catch (err) {
             console.error('Generate error:', err);
-            setChatMessages(prev => [...prev, { role: 'assistant', content: 'Failed to generate component. Please try again.' }]);
           } finally {
             setIsGenerating(false);
           }
         }}
       />
+
+      {/* Streaming cursor animation */}
+      <style>{`
+        @keyframes blink {
+          0%, 50% { opacity: 1; }
+          51%, 100% { opacity: 0; }
+        }
+      `}</style>
     </div>
   );
 };

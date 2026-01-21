@@ -148,6 +148,57 @@ class FormPlannerSignature(dspy.Signature):
     form_plan = dspy.OutputField(desc="JSON form plan with title, description, components list, and conditional_logic")
 
 
+class ComponentTypeDetectorSignature(dspy.Signature):
+    """
+    Detect the correct component type from a user's add request.
+    
+    COMPONENT TYPES (return EXACTLY one of these strings):
+    - short_answer: Single line text (name, title, brief response)
+    - long_answer: Multi-line text (description, feedback, detailed response)
+    - multiple_choice: Radio buttons - ONE selection only (yes/no, single option)
+    - checkboxes: Multiple selections allowed (select all that apply)
+    - dropdown: Single select from dropdown list
+    - multi_select: Multi-select dropdown
+    - number: Numeric input (age, quantity, amount)
+    - email: Email address input
+    - phone: Phone number input
+    - link: URL/website input
+    - file_upload: File attachment (resume, document, image)
+    - date: Date picker (birthday, event date)
+    - time: Time picker (appointment time)
+    - linear_scale: Scale/slider (1-5, 1-10 rating with labels)
+    - matrix: Grid questions (rows x columns)
+    - rating: Star rating (1-5 stars)
+    - payment: Payment field
+    - signature: Digital signature capture
+    - ranking: Rank/order items by preference
+    - wallet_connect: Web3 wallet connection
+    - button: Custom action button
+    
+    DETECTION RULES:
+    1. "checkbox" or "checkboxes" or "select multiple" → checkboxes
+    2. "radio" or "single choice" or "choose one" → multiple_choice
+    3. "dropdown" or "select" (single) → dropdown
+    4. "rating" or "star" or "stars" → rating
+    5. "scale" or "slider" or "1 to 10" or "rate from" → linear_scale
+    6. "email" → email
+    7. "phone" or "telephone" or "mobile" → phone
+    8. "date" or "birthday" or "when" → date
+    9. "time" or "what time" → time
+    10. "file" or "upload" or "attachment" or "resume" or "document" → file_upload
+    11. "signature" or "sign" → signature
+    12. "rank" or "order" or "prioritize" → ranking
+    13. "matrix" or "grid" → matrix
+    14. "number" or "amount" or "quantity" or "age" or "how many" → number
+    15. "website" or "url" or "link" → link
+    16. "long" or "paragraph" or "describe" or "explain" or "feedback" → long_answer
+    17. Default for text questions → short_answer
+    """
+    user_query = dspy.InputField(desc="User's add component request")
+    component_type = dspy.OutputField(desc="Exact component type string from the list above")
+    reasoning = dspy.OutputField(desc="Brief explanation of why this type was chosen")
+
+
 class ComponentSignatureGenerator(dspy.Signature):
     """
     Generate detailed component specifications that the frontend can render.
@@ -236,7 +287,10 @@ class FormEditorSignature(dspy.Signature):
     
     INPUT:
     - edit_request: Natural language edit instruction
-    - current_form: JSON of current form structure
+    - current_form: JSON with form structure INCLUDING component summary at top level
+    
+    The current_form JSON includes a "component_summary" field like:
+    [{"index": 1, "id": 123, "type": "checkboxes", "text": "Which options..."}]
     
     EDIT TYPES:
     1. Add components: Insert new components at appropriate position
@@ -245,6 +299,18 @@ class FormEditorSignature(dspy.Signature):
     4. Reorder components: Change component sequence
     5. Update form metadata: Change title, description, settings
     6. Update conditional logic: Add/remove/modify rules
+    
+    HOW TO FIND COMPONENTS:
+    - Look at "component_summary" in current_form for quick reference
+    - Match user's request to the most relevant component by text similarity or type
+    - If user says "the checkbox" find the component with type "checkboxes"
+    - If user references by number (e.g., "question 2"), use the index in component_summary
+    - If ambiguous, apply edit to the MOST LIKELY matching component
+    
+    COMPONENT TYPES (for reference):
+    - short_answer, long_answer, multiple_choice, checkboxes, dropdown
+    - multi_select, number, email, phone, link, file_upload
+    - date, time, linear_scale, matrix, rating, payment, signature, ranking
     
     OUTPUT FORMAT (JSON):
     {
@@ -265,9 +331,10 @@ class FormEditorSignature(dspy.Signature):
     3. Update conditional logic if component_ids change
     4. Apply changes precisely as requested
     5. Return complete updated form structure
+    6. When changing component type, preserve the question_text and adapt settings appropriately
     """
     edit_request = dspy.InputField(desc="User's edit instruction")
-    current_form = dspy.InputField(desc="Current form structure as JSON")
+    current_form = dspy.InputField(desc="Current form structure as JSON with component_summary for quick reference")
     updated_form = dspy.OutputField(desc="Complete updated form structure as JSON")
     changes_made = dspy.OutputField(desc="Summary of changes applied")
 
@@ -370,10 +437,11 @@ class ComponentMatcherSignature(dspy.Signature):
 
 
 class FormChatRouterSignature(dspy.Signature):
-    """Route user queries for form editing/addition ONLY.
+    """Route user queries for form editing OR response analysis.
     
     ROUTING RULES:
     
+    **FORM EDITING:**
     - **add_component**: User wants to ADD a new form component/question/field.
       Keywords: "add", "include", "insert", "create field", "add question"
       Examples: "Add an email field", "Include a phone number question", "Add a rating field"
@@ -382,16 +450,22 @@ class FormChatRouterSignature(dspy.Signature):
       Keywords: "change", "modify", "update", "edit", "make it", "adjust"
       Examples: "Change the email field to required", "Update the rating scale to 1-5"
     
-    - **general_query**: General questions about the form structure or capabilities, or questions that may be irrelevant to form editing.
-      Examples: "What fields are in this form?", "How does conditional logic work?", "What time is it?", "Who won the game last night?"
+    **RESPONSE ANALYSIS:**
+    - **analyze_responses**: User wants to analyze, summarize, or query form responses/submissions.
+      Keywords: "responses", "submissions", "answers", "who answered", "how many", "summarize", "filter", "average", "sentiment", "export"
+      Examples: "Summarize my responses", "How many people submitted?", "Show me responses where rating > 3", "What's the average rating?", "Export responses", "What did people say?", "Analyze the feedback"
+    
+    **OTHER:**
+    - **general_query**: General questions about the form structure or capabilities.
+      Examples: "What fields are in this form?", "How does conditional logic work?"
     
     - **need_more_clarity**: Query is ambiguous, unclear, or possibly irrelevant.
     
-    IMPORTANT: This router is ONLY for form editing/building. NO data analysis.
+    IMPORTANT: Carefully distinguish between form EDITING and response ANALYSIS.
     """
     user_query = dspy.InputField(desc="The user's query about the form")
-    form_context = dspy.InputField(desc="Context about the form structure")
-    query_type = dspy.OutputField(desc="One of: 'add_component', 'edit_component', 'general_form_query', 'need_more_clarity'")
+    form_context = dspy.InputField(desc="Context about the form structure and response count")
+    query_type = dspy.OutputField(desc="One of: 'add_component', 'edit_component', 'analyze_responses', 'general_query', 'need_more_clarity'")
     reasoning = dspy.OutputField(desc="Brief explanation of why this route was chosen")
 
 
@@ -415,106 +489,260 @@ CLARITY_RESPONSE = (
     "#### Here's what I can help you with:\n"
     "- **Add** a new component or field to your form\n"
     "- **Edit** or **modify** an existing component\n"
+    "- **Analyze responses** - summarize, filter, or query submissions\n"
     "- Answer **general questions** about your form\n\n"
-    "Please clarify what you'd like to do, or ask for help with one of the options above!"
+    "Please clarify what you'd like to do!"
+)
+
+NO_RESPONSES_MESSAGE = (
+    "No responses yet! Once people submit your form, I can help you:\n\n"
+    "- **Summarize** all responses\n"
+    "- **Filter** responses by criteria\n"
+    "- **Calculate** statistics (averages, counts, etc.)\n"
+    "- **Analyze sentiment** of text answers\n"
+    "- **Export** custom data sets\n\n"
+    "Share your form to start collecting responses!"
 )
 
 
 class FormChatFunction(dspy.Module):
-    """Chat functionality for form editing - ONLY add or edit components."""
+    """
+    Unified chat module for form editing AND response analysis.
+    
+    Uses GPT-4o-mini for:
+    1. Routing queries to appropriate handler
+    2. Summarizing results
+    3. Deciding whether to use memory
+    
+    Condition: If response_count == 0, analyze_responses route returns NO_RESPONSES_MESSAGE.
+    """
     
     def __init__(self):
-        self.add_component_mod = dspy.Predict(ComponentSignatureGenerator)
-        self.edit_form_mod = dspy.Predict(FormEditorSignature)
+        # Form editing signatures
+        self.type_detector = dspy.Predict(ComponentTypeDetectorSignature)
+        self.add_component = dspy.Predict(ComponentSignatureGenerator)
+        self.edit_form = dspy.Predict(FormEditorSignature)
         self.general_qa = dspy.Predict(GeneralFormQASignature)
+        
+        # Router
         self.router = dspy.Predict(FormChatRouterSignature)
-        self.recheck_router = dspy.Predict(FormChatRouterSignature)
+        
+        # Response analysis signatures
+        self.sql_generator = dspy.Predict(SQLGeneratorSignature)
+        self.summarizer = dspy.Predict(ResponseSummarizerSignature)
+        
         self.CLARITY_RESPONSE = CLARITY_RESPONSE
+        self.NO_RESPONSES_MESSAGE = NO_RESPONSES_MESSAGE
     
-    async def aforward(self, user_query: str, form_context: str, current_form: dict = None):
+    async def aforward(
+        self,
+        user_query: str,
+        form_context: str,
+        current_form: dict = None,
+        response_count: int = 0,
+        chat_history: List[Dict] = None,
+        response_data: dict = None
+    ) -> dict:
         """
-        Handle user queries for form editing/addition.
+        Unified chat handler for form editing and response analysis.
         
         Args:
             user_query: User's natural language request
-            form_context: JSON string of current form structure
-            current_form: Dict of current form structure (optional)
+            form_context: JSON string of current form structure  
+            current_form: Dict of current form structure
+            response_count: Number of responses (0 = no analysis)
+            chat_history: Previous messages for memory
+            response_data: Pre-loaded response data (schema, summary, duckdb conn)
         
         Returns:
-            dict with 'route' and 'response' keys
+            dict with route, response, and metadata
         """
-        # Truncate input to 1000 characters
         user_query = user_query[:1000] if len(user_query) > 1000 else user_query
         
-        with dspy.context(lm=dspy.LM('openai/gpt-4o-mini', api_key=os.getenv('OPENAI_API_KEY'), max_tokens=800, temperature=0.7)):
-            route = self.router(user_query=user_query, form_context=form_context)
-            query_type = route.query_type
-            
-            # If unclear, try recheck router
-            if 'need_more_clarity' in query_type:
-                recheck = self.recheck_router(user_query=user_query, form_context=form_context)
-                if 'need_more_clarity' not in recheck.query_type:
-                    query_type = recheck.query_type
+        # Build enhanced context with response count
+        try:
+            context_dict = json.loads(form_context) if isinstance(form_context, str) else (form_context or {})
+        except:
+            context_dict = {}
+        context_dict['response_count'] = response_count
+        context_dict['has_responses'] = response_count > 0
+        enhanced_context = json.dumps(context_dict)
         
-        if 'add_component' in query_type:
-            # Extract component details from query
-            # Generate a new component_id
+        # === STEP 1: Route using GPT-4o-mini ===
+        with dspy.context(lm=dspy.LM('openai/gpt-4o-mini', api_key=os.getenv('OPENAI_API_KEY'), max_tokens=500, temperature=0.3)):
+            route_result = self.router(user_query=user_query, form_context=enhanced_context)
+            query_type = route_result.query_type.lower().strip()
+            
+            # Recheck if unclear
+            if 'clarity' in query_type or 'unclear' in query_type:
+                route_result = self.router(user_query=user_query, form_context=enhanced_context)
+                query_type = route_result.query_type.lower().strip()
+        
+        result = {
+            'route': query_type,
+            'reasoning': getattr(route_result, 'reasoning', ''),
+            'response': None,
+            'data': None,
+            'use_memory': False,
+            'requires_response_analysis': False
+        }
+        
+        # === STEP 2: Handle based on route ===
+        
+        # --- RESPONSE ANALYSIS ---
+        if 'analyze' in query_type or 'response' in query_type:
+            # CONDITION: No responses = no analysis
+            if response_count == 0:
+                result['response'] = self.NO_RESPONSES_MESSAGE
+                result['route'] = 'no_responses'
+                return result
+            
+            result['route'] = 'analyze_responses'
+            result['use_memory'] = True
+            result['requires_response_analysis'] = True
+            
+            # If response_data provided, do analysis inline
+            if response_data and response_data.get('schema_description'):
+                schema = response_data['schema_description']
+                summary = response_data.get('summary', {})
+                
+                with dspy.context(lm=dspy.LM('openai/gpt-4o-mini', api_key=os.getenv('OPENAI_API_KEY'), max_tokens=800)):
+                    # Generate SQL
+                    sql_result = self.sql_generator(
+                        user_query=user_query,
+                        schema_description=schema
+                    )
+                    result['sql_query'] = sql_result.sql_query
+                    
+                    # Summarize
+                    summary_result = self.summarizer(
+                        query_results=json.dumps(summary, default=str),
+                        user_query=user_query,
+                        schema_description=schema
+                    )
+                    result['response'] = summary_result.summary
+            
+            return result
+        
+        # --- ADD COMPONENT ---
+        if 'add' in query_type:
+            result['route'] = 'add_component'
+            
             existing_ids = []
-            if current_form and 'components' in current_form:
-                existing_ids = [c.get('component_id', '') for c in current_form.get('components', [])]
+            if current_form and 'questions' in current_form:
+                existing_ids = [f"comp_{i+1}" for i in range(len(current_form['questions']))]
             
             new_id = f"comp_{len(existing_ids) + 1}"
             
-            # CRITICAL: Include the original user query in the form context and brief
-            if form_context:
-                # Parse form_context if it's a string
-                if isinstance(form_context, str):
-                    parsed_context = json.loads(form_context)
-                else:
-                    parsed_context = form_context
-                
-                # Merge with original user request
-                enhanced_form_context = json.dumps({
-                    **parsed_context,
-                    'ORIGINAL_USER_REQUEST': user_query,
-                    'IMPORTANT': 'Use the EXACT terms from ORIGINAL_USER_REQUEST. Do NOT substitute cultural, local, or specific terms.'
-                })
-            else:
-                enhanced_form_context = json.dumps({'ORIGINAL_USER_REQUEST': user_query})
+            # First, detect the component type from user query
+            with dspy.context(lm=dspy.LM('openai/gpt-4o-mini', api_key=os.getenv('OPENAI_API_KEY'), max_tokens=200)):
+                type_result = self.type_detector(user_query=user_query)
             
-            enhanced_brief = f"{user_query}. CRITICAL: Use the exact terms mentioned by the user. Do NOT substitute any terms like 'Valima', 'Nikkah', 'Barat' with generic alternatives."
+            detected_type = getattr(type_result, 'component_type', 'short_answer')
+            # Clean up type - ensure it's a valid type string
+            valid_types = [
+                'short_answer', 'long_answer', 'multiple_choice', 'checkboxes',
+                'dropdown', 'multi_select', 'number', 'email', 'phone', 'link',
+                'file_upload', 'date', 'time', 'linear_scale', 'matrix', 'rating',
+                'payment', 'signature', 'ranking', 'wallet_connect', 'button'
+            ]
+            detected_type = detected_type.lower().strip().replace(' ', '_')
+            if detected_type not in valid_types:
+                detected_type = 'short_answer'
             
-            response = self.add_component_mod(
-                component_brief=enhanced_brief,
-                component_type="short_answer",  # Default, will be inferred
-                component_id=new_id,
-                form_context=enhanced_form_context
-            )
-        elif 'edit_component' in query_type:
-            if current_form:
-                response = self.edit_form_mod(
-                    edit_request=user_query,
-                    current_form=json.dumps(current_form)
+            logger.info(f"Detected component type: {detected_type} for query: {user_query}")
+            
+            add_context = json.dumps({
+                **context_dict,
+                'ORIGINAL_USER_REQUEST': user_query,
+                'DETECTED_COMPONENT_TYPE': detected_type,
+                'IMPORTANT': 'Use EXACT terms from user. Do NOT substitute cultural terms.'
+            })
+            
+            # Now generate the component with the detected type
+            with dspy.context(lm=dspy.LM('openai/gpt-4o-mini', api_key=os.getenv('OPENAI_API_KEY'), max_tokens=1000)):
+                component = self.add_component(
+                    component_brief=f"{user_query}. Use exact terms from user. Component type MUST be: {detected_type}",
+                    component_type=detected_type,
+                    component_id=new_id,
+                    form_context=add_context
                 )
-            else:
-                response = "No form available to edit."
-        elif 'general_query' in query_type:
-            response = self.general_qa(user_query=user_query, form_context=form_context)
-            # Truncate response to 1000 chars max
-            if hasattr(response, 'answer') and isinstance(response.answer, str) and len(response.answer) > 1000:
-                response.answer = response.answer[:1000] + "..."
-        elif 'need_more_clarity' in query_type:
-            response = self.CLARITY_RESPONSE
-        else:
-            response = self.general_qa(user_query=user_query, form_context=form_context)
-            # Truncate response to 1000 chars max
-            if hasattr(response, 'answer') and isinstance(response.answer, str) and len(response.answer) > 1000:
-                response.answer = response.answer[:1000] + "..."
+            
+            result['response'] = component
+            return result
         
-        route.query_type = query_type
-        return_dict = {'route': route, 'response': response}
+        # --- EDIT COMPONENT ---
+        if 'edit' in query_type:
+            result['route'] = 'edit_component'
+            
+            if not current_form:
+                result['response'] = "No form available to edit."
+                return result
+            
+            # Build component summary and embed it into the form for easy matching
+            component_summary = []
+            if 'questions' in current_form:
+                for idx, q in enumerate(current_form['questions']):
+                    component_summary.append({
+                        'index': idx + 1,
+                        'id': q.get('id', f'comp_{idx+1}'),
+                        'type': q.get('question_type', 'unknown'),
+                        'text': q.get('question_text', '')[:80],  # Truncate for brevity
+                        'required': q.get('required', False)
+                    })
+            
+            # Create form with embedded component summary
+            form_with_summary = {
+                'component_summary': component_summary,
+                **current_form
+            }
+            
+            logger.info(f"Editing form with {len(component_summary)} components")
+            
+            with dspy.context(lm=dspy.LM('openai/gpt-4o-mini', api_key=os.getenv('OPENAI_API_KEY'), max_tokens=1500)):
+                edit_result = self.edit_form(
+                    edit_request=user_query,
+                    current_form=json.dumps(form_with_summary)
+                )
+            
+            result['response'] = edit_result
+            return result
         
-        return return_dict
+        # --- GENERAL QUERY ---
+        if 'general' in query_type:
+            result['route'] = 'general_query'
+            
+            with dspy.context(lm=dspy.LM('openai/gpt-4o-mini', api_key=os.getenv('OPENAI_API_KEY'), max_tokens=500)):
+                qa_result = self.general_qa(
+                    user_query=user_query,
+                    form_context=form_context
+                )
+            
+            answer = getattr(qa_result, 'answer', str(qa_result))
+            result['response'] = answer[:1000] if len(answer) > 1000 else answer
+            return result
+        
+        # --- UNCLEAR ---
+        result['route'] = 'need_clarity'
+        result['response'] = self.CLARITY_RESPONSE
+        return result
+    
+    def summarize_query_results(
+        self,
+        query_results: List[Dict],
+        user_query: str,
+        schema_description: str
+    ) -> str:
+        """Summarize SQL query results in natural language."""
+        with dspy.context(lm=dspy.LM('openai/gpt-4o-mini', api_key=os.getenv('OPENAI_API_KEY'), max_tokens=800)):
+            result = self.summarizer(
+                query_results=json.dumps(query_results[:50], default=str),
+                user_query=user_query,
+                schema_description=schema_description
+            )
+            return result.summary
+
+
 
 
 # ============================================================================
@@ -652,3 +880,193 @@ def extract_component_ids(form_data: dict) -> list:
     
     components = form_data.get('components', [])
     return [comp.get('component_id') for comp in components if 'component_id' in comp]
+
+
+# ============================================================================
+# RESPONSE ANALYSIS SIGNATURES
+# ============================================================================
+
+class ResponseAnalysisRouterSignature(dspy.Signature):
+    """Route user queries for form response analysis.
+    
+    ROUTING RULES:
+    
+    - **summary**: User wants an overall summary or overview of responses.
+      Keywords: "summarize", "overview", "tell me about", "how many", "total"
+      Examples: "Give me a summary of all responses", "How many people responded?"
+    
+    - **filter**: User wants to filter or search specific responses.
+      Keywords: "show", "find", "where", "filter", "which", "list"
+      Examples: "Show me responses where rating > 3", "Find responses from last week"
+    
+    - **aggregate**: User wants statistical aggregations or calculations.
+      Keywords: "average", "count", "sum", "max", "min", "distribution", "percentage"
+      Examples: "What's the average rating?", "How are responses distributed?"
+    
+    - **sentiment**: User wants sentiment analysis on text responses.
+      Keywords: "sentiment", "positive", "negative", "feedback", "feel", "opinion"
+      Examples: "What's the overall sentiment?", "Are responses positive or negative?"
+    
+    - **export**: User wants to export or download data.
+      Keywords: "export", "download", "csv", "file", "save"
+      Examples: "Export responses as CSV", "Download filtered results"
+    
+    - **general**: General questions about the data or clarification needed.
+      Examples: "What columns are available?", "Help me understand the data"
+    """
+    user_query = dspy.InputField(desc="The user's query about form responses")
+    schema_description = dspy.InputField(desc="Description of available data columns")
+    conversation_history = dspy.InputField(desc="Previous conversation context")
+    query_type = dspy.OutputField(desc="One of: 'summary', 'filter', 'aggregate', 'sentiment', 'export', 'general'")
+    reasoning = dspy.OutputField(desc="Brief explanation of why this route was chosen")
+
+
+class SQLGeneratorSignature(dspy.Signature):
+    """Generate safe SQL queries for DuckDB based on user requests.
+    
+    RULES:
+    1. Only generate SELECT queries - no INSERT, UPDATE, DELETE, DROP, etc.
+    2. Use the exact column names from the schema description
+    3. Use DuckDB SQL syntax (similar to PostgreSQL)
+    4. For text matching, use ILIKE for case-insensitive search
+    5. Always include LIMIT clause (max 100 rows) unless counting/aggregating
+    6. Wrap column names in double quotes if they contain special characters
+    
+    IMPORTANT - NUMERIC COLUMNS (rating, number, linear_scale):
+    - Values are stored as strings, empty string means NULL
+    - ALWAYS filter out empty strings BEFORE casting: WHERE "col" != '' AND "col" IS NOT NULL
+    - For AVG/SUM: SELECT AVG(CAST("col" AS FLOAT)) FROM responses WHERE "col" != '' AND "col" IS NOT NULL
+    - For comparisons: WHERE "col" != '' AND CAST("col" AS INTEGER) > 3
+    
+    IMPORTANT - CHECKBOX/MULTI-SELECT COLUMNS:
+    - Values are comma-separated strings like "Option A, Option B"
+    - To count occurrences of EACH option separately, use LIKE for each option
+    - Schema will list available options
+    
+    IMPORTANT - SINGLE CHOICE (multiple_choice, dropdown):
+    - One value per response, use GROUP BY to count
+    
+    EXAMPLES:
+    - "Average rating" → SELECT AVG(CAST("q2_rating" AS FLOAT)) as avg_rating FROM responses WHERE "q2_rating" != '' AND "q2_rating" IS NOT NULL
+    - "Count ratings" → SELECT "q2_rating" as rating, COUNT(*) as count FROM responses WHERE "q2_rating" != '' GROUP BY "q2_rating" ORDER BY rating
+    - "Ratings above 3" → SELECT * FROM responses WHERE "q2_rating" != '' AND CAST("q2_rating" AS INTEGER) > 3 LIMIT 100
+    - "Count by satisfaction level" (single choice) → SELECT "q1_satisfaction" as satisfaction, COUNT(*) as count FROM responses WHERE "q1_satisfaction" != '' GROUP BY "q1_satisfaction"
+    - "Count checkbox options" (for checkbox with options A, B, C) → 
+        SELECT 'Option A' as option, COUNT(*) as count FROM responses WHERE "q3_features" ILIKE '%Option A%'
+        UNION ALL SELECT 'Option B', COUNT(*) FROM responses WHERE "q3_features" ILIKE '%Option B%'
+        UNION ALL SELECT 'Option C', COUNT(*) FROM responses WHERE "q3_features" ILIKE '%Option C%'
+    - "Count by status" → SELECT status, COUNT(*) as count FROM responses GROUP BY status
+    - "Show all responses" → SELECT * FROM responses LIMIT 100
+    """
+    user_query = dspy.InputField(desc="Natural language query from user")
+    schema_description = dspy.InputField(desc="Table schema with column names, descriptions, and available options for choice fields")
+    sql_query = dspy.OutputField(desc="Safe SELECT SQL query for DuckDB, using GROUP BY for counts, LIKE for checkbox options")
+
+
+class ResponseSummarizerSignature(dspy.Signature):
+    """Summarize form response data in natural language.
+    
+    Create a clear, concise summary that highlights:
+    1. Key statistics (total responses, completion rate)
+    2. Notable patterns or trends
+    3. Most common answers for each question
+    4. Any interesting insights
+    
+    Keep the summary conversational and easy to understand.
+    Use bullet points for clarity when listing multiple items.
+    """
+    query_results = dspy.InputField(desc="JSON data from query execution")
+    user_query = dspy.InputField(desc="What the user asked for")
+    schema_description = dspy.InputField(desc="Column descriptions for context")
+    summary = dspy.OutputField(desc="Natural language summary of the data (max 500 words)")
+
+
+class ResponseChatModule(dspy.Module):
+    """Module for handling response analysis chat interactions."""
+    
+    def __init__(self):
+        self.router = dspy.Predict(ResponseAnalysisRouterSignature)
+        self.sql_generator = dspy.Predict(SQLGeneratorSignature)
+        self.summarizer = dspy.Predict(ResponseSummarizerSignature)
+    
+    async def aforward(
+        self,
+        user_query: str,
+        schema_description: str,
+        conversation_history: str,
+        response_summary: dict = None
+    ) -> dict:
+        """
+        Process a user query about form responses.
+        
+        Args:
+            user_query: User's natural language query
+            schema_description: Description of available columns
+            conversation_history: Previous conversation context
+            response_summary: Pre-computed summary statistics
+        
+        Returns:
+            dict with 'query_type', 'sql_query' (if applicable), 'response'
+        """
+        # Truncate inputs
+        user_query = user_query[:1000] if len(user_query) > 1000 else user_query
+        
+        with dspy.context(lm=dspy.LM('openai/gpt-4o-mini', api_key=os.getenv('OPENAI_API_KEY'), max_tokens=1000, temperature=0.3)):
+            # Route the query
+            route_result = self.router(
+                user_query=user_query,
+                schema_description=schema_description,
+                conversation_history=conversation_history
+            )
+            query_type = route_result.query_type.lower().strip()
+            
+            result = {
+                'query_type': query_type,
+                'reasoning': route_result.reasoning,
+                'sql_query': None,
+                'response': None
+            }
+            
+            if query_type in ['filter', 'aggregate', 'export']:
+                # Generate SQL query
+                sql_result = self.sql_generator(
+                    user_query=user_query,
+                    schema_description=schema_description
+                )
+                result['sql_query'] = sql_result.sql_query
+                
+            elif query_type == 'summary':
+                # Use pre-computed summary if available
+                if response_summary:
+                    summary_context = json.dumps(response_summary, default=str)
+                    summarize_result = self.summarizer(
+                        query_results=summary_context,
+                        user_query=user_query,
+                        schema_description=schema_description
+                    )
+                    result['response'] = summarize_result.summary
+                    
+            elif query_type == 'general':
+                # Answer general questions about the data
+                result['response'] = f"I can help you analyze your form responses. The available data includes: {schema_description}\n\nYou can ask me to:\n- Summarize responses\n- Filter by specific criteria\n- Calculate statistics\n- Analyze sentiment of text answers\n- Export filtered data"
+        
+        return result
+    
+    def summarize_results(
+        self,
+        query_results: list,
+        user_query: str,
+        schema_description: str
+    ) -> str:
+        """Summarize query results in natural language."""
+        with dspy.context(lm=dspy.LM('openai/gpt-4o-mini', api_key=os.getenv('OPENAI_API_KEY'), max_tokens=800)):
+            result = self.summarizer(
+                query_results=json.dumps(query_results[:50], default=str),  # Limit to 50 rows
+                user_query=user_query,
+                schema_description=schema_description
+            )
+            return result.summary
+
+
+# Singleton instance for response chat
+response_chat_module = ResponseChatModule()

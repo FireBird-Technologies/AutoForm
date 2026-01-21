@@ -618,6 +618,283 @@ async def get_publish_info(
     return PublicFormResponse.model_validate(public_form)
 
 
+# Streaming chat endpoint with SSE - MUST be before /{form_id}/chat to match correctly
+@router.post("/{form_id}/chat/stream")
+async def chat_stream(
+    form_id: int,
+    chat_data: ChatMessage,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Streaming chat endpoint using Server-Sent Events (SSE).
+    Streams: route -> content chunks -> data -> done
+    """
+    from fastapi.responses import StreamingResponse
+    from sqlalchemy import func
+    import json
+    import asyncio
+    from ..models import FormResponse as FormResponseModel
+    from ..services.response_chat_service import response_chat_service
+    from ..services.agents import FormChatFunction
+    
+    from sqlalchemy.orm import joinedload
+    
+    # Verify form ownership - eagerly load questions to avoid DetachedInstanceError in generator
+    form = db.query(Form).options(
+        joinedload(Form.questions)
+    ).filter(
+        Form.id == form_id,
+        Form.user_id == current_user.id
+    ).first()
+    
+    if not form:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Form not found"
+        )
+    
+    # Get response count BEFORE entering generator (session available here)
+    response_count = db.query(func.count(FormResponseModel.id)).filter(
+        FormResponseModel.form_id == form_id
+    ).scalar() or 0
+    
+    # Pre-load form structure BEFORE entering generator to avoid session issues
+    current_form_structure = {
+        "title": form.title,
+        "description": form.description,
+        "questions": [
+            {
+                "id": q.id,
+                "question_order": q.question_order,
+                "question_type": q.question_type.value,
+                "question_text": q.question_text,
+                "description": q.description,
+                "required": q.required,
+                "settings": q.settings
+            }
+            for q in form.questions
+        ],
+        "settings": form.settings,
+        "response_count": response_count
+    }
+    
+    # Pre-load response data if available
+    response_data_preloaded = None
+    conn_preloaded = None
+    columns_preloaded = None
+    if response_count > 0:
+        try:
+            conn_preloaded, columns_preloaded, question_id_to_col = response_chat_service.load_responses_to_duckdb(
+                db=db,
+                form_id=form_id
+            )
+            response_data_preloaded = {
+                'schema_description': response_chat_service.get_schema_description(
+                    columns=columns_preloaded,
+                    question_id_to_col=question_id_to_col,
+                    db=db,
+                    form_id=form_id
+                ),
+                'summary': response_chat_service.get_response_summary(conn_preloaded, columns_preloaded),
+                'columns': columns_preloaded,
+                'conn': conn_preloaded
+            }
+        except Exception as e:
+            logger.warning(f"Could not load responses: {e}")
+    
+    async def event_generator():
+        conn = conn_preloaded
+        response_data = response_data_preloaded
+        try:
+            # Initialize chat module
+            chat_module = FormChatFunction()
+            
+            # Process with chat module
+            result = await chat_module.aforward(
+                user_query=chat_data.message,
+                form_context=json.dumps(current_form_structure),
+                current_form=current_form_structure,
+                response_count=response_count,
+                response_data=response_data
+            )
+            
+            route = result.get('route', 'unknown')
+            
+            # Send route event
+            yield f"event: route\ndata: {json.dumps({'route': route})}\n\n"
+            await asyncio.sleep(0.01)
+            
+            # Handle response analysis with data
+            if result.get('requires_response_analysis') and response_count > 0:
+                sql_query = result.get('sql_query')
+                assistant_response = result.get('response')
+                result_data = None
+                
+                # Execute SQL if generated
+                if sql_query and conn:
+                    try:
+                        query_results, result_columns = response_chat_service.execute_query(conn, sql_query)
+                        result_data = {
+                            "columns": result_columns,
+                            "rows": query_results[:50],
+                            "row_count": len(query_results)
+                        }
+                        
+                        # Generate summary
+                        assistant_response = chat_module.summarize_query_results(
+                            query_results=query_results,
+                            user_query=chat_data.message,
+                            schema_description=response_data['schema_description']
+                        )
+                    except ValueError as e:
+                        assistant_response = f"I couldn't execute that query: {str(e)}. Try rephrasing?"
+                
+                # Default summary if no response yet
+                if not assistant_response and response_data:
+                    summary = response_data.get('summary', {})
+                    assistant_response = f"Based on {response_count} responses:\n\n"
+                    assistant_response += f"**Total:** {summary.get('total_responses', 0)}\n"
+                    status_breakdown = summary.get('status_breakdown', {})
+                    if status_breakdown:
+                        assistant_response += f"**Status:** {', '.join([f'{k}: {v}' for k, v in status_breakdown.items()])}"
+                
+                # Stream content in chunks
+                if assistant_response:
+                    words = assistant_response.split(' ')
+                    chunk_size = 5
+                    for i in range(0, len(words), chunk_size):
+                        chunk = ' '.join(words[i:i+chunk_size])
+                        if i > 0:
+                            chunk = ' ' + chunk
+                        yield f"event: content\ndata: {json.dumps({'content': chunk})}\n\n"
+                        await asyncio.sleep(0.02)
+                
+                # Send data if available
+                if result_data:
+                    yield f"event: data\ndata: {json.dumps(result_data)}\n\n"
+                
+            # Handle add_component
+            elif route == 'add_component':
+                response = result.get('response')
+                if hasattr(response, 'component_spec'):
+                    try:
+                        component_spec = json.loads(response.component_spec) if isinstance(response.component_spec, str) else response.component_spec
+                        
+                        # Create question in DB
+                        max_order = db.query(func.max(FormQuestion.question_order)).filter(
+                            FormQuestion.form_id == form_id
+                        ).scalar() or -1
+                        
+                        new_question = FormQuestion(
+                            form_id=form_id,
+                            question_order=max_order + 1,
+                            question_type=QuestionType(component_spec.get("question_type", "short_answer")),
+                            question_text=component_spec.get("question_text", "New Question"),
+                            description=component_spec.get("description"),
+                            required=component_spec.get("required", False),
+                            settings=component_spec.get("settings", {})
+                        )
+                        db.add(new_question)
+                        db.commit()
+                        db.refresh(new_question)
+                        
+                        msg = f"Added new **{component_spec.get('question_type', 'question')}** field: {component_spec.get('question_text', 'New Question')}"
+                        yield f"event: content\ndata: {json.dumps({'content': msg})}\n\n"
+                        yield f"event: form_updated\ndata: {json.dumps({'action': 'add', 'question_id': new_question.id})}\n\n"
+                    except Exception as e:
+                        yield f"event: content\ndata: {json.dumps({'content': f'Error adding component: {str(e)}'})}\n\n"
+            
+            # Handle edit_component
+            elif route == 'edit_component':
+                response = result.get('response')
+                if hasattr(response, 'updated_form'):
+                    try:
+                        updated_form = json.loads(response.updated_form) if isinstance(response.updated_form, str) else response.updated_form
+                        changes_desc = getattr(response, 'changes_made', 'Form updated')
+                        
+                        if updated_form and "components" in updated_form:
+                            for component in updated_form.get("components", []):
+                                comp_id = component.get("component_id")
+                                if comp_id and comp_id.startswith("comp_"):
+                                    try:
+                                        order_idx = int(comp_id.split("_")[1]) - 1
+                                        question = db.query(FormQuestion).filter(
+                                            FormQuestion.form_id == form_id,
+                                            FormQuestion.question_order == order_idx
+                                        ).first()
+                                        
+                                        if question:
+                                            if "question_text" in component:
+                                                question.question_text = component["question_text"]
+                                            if "question_type" in component:
+                                                question.question_type = QuestionType(component["question_type"])
+                                            if "description" in component:
+                                                question.description = component["description"]
+                                            if "required" in component:
+                                                question.required = component["required"]
+                                            if "settings" in component:
+                                                question.settings = component["settings"]
+                                            question.updated_at = datetime.utcnow()
+                                    except (ValueError, IndexError):
+                                        continue
+                            
+                            db.commit()
+                        
+                        yield f"event: content\ndata: {json.dumps({'content': str(changes_desc)})}\n\n"
+                        yield f"event: form_updated\ndata: {json.dumps({'action': 'edit'})}\n\n"
+                    except Exception as e:
+                        yield f"event: content\ndata: {json.dumps({'content': f'Error editing: {str(e)}'})}\n\n"
+            
+            # Handle no_responses
+            elif route == 'no_responses':
+                response = result.get('response', '')
+                yield f"event: content\ndata: {json.dumps({'content': response})}\n\n"
+            
+            # Handle general query or other routes
+            else:
+                response = result.get('response')
+                if response:
+                    if hasattr(response, 'answer'):
+                        msg = response.answer
+                    elif isinstance(response, dict) and 'message' in response:
+                        msg = response['message']
+                    elif isinstance(response, str):
+                        msg = response
+                    else:
+                        msg = str(response)
+                    
+                    # Stream in chunks
+                    words = msg.split(' ')
+                    chunk_size = 5
+                    for i in range(0, len(words), chunk_size):
+                        chunk = ' '.join(words[i:i+chunk_size])
+                        if i > 0:
+                            chunk = ' ' + chunk
+                        yield f"event: content\ndata: {json.dumps({'content': chunk})}\n\n"
+                        await asyncio.sleep(0.02)
+            
+            # Send done event
+            yield f"event: done\ndata: {json.dumps({'status': 'complete'})}\n\n"
+            
+        except Exception as e:
+            logger.error(f"Stream error: {e}", exc_info=True)
+            yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
+        finally:
+            if conn:
+                conn.close()
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
+
+
 # Chat editing endpoint
 @router.post("/{form_id}/chat", response_model=ChatResponse)
 async def chat_edit_form(
@@ -627,11 +904,14 @@ async def chat_edit_form(
     db: Session = Depends(get_db)
 ):
     """
-    Edit form via natural language chat (add/edit components).
-    Uses AI to understand and apply changes to the form.
+    Unified chat endpoint for form editing AND response analysis.
+    Uses GPT-4o-mini for routing, then delegates to appropriate handlers.
     """
     from sqlalchemy import func
     import json
+    from ..models import FormResponse as FormResponseModel
+    from ..services.response_chat_service import response_chat_service
+    from ..services.agents import FormChatFunction
     
     # Get the form
     form = db.query(Form).filter(
@@ -646,6 +926,11 @@ async def chat_edit_form(
         )
     
     try:
+        # Get response count for context
+        response_count = db.query(func.count(FormResponseModel.id)).filter(
+            FormResponseModel.form_id == form_id
+        ).scalar() or 0
+        
         # Prepare current form structure
         current_form_structure = {
             "title": form.title,
@@ -662,19 +947,116 @@ async def chat_edit_form(
                 }
                 for q in form.questions
             ],
-            "settings": form.settings
+            "settings": form.settings,
+            "response_count": response_count
         }
         
-        # Use edit_form_spec to process the chat message
-        result = await edit_form_spec(
+        # Initialize chat module
+        chat_module = FormChatFunction()
+        
+        # Prepare response data if there are responses
+        response_data = None
+        conn = None
+        if response_count > 0:
+            try:
+                conn, columns, question_id_to_col = response_chat_service.load_responses_to_duckdb(
+                    db=db,
+                    form_id=form_id
+                )
+                response_data = {
+                    'schema_description': response_chat_service.get_schema_description(
+                        columns=columns,
+                        question_id_to_col=question_id_to_col,
+                        db=db,
+                        form_id=form_id
+                    ),
+                    'summary': response_chat_service.get_response_summary(conn, columns),
+                    'columns': columns,
+                    'conn': conn
+                }
+            except Exception as e:
+                logger.warning(f"Could not load responses: {e}")
+        
+        # Process with unified module
+        result = await chat_module.aforward(
+            user_query=chat_data.message,
+            form_context=json.dumps(current_form_structure),
             current_form=current_form_structure,
-            edit_request=chat_data.message,
-            user_id=current_user.id
+            response_count=response_count,
+            response_data=response_data
         )
         
-        route = result.get("route", "unknown")
-        response = result.get("response")
-        changes_made = result.get("changes_made")
+        route = result.get('route', 'unknown')
+        response = result.get('response')
+        
+        # === Handle Response Analysis ===
+        if result.get('requires_response_analysis') and response_count > 0:
+            try:
+                sql_query = result.get('sql_query')
+                assistant_response = response
+                result_data = None
+                
+                # Execute SQL if generated
+                if sql_query and conn:
+                    try:
+                        query_results, result_columns = response_chat_service.execute_query(conn, sql_query)
+                        result_data = {
+                            "columns": result_columns,
+                            "rows": query_results[:50],
+                            "row_count": len(query_results)
+                        }
+                        
+                        # Summarize results
+                        assistant_response = chat_module.summarize_query_results(
+                            query_results=query_results,
+                            user_query=chat_data.message,
+                            schema_description=response_data['schema_description']
+                        )
+                    except ValueError as e:
+                        assistant_response = f"I couldn't execute that query: {str(e)}. Try rephrasing?"
+                
+                # Default summary if no response yet
+                if not assistant_response and response_data:
+                    summary = response_data.get('summary', {})
+                    assistant_response = f"Based on {response_count} responses:\n\n"
+                    assistant_response += f"**Total:** {summary.get('total_responses', 0)}\n"
+                    status_breakdown = summary.get('status_breakdown', {})
+                    if status_breakdown:
+                        assistant_response += f"**Status:** {', '.join([f'{k}: {v}' for k, v in status_breakdown.items()])}"
+                
+                if conn:
+                    conn.close()
+                
+                return ChatResponse(
+                    route="analyze_responses",
+                    response={
+                        "message": assistant_response or "Analysis complete.",
+                        "data": result_data
+                    },
+                    changes_made=f"Analyzed {response_count} responses"
+                )
+                
+            except Exception as e:
+                logger.error(f"Response analysis failed: {e}", exc_info=True)
+                if conn:
+                    conn.close()
+                return ChatResponse(
+                    route="analyze_responses",
+                    response={"message": f"Error analyzing responses: {str(e)}"},
+                    changes_made=None
+                )
+        
+        # Close conn if opened but not used
+        if conn:
+            conn.close()
+        
+        # === Handle No Responses ===
+        if route == 'no_responses':
+            return ChatResponse(
+                route="no_responses",
+                response={"message": response},
+                changes_made=None
+            )
         
         # If route is add_component, add the new component
         if route == "add_component" and response:
@@ -786,4 +1168,3 @@ async def chat_edit_form(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Chat processing failed: {str(e)}"
         )
-

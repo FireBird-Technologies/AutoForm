@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { config, getAuthHeaders } from '../config';
+import { FormChatPanel } from '../components/FormChatPanel';
+import { useSidebar } from '../contexts/SidebarContext';
 
 interface FunnelData {
   total_views: number;
@@ -32,11 +34,26 @@ interface SummaryData {
 export const FormAnalytics: React.FC = () => {
   const { formId } = useParams<{ formId: string }>();
   const navigate = useNavigate();
+  const { isOpen: isSidebarOpen, setSidebarOpen } = useSidebar();
   const [funnel, setFunnel] = useState<FunnelData | null>(null);
   const [summary, setSummary] = useState<SummaryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [dateRange, setDateRange] = useState<'7d' | '30d' | 'all'>('30d');
+  const [showChat, setShowChat] = useState(false);
+
+  // Close chat when sidebar opens
+  useEffect(() => {
+    if (isSidebarOpen) {
+      setShowChat(false);
+    }
+  }, [isSidebarOpen]);
+
+  // Handler to open chat and close sidebar
+  const handleOpenChat = () => {
+    setSidebarOpen(false);
+    setShowChat(true);
+  };
 
   useEffect(() => {
     loadAnalytics();
@@ -150,77 +167,147 @@ export const FormAnalytics: React.FC = () => {
   return (
     <div style={{
       height: '100vh',
-      overflowY: 'auto',
-      background: '#f9fafb',
-      padding: '32px'
+      display: 'flex',
+      overflow: 'hidden',
+      background: '#f9fafb'
     }}>
-      <div style={{
-        maxWidth: '1400px',
-        margin: '0 auto'
-      }}>
-        {/* Header */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '32px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <button
-              onClick={() => navigate(-1)}
-              style={{
-                padding: '8px',
-                background: 'white',
-                border: '1px solid #e5e7eb',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M19 12H5M12 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <h1 style={{
-              fontSize: '28px',
-              fontWeight: '700',
-              color: '#1f2937',
-              margin: 0
-            }}>
-              Form Analytics
-            </h1>
+      {/* Collapsed Chat Toggle */}
+      {!showChat && (
+        <button
+          onClick={handleOpenChat}
+          style={{
+            width: '44px',
+            background: 'linear-gradient(180deg, #faf5ff 0%, #ffffff 100%)',
+            border: 'none',
+            borderRight: '1px solid #e5e7eb',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexDirection: 'column',
+            gap: '8px',
+            padding: '16px 0',
+            transition: 'all 0.15s',
+            flexShrink: 0
+          }}
+          title="Open chat panel"
+          onMouseEnter={(e) => e.currentTarget.style.background = '#faf5ff'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(180deg, #faf5ff 0%, #ffffff 100%)'}
+        >
+          <div style={{
+            width: '32px',
+            height: '32px',
+            borderRadius: '8px',
+            background: '#9333ea',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
           </div>
+          <span style={{
+            writingMode: 'vertical-rl',
+            textOrientation: 'mixed',
+            fontSize: '11px',
+            fontWeight: '600',
+            color: '#9333ea',
+            letterSpacing: '0.05em'
+          }}>
+            CHAT
+          </span>
+        </button>
+      )}
 
-          {/* Date Range Selector */}
+      {/* Inline Chat Panel */}
+      {showChat && (
+        <FormChatPanel
+          formId={parseInt(formId || '0')}
+          isOpen={true}
+          onClose={() => setShowChat(false)}
+          mode="analytics"
+          accentColor="#9333ea"
+          inline={true}
+          width={400}
+        />
+      )}
+
+      {/* Main Content */}
+      <div style={{
+        flex: 1,
+        overflowY: 'auto',
+        padding: '32px'
+      }}>
+        <div style={{
+          maxWidth: '1400px',
+          margin: '0 auto'
+        }}>
+          {/* Header */}
           <div style={{
             display: 'flex',
-            gap: '8px',
-            background: 'white',
-            padding: '4px',
-            borderRadius: '8px',
-            border: '1px solid #e5e7eb'
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '32px'
           }}>
-            {['7d', '30d', 'all'].map((range) => (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <button
-                key={range}
-                onClick={() => setDateRange(range as any)}
+                onClick={() => navigate(-1)}
                 style={{
-                  padding: '8px 16px',
-                  background: dateRange === range ? '#9333ea' : 'transparent',
-                  color: dateRange === range ? 'white' : '#6b7280',
-                  border: 'none',
+                  padding: '8px',
+                  background: 'white',
+                  border: '1px solid #e5e7eb',
                   borderRadius: '6px',
                   cursor: 'pointer',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  transition: 'all 0.15s'
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}
               >
-                {range === '7d' ? 'Last 7 days' : range === '30d' ? 'Last 30 days' : 'All time'}
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
               </button>
-            ))}
+              <h1 style={{
+                fontSize: '28px',
+                fontWeight: '700',
+                color: '#1f2937',
+                margin: 0
+              }}>
+                Form Analytics
+              </h1>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              {/* Date Range Selector */}
+            <div style={{
+              display: 'flex',
+              gap: '8px',
+              background: 'white',
+              padding: '4px',
+              borderRadius: '8px',
+              border: '1px solid #e5e7eb'
+            }}>
+              {['7d', '30d', 'all'].map((range) => (
+                <button
+                  key={range}
+                  onClick={() => setDateRange(range as any)}
+                  style={{
+                    padding: '8px 16px',
+                    background: dateRange === range ? '#9333ea' : 'transparent',
+                    color: dateRange === range ? 'white' : '#6b7280',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  {range === '7d' ? 'Last 7 days' : range === '30d' ? 'Last 30 days' : 'All time'}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -456,6 +543,8 @@ export const FormAnalytics: React.FC = () => {
             </div>
           )}
         </div>
+      </div>
+
       </div>
     </div>
   );
