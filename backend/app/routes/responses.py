@@ -920,7 +920,7 @@ async def delete_response(
 # ============================================================================
 
 from pydantic import BaseModel
-from ..models import ResponseChatMessage
+from ..models import ChatMessage
 from ..services.response_chat_service import response_chat_service
 from ..services.agents import response_chat_module
 
@@ -930,11 +930,12 @@ class ResponseChatRequest(BaseModel):
     message: str
 
 
-class ResponseChatMessageResponse(BaseModel):
+class ChatMessageResponse(BaseModel):
     """Response model for a single chat message."""
     id: int
     role: str
     content: str
+    chat_type: str = "response_analysis"
     query_type: str | None = None
     sql_query: str | None = None
     result_data: dict | None = None
@@ -946,7 +947,7 @@ class ResponseChatMessageResponse(BaseModel):
 
 class ResponseChatResponse(BaseModel):
     """Response model for chat endpoint."""
-    message: ResponseChatMessageResponse
+    message: ChatMessageResponse
     query_type: str
     data: dict | None = None
 
@@ -1107,7 +1108,7 @@ async def chat_with_responses(
         conn.close()
         
         return {
-            "message": ResponseChatMessageResponse.model_validate(assistant_message),
+            "message": ChatMessageResponse.model_validate(assistant_message),
             "query_type": query_type,
             "data": result_data
         }
@@ -1148,7 +1149,7 @@ async def get_response_chat_history(
     )
     
     return {
-        "messages": [ResponseChatMessageResponse.model_validate(msg) for msg in history],
+        "messages": [ChatMessageResponse.model_validate(msg) for msg in history],
         "total": len(history)
     }
 
@@ -1172,10 +1173,11 @@ async def clear_response_chat_history(
             detail="Form not found"
         )
     
-    # Delete all chat messages for this form and user
-    db.query(ResponseChatMessage).filter(
-        ResponseChatMessage.form_id == form_id,
-        ResponseChatMessage.user_id == current_user.id
+    # Delete all response analysis chat messages for this form and user
+    db.query(ChatMessage).filter(
+        ChatMessage.form_id == form_id,
+        ChatMessage.user_id == current_user.id,
+        ChatMessage.chat_type == "response_analysis"
     ).delete()
     db.commit()
     

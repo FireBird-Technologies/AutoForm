@@ -15,7 +15,7 @@ from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
 from sqlalchemy.orm import Session
 
-from ..models import Form, FormQuestion, FormResponse, ResponseAnswer, ResponseChatMessage, User
+from ..models import Form, FormQuestion, FormResponse, ResponseAnswer, ChatMessage, User
 
 logger = logging.getLogger(__name__)
 
@@ -411,14 +411,16 @@ class ResponseChatService:
         user_id: int,
         role: str,
         content: str,
+        chat_type: str = "response_analysis",
         query_type: Optional[str] = None,
         sql_query: Optional[str] = None,
         result_data: Optional[Dict] = None
-    ) -> ResponseChatMessage:
+    ) -> ChatMessage:
         """Save a chat message to the database."""
-        message = ResponseChatMessage(
+        message = ChatMessage(
             form_id=form_id,
             user_id=user_id,
+            chat_type=chat_type,
             role=role,
             content=content,
             query_type=query_type,
@@ -435,22 +437,24 @@ class ResponseChatService:
         db: Session,
         form_id: int,
         user_id: int,
+        chat_type: str = "response_analysis",
         limit: int = None
-    ) -> List[ResponseChatMessage]:
+    ) -> List[ChatMessage]:
         """Get chat history for a form."""
         limit = limit or self.max_history_messages
         
-        messages = db.query(ResponseChatMessage).filter(
-            ResponseChatMessage.form_id == form_id,
-            ResponseChatMessage.user_id == user_id
-        ).order_by(ResponseChatMessage.created_at.desc()).limit(limit).all()
+        messages = db.query(ChatMessage).filter(
+            ChatMessage.form_id == form_id,
+            ChatMessage.user_id == user_id,
+            ChatMessage.chat_type == chat_type
+        ).order_by(ChatMessage.created_at.desc()).limit(limit).all()
         
         # Return in chronological order
         return list(reversed(messages))
     
     def format_history_for_context(
         self,
-        history: List[ResponseChatMessage]
+        history: List[ChatMessage]
     ) -> str:
         """Format chat history as context for the AI."""
         if not history:
