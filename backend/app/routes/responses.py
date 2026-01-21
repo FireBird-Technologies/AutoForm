@@ -27,6 +27,7 @@ from ..services.validation_service import validation_service
 from ..services.analytics_service import analytics_service
 from ..services.webhook_service import webhook_service
 from ..services.s3_service import s3_service
+from ..services.response_chat_service import invalidate_duckdb_cache
 from ..middleware.rate_limiter import rate_limiter
 
 import logging
@@ -270,6 +271,9 @@ async def submit_form(
         db.commit()
         db.refresh(form_response)
         
+        # Invalidate DuckDB cache so new data is reflected in analytics
+        invalidate_duckdb_cache(form.id)
+        
         return SubmissionResponse(
             id=form_response.id,
             form_id=form.id,
@@ -407,6 +411,9 @@ async def autosave_submission(
         
         db.commit()
         db.refresh(form_response)
+        
+        # Invalidate DuckDB cache so new data is reflected in analytics
+        invalidate_duckdb_cache(form.id)
         
         # Validate answers (non-blocking)
         validation_result = validation_service.validate_submission(

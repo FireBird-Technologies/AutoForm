@@ -683,25 +683,45 @@ async def chat_stream(
     response_data_preloaded = None
     conn_preloaded = None
     columns_preloaded = None
+    duckdb_ready = False
+    duckdb_error = None
+    
     if response_count > 0:
         try:
             conn_preloaded, columns_preloaded, question_id_to_col = response_chat_service.load_responses_to_duckdb(
                 db=db,
                 form_id=form_id
             )
-            response_data_preloaded = {
-                'schema_description': response_chat_service.get_schema_description(
-                    columns=columns_preloaded,
-                    question_id_to_col=question_id_to_col,
-                    db=db,
-                    form_id=form_id
-                ),
-                'summary': response_chat_service.get_response_summary(conn_preloaded, columns_preloaded),
-                'columns': columns_preloaded,
-                'conn': conn_preloaded
-            }
+            
+            # Validate DuckDB is actually ready
+            is_ready, validation_error = response_chat_service.validate_duckdb_ready(
+                conn_preloaded, 
+                columns_preloaded
+            )
+            
+            if is_ready:
+                response_data_preloaded = {
+                    'schema_description': response_chat_service.get_schema_description(
+                        columns=columns_preloaded,
+                        question_id_to_col=question_id_to_col,
+                        db=db,
+                        form_id=form_id
+                    ),
+                    'summary': response_chat_service.get_response_summary(conn_preloaded, columns_preloaded),
+                    'columns': columns_preloaded,
+                    'conn': conn_preloaded
+                }
+                duckdb_ready = True
+                logger.info(f"DuckDB ready for form {form_id} with {response_count} responses")
+            else:
+                duckdb_error = validation_error
+                logger.warning(f"DuckDB validation failed for form {form_id}: {validation_error}")
         except Exception as e:
-            logger.warning(f"Could not load responses: {e}")
+            duckdb_error = str(e)
+            logger.warning(f"Could not load responses for form {form_id}: {e}")
+    
+    # Capture user ID as plain int to avoid session detachment issues
+    user_id_for_save = current_user.id
     
     # Determine chat type based on whether this is likely a response analysis
     chat_type = "form_editing"  # Default
@@ -709,7 +729,7 @@ async def chat_stream(
     # Save user message to database
     user_chat_message = ChatMessageModel(
         form_id=form_id,
-        user_id=current_user.id,
+        user_id=user_id_for_save,
         chat_type=chat_type,
         role="user",
         content=chat_data.message
@@ -757,12 +777,21 @@ async def chat_stream(
             
             # Handle response analysis with data
             if result.get('requires_response_analysis') and response_count > 0:
+                # Check if DuckDB failed to load (agent already provided error message)
+                if result.get('duckdb_ready') == False:
+                    assistant_response = result.get('response', "Unable to analyze responses - data not loaded.")
+                    assistant_content_parts.append(assistant_response)
+                    yield f"event: content\ndata: {json.dumps({'content': assistant_response})}\n\n"
+                    collected_response['content'] = assistant_response
+                    yield f"event: done\ndata: {json.dumps({'done': True})}\n\n"
+                    return
+                
                 sql_query = result.get('sql_query')
                 assistant_response = result.get('response')
                 result_data = None
                 
-                # Execute SQL if generated
-                if sql_query and conn:
+                # Execute SQL if generated (double-check conn is valid)
+                if sql_query and conn and duckdb_ready:
                     try:
                         query_results, result_columns = response_chat_service.execute_query(conn, sql_query)
                         result_data = {
@@ -929,45 +958,42 @@ async def chat_stream(
             logger.error(f"Stream error: {e}", exc_info=True)
             collected_response['content'] = f"Error: {str(e)}"
             yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
-        finally:
-            if conn:
-                conn.close()
+        # Note: Don't close conn - it's cached for session reuse
     
-    async def save_assistant_message_background():
-        """Save assistant message after stream completes"""
-        # Create a new db session for background task
+    def save_assistant_message_sync(form_id_val: int, user_id_val: int, response_dict: dict):
+        """Save assistant message in a completely isolated session"""
         from ..core.db import SessionLocal
+        session = None
         try:
-            background_db = SessionLocal()
-            if collected_response.get('content'):
-                # Update user message with correct chat_type if it was response analysis
-                if collected_response.get('route') == 'analyze_responses':
-                    user_chat_message.chat_type = "response_analysis"
-                    background_db.merge(user_chat_message)
-                
-                assistant_message = ChatMessageModel(
-                    form_id=form_id,
-                    user_id=current_user.id,
-                    chat_type="response_analysis" if collected_response.get('route') == 'analyze_responses' else "form_editing",
+            session = SessionLocal()
+            if response_dict.get('content'):
+                msg = ChatMessageModel(
+                    form_id=form_id_val,
+                    user_id=user_id_val,
+                    chat_type="response_analysis" if response_dict.get('route') == 'analyze_responses' else "form_editing",
                     role="assistant",
-                    content=collected_response.get('content', ''),
-                    query_type=collected_response.get('query_type'),
-                    sql_query=collected_response.get('sql_query'),
-                    result_data=collected_response.get('result_data')
+                    content=response_dict.get('content', ''),
+                    query_type=response_dict.get('query_type'),
+                    sql_query=response_dict.get('sql_query'),
+                    result_data=response_dict.get('result_data')
                 )
-                background_db.add(assistant_message)
-                background_db.commit()
+                session.add(msg)
+                session.commit()
+                logger.debug(f"Saved assistant message for form {form_id_val}")
         except Exception as e:
             logger.error(f"Failed to save chat message: {e}")
+            if session:
+                session.rollback()
         finally:
-            background_db.close()
+            if session:
+                session.close()
     
     async def streaming_with_save():
         """Wrap generator to save message after completion"""
         async for event in event_generator():
             yield event
-        # Save after streaming completes
-        await save_assistant_message_background()
+        # Save after streaming completes - pass values explicitly to avoid closure issues
+        save_assistant_message_sync(form_id, user_id_for_save, collected_response.copy())
     
     return StreamingResponse(
         streaming_with_save(),
@@ -1109,8 +1135,7 @@ async def chat_edit_form(
                     if status_breakdown:
                         assistant_response += f"**Status:** {', '.join([f'{k}: {v}' for k, v in status_breakdown.items()])}"
                 
-                if conn:
-                    conn.close()
+                # Note: Don't close conn - it's cached for session reuse
                 
                 return ChatResponse(
                     route="analyze_responses",
@@ -1123,17 +1148,14 @@ async def chat_edit_form(
                 
             except Exception as e:
                 logger.error(f"Response analysis failed: {e}", exc_info=True)
-                if conn:
-                    conn.close()
+                # Note: Don't close conn - it's cached for session reuse
                 return ChatResponse(
                     route="analyze_responses",
                     response={"message": f"Error analyzing responses: {str(e)}"},
                     changes_made=None
                 )
         
-        # Close conn if opened but not used
-        if conn:
-            conn.close()
+        # Note: Don't close conn - it's cached for session reuse
         
         # === Handle No Responses ===
         if route == 'no_responses':

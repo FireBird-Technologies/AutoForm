@@ -11,6 +11,7 @@ import json
 import logging
 import os
 import re
+import time
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -20,11 +21,119 @@ from ..models import Form, FormQuestion, FormResponse, ResponseAnswer, ChatMessa
 logger = logging.getLogger(__name__)
 
 
+# Simple session cache for DuckDB connections (per form)
+# Structure: {form_id: {'conn': connection, 'columns': [...], 'question_map': {...}, 'timestamp': float, 'count': int}}
+_duckdb_sessions: Dict[int, Dict[str, Any]] = {}
+_SESSION_TTL = 1200  # 20 minutes
+
+
+def get_cached_duckdb(form_id: int) -> Optional[Dict[str, Any]]:
+    """Get cached DuckDB session if still valid (< 5 mins old)."""
+    if form_id not in _duckdb_sessions:
+        return None
+    
+    session = _duckdb_sessions[form_id]
+    age = time.time() - session['timestamp']
+    
+    if age > _SESSION_TTL:
+        # Expired - remove it
+        try:
+            session['conn'].close()
+        except:
+            pass
+        del _duckdb_sessions[form_id]
+        logger.debug(f"DuckDB session expired for form {form_id} (age: {age:.0f}s)")
+        return None
+    
+    # Verify connection is still valid
+    try:
+        session['conn'].execute("SELECT 1").fetchone()
+        logger.debug(f"Using cached DuckDB session for form {form_id} (age: {age:.0f}s)")
+        return session
+    except Exception as e:
+        logger.warning(f"DuckDB connection invalid for form {form_id}: {e}")
+        try:
+            session['conn'].close()
+        except:
+            pass
+        del _duckdb_sessions[form_id]
+        return None
+
+
+def set_cached_duckdb(form_id: int, conn: duckdb.DuckDBPyConnection, 
+                      columns: List[str], question_map: Dict[int, str], count: int) -> None:
+    """Cache a DuckDB session for a form."""
+    # Close old connection if exists
+    if form_id in _duckdb_sessions:
+        try:
+            _duckdb_sessions[form_id]['conn'].close()
+        except:
+            pass
+    
+    _duckdb_sessions[form_id] = {
+        'conn': conn,
+        'columns': columns,
+        'question_map': question_map,
+        'count': count,
+        'timestamp': time.time()
+    }
+    logger.debug(f"Cached DuckDB session for form {form_id} with {count} responses")
+
+
+def invalidate_duckdb_cache(form_id: int) -> None:
+    """Invalidate cached DuckDB session for a form."""
+    if form_id in _duckdb_sessions:
+        try:
+            _duckdb_sessions[form_id]['conn'].close()
+        except:
+            pass
+        del _duckdb_sessions[form_id]
+        logger.debug(f"Invalidated DuckDB cache for form {form_id}")
+
+
 class ResponseChatService:
     """Service for analyzing form responses via chat interface using DuckDB."""
     
     def __init__(self):
         self.max_history_messages = 20
+    
+    def validate_duckdb_ready(
+        self,
+        conn: Optional[duckdb.DuckDBPyConnection],
+        expected_columns: Optional[List[str]] = None
+    ) -> Tuple[bool, str]:
+        """
+        Verify DuckDB connection is ready for queries.
+        
+        Returns:
+            Tuple of (is_ready: bool, error_message: str)
+        """
+        if conn is None:
+            return False, "DuckDB connection not established"
+        
+        try:
+            # Test connection with simple query
+            result = conn.execute("SELECT 1").fetchone()
+            if result is None:
+                return False, "DuckDB connection test failed"
+            
+            # Verify responses table exists
+            tables = conn.execute("SHOW TABLES").fetchall()
+            table_names = [t[0] for t in tables]
+            if "responses" not in table_names:
+                return False, "Responses table not found in DuckDB"
+            
+            # Verify columns if provided
+            if expected_columns:
+                result = conn.execute("PRAGMA table_info('responses')").fetchall()
+                actual_columns = [row[1] for row in result]
+                for col in expected_columns[:3]:  # Check first 3 required columns
+                    if col not in actual_columns:
+                        return False, f"Expected column '{col}' not found in responses table"
+            
+            return True, ""
+        except Exception as e:
+            return False, f"DuckDB validation error: {str(e)}"
     
     def load_responses_to_duckdb(
         self,
@@ -37,6 +146,25 @@ class ResponseChatService:
         Returns:
             Tuple of (DuckDB connection, column names, question_id to column name mapping)
         """
+        from sqlalchemy import func
+        
+        # Get current response count to check if cache is valid
+        current_count = db.query(func.count(FormResponse.id)).filter(
+            FormResponse.form_id == form_id,
+            FormResponse.status.in_(["complete", "partial"])
+        ).scalar() or 0
+        
+        # Check cache first
+        cached = get_cached_duckdb(form_id)
+        if cached is not None and cached['count'] == current_count:
+            # Cache is valid and count matches
+            return cached['conn'], cached['columns'], cached['question_map']
+        
+        # Cache miss or count changed - need to reload
+        if cached is not None:
+            logger.info(f"Response count changed for form {form_id}: {cached['count']} -> {current_count}, reloading")
+            invalidate_duckdb_cache(form_id)
+        
         # Get form and questions
         form = db.query(Form).filter(Form.id == form_id).first()
         if not form:
@@ -46,10 +174,13 @@ class ResponseChatService:
             FormQuestion.form_id == form_id
         ).order_by(FormQuestion.question_order).all()
         
-        # Get responses
+        # Get responses - only complete and partial
         responses = db.query(FormResponse).filter(
-            FormResponse.form_id == form_id
+            FormResponse.form_id == form_id,
+            FormResponse.status.in_(["complete", "partial"])
         ).all()
+        
+        logger.info(f"Loading {len(responses)} responses into DuckDB for form {form_id}")
         
         # Create column mapping from questions
         # Column names: response_id, submitted_at, status, q1_<sanitized_text>, q2_<sanitized_text>, ...
@@ -102,6 +233,9 @@ class ResponseChatService:
             col_defs = ", ".join([f'"{c}" VARCHAR' for c in columns])
             conn.execute(f"CREATE TABLE responses ({col_defs})")
         
+        # Cache for reuse within session (5 min TTL)
+        set_cached_duckdb(form_id, conn, columns, question_id_to_col, len(responses))
+        
         return conn, columns, question_id_to_col
     
     def _extract_answer_text(self, answer_value: Any, question_type: str) -> str:
@@ -109,43 +243,80 @@ class ResponseChatService:
         if answer_value is None:
             return ""
         
+        # Handle plain numeric types directly (int, float)
+        if isinstance(answer_value, (int, float)):
+            return str(answer_value)
+        
         if isinstance(answer_value, dict):
-            # Handle different answer formats
-            if "text" in answer_value:
-                val = answer_value["text"]
-                return str(val) if val is not None else ""
-            if "number" in answer_value:
-                val = answer_value["number"]
-                return str(val) if val is not None else ""
-            if "choices" in answer_value:
-                choices = answer_value["choices"]
-                if choices is None:
-                    return ""
-                if isinstance(choices, list):
+            # Empty dict - return empty string
+            if not answer_value:
+                return ""
+            
+            # IMPORTANT: Check if value exists AND is not None
+            # Pydantic model_dump() includes all fields with None values
+            
+            # Rating (check early - common question type)
+            if answer_value.get("rating") is not None:
+                return str(answer_value["rating"])
+            
+            # Text inputs
+            if answer_value.get("text") is not None:
+                return str(answer_value["text"])
+            
+            # Number inputs
+            if answer_value.get("number") is not None:
+                return str(answer_value["number"])
+            
+            # Value key (common for sliders/scales)
+            if answer_value.get("value") is not None:
+                return str(answer_value["value"])
+            
+            # Scale key
+            if answer_value.get("scale") is not None:
+                return str(answer_value["scale"])
+            
+            # Choices (checkboxes, multiple choice)
+            choices = answer_value.get("choices")
+            if choices is not None:
+                if isinstance(choices, list) and len(choices) > 0:
                     return ", ".join(str(c) for c in choices if c is not None)
-                return str(choices)
-            if "date" in answer_value:
-                val = answer_value["date"]
-                return str(val) if val is not None else ""
-            if "rating" in answer_value:
-                val = answer_value["rating"]
-                # Return numeric rating or empty string for NULL
-                return str(val) if val is not None else ""
-            if "files" in answer_value:
-                files = answer_value["files"]
-                if isinstance(files, list):
-                    return f"{len(files)} file(s)"
-                return "1 file"
-            if "wallet_address" in answer_value:
+                elif isinstance(choices, str):
+                    return choices
+            
+            # Date/time
+            if answer_value.get("date") is not None:
+                return str(answer_value["date"])
+            
+            # Files
+            files = answer_value.get("files")
+            if files is not None and isinstance(files, list) and len(files) > 0:
+                return f"{len(files)} file(s)"
+            
+            # Wallet address
+            if answer_value.get("wallet_address") is not None:
                 return str(answer_value["wallet_address"])
-            if "matrix_answers" in answer_value:
-                return json.dumps(answer_value["matrix_answers"])
-            if "ranked_items" in answer_value:
-                items = answer_value["ranked_items"]
-                if isinstance(items, list):
-                    return " > ".join(str(i) for i in items)
-                return str(items)
-            # Fallback for other dict types
+            
+            # Matrix answers
+            matrix = answer_value.get("matrix_answers")
+            if matrix is not None and isinstance(matrix, dict) and len(matrix) > 0:
+                return json.dumps(matrix)
+            
+            # Ranked items
+            ranked = answer_value.get("ranked_items")
+            if ranked is not None and isinstance(ranked, list) and len(ranked) > 0:
+                return " > ".join(str(i) for i in ranked)
+            
+            # Signature
+            if answer_value.get("signature") is not None:
+                return "[signature]"
+            
+            # Check if ALL values are None - return empty
+            all_none = all(v is None for v in answer_value.values())
+            if all_none:
+                return ""
+            
+            # Fallback for other dict types - log and dump
+            logger.debug(f"Unknown answer format for {question_type}: {answer_value}")
             return json.dumps(answer_value)
         
         return str(answer_value)
@@ -165,6 +336,72 @@ class ResponseChatService:
                     values.append(f"'{escaped}'")
             value_rows.append(f"({', '.join(values)})")
         return ", ".join(value_rows)
+    
+    def get_responses_direct(
+        self,
+        db: Session,
+        form_id: int,
+        limit: int = 100
+    ) -> Tuple[List[Dict], List[str], Dict[str, Any]]:
+        """
+        Get responses directly from database (fallback when DuckDB fails).
+        
+        Returns:
+            Tuple of (rows, columns, summary_dict)
+        """
+        # Get form questions for column names
+        questions = db.query(FormQuestion).filter(
+            FormQuestion.form_id == form_id
+        ).order_by(FormQuestion.question_order).all()
+        
+        # Get responses with status filter
+        responses = db.query(FormResponse).filter(
+            FormResponse.form_id == form_id,
+            FormResponse.status.in_(["complete", "partial"])
+        ).order_by(FormResponse.submitted_at.desc()).limit(limit).all()
+        
+        if not responses:
+            return [], ["response_id", "submitted_at", "status"], {"total_responses": 0, "status_breakdown": {}}
+        
+        # Build column names
+        columns = ["response_id", "submitted_at", "status"]
+        question_id_to_col = {}
+        for i, q in enumerate(questions):
+            sanitized = re.sub(r'[^a-zA-Z0-9]', '_', q.question_text[:30]).lower()
+            col_name = f"q{i+1}_{sanitized}"
+            columns.append(col_name)
+            question_id_to_col[q.id] = col_name
+        
+        # Build rows
+        rows = []
+        status_counts = {}
+        for response in responses:
+            # Get answers for this response
+            answers = db.query(ResponseAnswer).filter(
+                ResponseAnswer.form_response_id == response.id
+            ).all()
+            
+            row = {
+                "response_id": str(response.id),
+                "submitted_at": response.submitted_at.isoformat() if response.submitted_at else None,
+                "status": response.status
+            }
+            
+            status_counts[response.status] = status_counts.get(response.status, 0) + 1
+            
+            answer_map = {a.form_question_id: a.answer_value for a in answers}
+            for q in questions:
+                col_name = question_id_to_col[q.id]
+                answer_value = answer_map.get(q.id)
+                row[col_name] = self._extract_answer_text(answer_value, q.question_type.value)
+            rows.append(row)
+        
+        summary = {
+            "total_responses": len(responses),
+            "status_breakdown": status_counts
+        }
+        
+        return rows, columns, summary
     
     def execute_query(
         self,
@@ -277,12 +514,21 @@ class ResponseChatService:
         schema_lines.append("  - submitted_at: Timestamp when response was submitted (ISO format)")
         schema_lines.append("  - status: Response status ('complete', 'partial', 'in_progress')")
         
+        # Track shortcuts for q1, q2, etc.
+        shortcuts = []
+        
         for col in columns:
             if col in col_to_question:
                 q_id = col_to_question[col]
                 q = question_map.get(q_id)
                 if q:
                     q_type = q.question_type.value
+                    # Extract question number from column name (e.g., q1, q2)
+                    q_num_match = re.match(r'^(q\d+)_', col)
+                    if q_num_match:
+                        q_shortcut = q_num_match.group(1)
+                        shortcuts.append((q_shortcut, col, q.question_text))
+                    
                     # Add hints for different types
                     type_hint = q_type
                     if q_type == "rating":
@@ -312,6 +558,13 @@ class ResponseChatService:
                     elif q_type == "linear_scale":
                         type_hint = "linear_scale (numeric, use CAST to INTEGER for grouping/AVG)"
                     schema_lines.append(f"  - {col}: {q.question_text} (type: {type_hint})")
+        
+        # Add shortcuts section so AI knows q1 = full column name
+        if shortcuts:
+            schema_lines.append("")
+            schema_lines.append("QUESTION SHORTCUTS (when user says q1, q2, etc., use the full column name):")
+            for shortcut, full_col, question_text in shortcuts:
+                schema_lines.append(f'  - {shortcut} → "{full_col}" ({question_text[:40]}...)')
         
         return "\n".join(schema_lines)
     
