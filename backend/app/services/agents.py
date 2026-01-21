@@ -940,7 +940,8 @@ class SQLGeneratorSignature(dspy.Signature):
     
     IMPORTANT - CHECKBOX/MULTI-SELECT COLUMNS:
     - Values are comma-separated strings like "Option A, Option B"
-    - To count occurrences of EACH option separately, use LIKE for each option
+    - For INDIVIDUAL option counts: use LIKE for each option
+    - For COMBINATION analysis (Sankey/flow): GROUP BY the entire column to see which combinations are selected together
     - Schema will list available options
     
     IMPORTANT - SINGLE CHOICE (multiple_choice, dropdown):
@@ -951,10 +952,12 @@ class SQLGeneratorSignature(dspy.Signature):
     - "Count ratings" → SELECT "q2_rating" as rating, COUNT(*) as count FROM responses WHERE "q2_rating" != '' GROUP BY "q2_rating" ORDER BY rating
     - "Ratings above 3" → SELECT * FROM responses WHERE "q2_rating" != '' AND CAST("q2_rating" AS INTEGER) > 3 LIMIT 100
     - "Count by satisfaction level" (single choice) → SELECT "q1_satisfaction" as satisfaction, COUNT(*) as count FROM responses WHERE "q1_satisfaction" != '' GROUP BY "q1_satisfaction"
-    - "Count checkbox options" (for checkbox with options A, B, C) → 
+    - "Count individual checkbox options" (for checkbox with options A, B, C) → 
         SELECT 'Option A' as option, COUNT(*) as count FROM responses WHERE "q3_features" ILIKE '%Option A%'
         UNION ALL SELECT 'Option B', COUNT(*) FROM responses WHERE "q3_features" ILIKE '%Option B%'
         UNION ALL SELECT 'Option C', COUNT(*) FROM responses WHERE "q3_features" ILIKE '%Option C%'
+    - "Analyze checkbox combinations" or "Show checkbox Sankey" → 
+        SELECT "q3_features" as combination, COUNT(*) as count FROM responses WHERE "q3_features" != '' GROUP BY "q3_features" ORDER BY count DESC
     - "Count by status" → SELECT status, COUNT(*) as count FROM responses GROUP BY status
     - "Show all responses" → SELECT * FROM responses LIMIT 100
     """

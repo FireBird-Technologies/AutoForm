@@ -37,7 +37,7 @@ export const FormChatPanel: React.FC<FormChatPanelProps> = ({
   onClose,
   onFormUpdated,
   position = 'right',
-  width = 400,
+  width: initialWidth = 400,
   accentColor = '#9333ea',
   mode = 'builder',
   inline = false
@@ -47,8 +47,11 @@ export const FormChatPanel: React.FC<FormChatPanelProps> = ({
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
   const [streamingData, setStreamingData] = useState<ChatMessage['data'] | null>(null);
+  const [panelWidth, setPanelWidth] = useState(initialWidth);
+  const [isResizing, setIsResizing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -61,6 +64,61 @@ export const FormChatPanel: React.FC<FormChatPanelProps> = ({
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isOpen]);
+
+  // Escape key to close panel
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen && !isStreaming) {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen, isStreaming, onClose]);
+
+  // Handle resize drag
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing || !panelRef.current) return;
+      
+      const windowWidth = window.innerWidth;
+      let newWidth: number;
+      
+      if (inline) {
+        // For inline, calculate from left edge of panel
+        const panelRect = panelRef.current.getBoundingClientRect();
+        newWidth = e.clientX - panelRect.left;
+      } else {
+        // For fixed right position, calculate from right edge
+        newWidth = windowWidth - e.clientX;
+      }
+      
+      // Clamp between min and max
+      const minWidth = 320;
+      const maxWidth = Math.min(800, windowWidth * 0.6);
+      newWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
+      
+      setPanelWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    if (isResizing) {
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, inline]);
 
   const handleSubmit = async () => {
     if (!input.trim() || isStreaming) return;
@@ -202,15 +260,16 @@ export const FormChatPanel: React.FC<FormChatPanelProps> = ({
 
   // Inline mode - renders as a normal flex child within container
   const inlineStyle: React.CSSProperties = {
-    width: `${width}px`,
-    minWidth: '350px',
-    maxWidth: '500px',
+    width: `${panelWidth}px`,
+    minWidth: '320px',
+    maxWidth: '800px',
     height: '100%',
     background: '#ffffff',
     borderRight: '1px solid #e5e7eb',
     display: 'flex',
     flexDirection: 'column',
-    flexShrink: 0
+    flexShrink: 0,
+    position: 'relative'
   };
 
   // Fixed position mode - renders as overlay
@@ -218,7 +277,7 @@ export const FormChatPanel: React.FC<FormChatPanelProps> = ({
     position: 'fixed',
     top: 0,
     right: 0,
-    width: `${width}px`,
+    width: `${panelWidth}px`,
     height: '100vh',
     background: '#ffffff',
     borderLeft: '1px solid #e5e7eb',
@@ -249,7 +308,52 @@ export const FormChatPanel: React.FC<FormChatPanelProps> = ({
       : fixedBottomStyle;
 
   return (
-    <div style={panelStyle}>
+    <div ref={panelRef} style={panelStyle}>
+      {/* Resize handle */}
+      {position === 'right' && (
+        <div
+          onMouseDown={(e) => {
+            e.preventDefault();
+            setIsResizing(true);
+          }}
+          style={{
+            position: 'absolute',
+            left: inline ? 'auto' : 0,
+            right: inline ? 0 : 'auto',
+            top: 0,
+            bottom: 0,
+            width: '6px',
+            cursor: 'col-resize',
+            background: isResizing ? accentColor : 'transparent',
+            transition: 'background 0.15s',
+            zIndex: 10
+          }}
+          onMouseEnter={(e) => {
+            if (!isResizing) {
+              e.currentTarget.style.background = `${accentColor}40`;
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!isResizing) {
+              e.currentTarget.style.background = 'transparent';
+            }
+          }}
+        >
+          {/* Visual indicator */}
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '4px',
+            height: '40px',
+            borderRadius: '2px',
+            background: isResizing ? 'white' : '#d1d5db',
+            opacity: isResizing ? 1 : 0.6,
+            transition: 'all 0.15s'
+          }} />
+        </div>
+      )}
       {/* Header */}
       <div style={{
         padding: '16px 20px',
@@ -282,28 +386,54 @@ export const FormChatPanel: React.FC<FormChatPanelProps> = ({
             </div>
           </div>
         </div>
-        <button
-          onClick={onClose}
-          style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '6px',
-            border: 'none',
-            background: 'transparent',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#6b7280'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
-          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* Width indicator when resizing */}
+          {isResizing && (
+            <span style={{
+              fontSize: '11px',
+              color: '#9ca3af',
+              fontFamily: 'monospace',
+              background: '#f3f4f6',
+              padding: '2px 6px',
+              borderRadius: '4px'
+            }}>
+              {panelWidth}px
+            </span>
+          )}
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            title="Close chat (Esc)"
+            style={{
+              width: '34px',
+              height: '34px',
+              borderRadius: '8px',
+              border: '1px solid #e5e7eb',
+              background: '#ffffff',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#6b7280',
+              transition: 'all 0.15s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#fef2f2';
+              e.currentTarget.style.borderColor = '#fecaca';
+              e.currentTarget.style.color = '#ef4444';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = '#ffffff';
+              e.currentTarget.style.borderColor = '#e5e7eb';
+              e.currentTarget.style.color = '#6b7280';
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Messages */}
@@ -477,25 +607,28 @@ export const FormChatPanel: React.FC<FormChatPanelProps> = ({
             disabled={isStreaming}
             style={{
               width: '100%',
-              height: '60px',
-              padding: '12px 48px 12px 14px',
+              boxSizing: 'border-box',
+              minHeight: '56px',
+              maxHeight: '120px',
+              padding: '14px 54px 14px 16px',
               fontSize: '14px',
               fontFamily: 'inherit',
               border: '1px solid #e5e7eb',
-              borderRadius: '10px',
+              borderRadius: '12px',
               outline: 'none',
-              resize: 'none',
+              resize: 'vertical',
               background: '#ffffff',
               color: '#1f2937',
-              boxShadow: `0 2px 8px ${accentColor}25`
+              boxShadow: `0 2px 8px ${accentColor}20`,
+              lineHeight: '1.5'
             }}
             onFocus={(e) => {
               e.target.style.borderColor = accentColor;
-              e.target.style.boxShadow = `0 4px 12px ${accentColor}35`;
+              e.target.style.boxShadow = `0 4px 12px ${accentColor}30`;
             }}
             onBlur={(e) => {
               e.target.style.borderColor = '#e5e7eb';
-              e.target.style.boxShadow = `0 2px 8px ${accentColor}25`;
+              e.target.style.boxShadow = `0 2px 8px ${accentColor}20`;
             }}
           />
           <button
@@ -503,21 +636,24 @@ export const FormChatPanel: React.FC<FormChatPanelProps> = ({
             disabled={!input.trim() || isStreaming}
             style={{
               position: 'absolute',
-              bottom: '10px',
-              right: '10px',
-              width: '36px',
-              height: '36px',
-              borderRadius: '8px',
+              bottom: '12px',
+              right: '12px',
+              width: '38px',
+              height: '38px',
+              borderRadius: '10px',
               border: 'none',
-              background: input.trim() && !isStreaming ? accentColor : '#e5e7eb',
+              background: input.trim() && !isStreaming 
+                ? `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)` 
+                : '#e5e7eb',
               cursor: input.trim() && !isStreaming ? 'pointer' : 'not-allowed',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              transition: 'all 0.2s'
+              transition: 'all 0.2s',
+              boxShadow: input.trim() && !isStreaming ? `0 2px 8px ${accentColor}40` : 'none'
             }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
               <line x1="22" y1="2" x2="11" y2="13" />
               <polygon points="22 2 15 22 11 13 2 9 22 2" />
             </svg>

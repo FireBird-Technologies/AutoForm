@@ -1,3 +1,12 @@
+---
+title: AutoForm Backend
+emoji: 📝
+colorFrom: purple
+colorTo: indigo
+sdk: docker
+pinned: false
+---
+
 # AutoForm Backend
 
 FastAPI backend for AutoForm - AI-powered form builder.
