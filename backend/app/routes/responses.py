@@ -913,3 +913,270 @@ async def delete_response(
     db.commit()
     
     return None
+
+
+# ============================================================================
+# RESPONSE CHAT ENDPOINTS
+# ============================================================================
+
+from pydantic import BaseModel
+from ..models import ResponseChatMessage
+from ..services.response_chat_service import response_chat_service
+from ..services.agents import response_chat_module
+
+
+class ResponseChatRequest(BaseModel):
+    """Request model for response chat."""
+    message: str
+
+
+class ResponseChatMessageResponse(BaseModel):
+    """Response model for a single chat message."""
+    id: int
+    role: str
+    content: str
+    query_type: str | None = None
+    sql_query: str | None = None
+    result_data: dict | None = None
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class ResponseChatResponse(BaseModel):
+    """Response model for chat endpoint."""
+    message: ResponseChatMessageResponse
+    query_type: str
+    data: dict | None = None
+
+
+@router.post("/forms/{form_id}/responses/chat")
+async def chat_with_responses(
+    form_id: int,
+    chat_request: ResponseChatRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Chat endpoint for AI-powered response analysis.
+    
+    Supports:
+    - Summary: Get overview of all responses
+    - Filter: Search/filter responses by criteria
+    - Aggregate: Calculate statistics
+    - Sentiment: Analyze text response sentiment
+    - Export: Generate custom exports
+    """
+    # Verify form ownership
+    form = db.query(Form).filter(
+        Form.id == form_id,
+        Form.user_id == current_user.id
+    ).first()
+    
+    if not form:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Form not found"
+        )
+    
+    try:
+        # Save user message
+        user_message = response_chat_service.save_chat_message(
+            db=db,
+            form_id=form_id,
+            user_id=current_user.id,
+            role="user",
+            content=chat_request.message
+        )
+        
+        # Load responses into DuckDB
+        conn, columns, question_id_to_col = response_chat_service.load_responses_to_duckdb(
+            db=db,
+            form_id=form_id
+        )
+        
+        # Get schema description
+        schema_description = response_chat_service.get_schema_description(
+            columns=columns,
+            question_id_to_col=question_id_to_col,
+            db=db,
+            form_id=form_id
+        )
+        
+        # Get chat history for context
+        history = response_chat_service.get_chat_history(
+            db=db,
+            form_id=form_id,
+            user_id=current_user.id
+        )
+        conversation_history = response_chat_service.format_history_for_context(history)
+        
+        # Get pre-computed summary for context
+        response_summary = response_chat_service.get_response_summary(conn, columns)
+        
+        # Process query with AI
+        ai_result = await response_chat_module.aforward(
+            user_query=chat_request.message,
+            schema_description=schema_description,
+            conversation_history=conversation_history,
+            response_summary=response_summary
+        )
+        
+        query_type = ai_result.get('query_type', 'general')
+        sql_query = ai_result.get('sql_query')
+        assistant_response = ai_result.get('response')
+        result_data = None
+        
+        # Execute SQL if generated
+        if sql_query:
+            try:
+                query_results, result_columns = response_chat_service.execute_query(conn, sql_query)
+                result_data = {
+                    "columns": result_columns,
+                    "rows": query_results,
+                    "row_count": len(query_results)
+                }
+                
+                # Generate natural language summary of results
+                assistant_response = response_chat_module.summarize_results(
+                    query_results=query_results,
+                    user_query=chat_request.message,
+                    schema_description=schema_description
+                )
+            except ValueError as e:
+                assistant_response = f"I couldn't execute that query: {str(e)}. Could you try rephrasing your question?"
+                sql_query = None
+        
+        # Handle sentiment analysis
+        if query_type == 'sentiment':
+            # Get text responses for sentiment analysis
+            text_columns = [c for c in columns if c.startswith("q") and ("answer" in c.lower() or "text" in c.lower() or "feedback" in c.lower() or "comment" in c.lower())]
+            
+            if not text_columns:
+                # Fall back to all question columns
+                text_columns = [c for c in columns if c.startswith("q")]
+            
+            text_responses = []
+            for col in text_columns[:3]:  # Limit to first 3 text columns
+                try:
+                    results, _ = response_chat_service.execute_query(
+                        conn,
+                        f'SELECT "{col}" FROM responses WHERE "{col}" IS NOT NULL AND "{col}" != \'\' LIMIT 100'
+                    )
+                    text_responses.extend([r[col] for r in results if r.get(col)])
+                except:
+                    pass
+            
+            if text_responses:
+                sentiment_result = response_chat_service.analyze_sentiment(text_responses)
+                result_data = {"sentiment_analysis": sentiment_result}
+                assistant_response = sentiment_result.get("summary", "Sentiment analysis complete.")
+            else:
+                assistant_response = "No text responses found to analyze for sentiment."
+        
+        # Handle export
+        if query_type == 'export' and sql_query:
+            try:
+                csv_content = response_chat_service.generate_export_csv(conn, sql_query)
+                result_data = {
+                    "export_available": True,
+                    "csv_preview": csv_content[:1000] if len(csv_content) > 1000 else csv_content
+                }
+                assistant_response = f"Export ready! Found {result_data.get('row_count', 'multiple')} matching responses."
+            except:
+                pass
+        
+        # Default response if none generated
+        if not assistant_response:
+            assistant_response = f"I analyzed your request. Here's what I found based on {response_summary.get('total_responses', 0)} total responses."
+        
+        # Save assistant message
+        assistant_message = response_chat_service.save_chat_message(
+            db=db,
+            form_id=form_id,
+            user_id=current_user.id,
+            role="assistant",
+            content=assistant_response,
+            query_type=query_type,
+            sql_query=sql_query,
+            result_data=result_data
+        )
+        
+        # Close DuckDB connection
+        conn.close()
+        
+        return {
+            "message": ResponseChatMessageResponse.model_validate(assistant_message),
+            "query_type": query_type,
+            "data": result_data
+        }
+        
+    except Exception as e:
+        logger.error(f"Response chat error: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Chat processing failed: {str(e)}"
+        )
+
+
+@router.get("/forms/{form_id}/responses/chat/history")
+async def get_response_chat_history(
+    form_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    limit: int = 50
+):
+    """Get chat history for response analysis."""
+    # Verify form ownership
+    form = db.query(Form).filter(
+        Form.id == form_id,
+        Form.user_id == current_user.id
+    ).first()
+    
+    if not form:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Form not found"
+        )
+    
+    history = response_chat_service.get_chat_history(
+        db=db,
+        form_id=form_id,
+        user_id=current_user.id,
+        limit=limit
+    )
+    
+    return {
+        "messages": [ResponseChatMessageResponse.model_validate(msg) for msg in history],
+        "total": len(history)
+    }
+
+
+@router.delete("/forms/{form_id}/responses/chat/history")
+async def clear_response_chat_history(
+    form_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Clear chat history for a form."""
+    # Verify form ownership
+    form = db.query(Form).filter(
+        Form.id == form_id,
+        Form.user_id == current_user.id
+    ).first()
+    
+    if not form:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Form not found"
+        )
+    
+    # Delete all chat messages for this form and user
+    db.query(ResponseChatMessage).filter(
+        ResponseChatMessage.form_id == form_id,
+        ResponseChatMessage.user_id == current_user.id
+    ).delete()
+    db.commit()
+    
+    return {"message": "Chat history cleared"}

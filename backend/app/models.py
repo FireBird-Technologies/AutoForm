@@ -464,3 +464,26 @@ class WebhookConfig(Base):
     # Relationships
     form: Mapped[Form] = relationship()
     user: Mapped[User] = relationship()
+
+
+class ResponseChatMessage(Base):
+    """Chat messages for response analysis conversations"""
+    __tablename__ = "response_chat_messages"
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    form_id: Mapped[int] = mapped_column(ForeignKey("forms.id"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    
+    role: Mapped[str] = mapped_column(String(20))  # "user", "assistant"
+    content: Mapped[str] = mapped_column(Text)
+    
+    # Metadata for analysis results
+    query_type: Mapped[str | None] = mapped_column(String(50), nullable=True)  # "summary", "filter", "aggregate", "sentiment", "export"
+    sql_query: Mapped[str | None] = mapped_column(Text, nullable=True)  # Generated SQL query
+    result_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # Query results or analysis data
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    
+    # Relationships
+    form: Mapped[Form] = relationship()
+    user: Mapped[User] = relationship()
