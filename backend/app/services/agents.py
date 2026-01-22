@@ -203,6 +203,8 @@ class ComponentSignatureGenerator(dspy.Signature):
     """
     Generate detailed component specifications that the frontend can render.
     
+    CRITICAL: Output ONLY valid JSON. NO comments (no // or /* */). NO trailing commas.
+    
     FRONTEND CAPABILITIES:
     - Headless UI for modals and interactive components
     - Markdown support in question text and descriptions
@@ -216,34 +218,27 @@ class ComponentSignatureGenerator(dspy.Signature):
     - component_id: Unique identifier
     - form_context: Overall form context
     
-    OUTPUT FORMAT (JSON):
+    OUTPUT FORMAT (strict JSON, no comments):
     {
         "component_id": "comp_1",
-        "question_type": "type from list",
-        "question_text": "Clear question text (markdown supported)",
-        "description": "Optional helper text (markdown supported)",
-        "required": true/false,
+        "question_type": "file_upload",
+        "question_text": "Upload your resume/CV",
+        "description": "Accepted formats: PDF, DOC, DOCX (max 10MB)",
+        "required": true,
         "settings": {
-            // Type-specific settings
-            "choices": ["Option 1", "Option 2"],  // For multiple_choice, checkboxes, dropdown
-            "min_value": 1,  // For number, linear_scale
-            "max_value": 10,
-            "placeholder": "Enter text here",  // For text inputs
-            "scale_min_label": "Not at all",  // For linear_scale
-            "scale_max_label": "Extremely",
-            "rows": ["Row 1", "Row 2"],  // For matrix (MUST be array of strings)
-            "columns": ["Col 1", "Col 2"],  // For matrix (MUST be array of strings)
-            "file_types": [".pdf", ".doc"],  // For file_upload
-            "max_file_size": 5242880,  // bytes
-            "ranking_items": ["Item 1", "Item 2"]  // For ranking (MUST be array of strings)
-        },
-        "validation_rules": {
-            "min_length": 5,  // For text inputs
-            "max_length": 100,
-            "pattern": "regex_pattern",  // For custom validation
-            "error_message": "Custom error message"
+            "file_types": [".pdf", ".doc", ".docx"],
+            "max_file_size": 10485760
         }
     }
+    
+    SETTINGS BY TYPE (include ONLY relevant settings):
+    - multiple_choice/checkboxes/dropdown: "choices": ["Option A", "Option B"]
+    - number/linear_scale: "min_value": 1, "max_value": 10
+    - text inputs: "placeholder": "Enter text here"
+    - linear_scale: "scale_min_label": "Low", "scale_max_label": "High"
+    - matrix: "rows": ["Row 1"], "columns": ["Col 1"]
+    - file_upload: "file_types": [".pdf", ".doc"], "max_file_size": 5242880
+    - ranking: "ranking_items": ["Item 1", "Item 2"]
     
     RULES:
     1. **USE USER'S EXACT TERMINOLOGY** - If the brief mentions specific terms (e.g., "Valima", "Nikkah", "Barat"), use those EXACT terms

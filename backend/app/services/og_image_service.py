@@ -259,6 +259,8 @@ class OGImageService:
         Returns the public URL of the uploaded image, or None if upload fails.
         """
         try:
+            logger.warning(f"[OG] Starting generation for form {form_id}, title: {title}")
+            
             # Generate image
             image_bytes = self.generate_og_image(
                 title=title,
@@ -268,9 +270,9 @@ class OGImageService:
                 text_color=text_color,
                 question_count=question_count
             )
+            logger.warning(f"[OG] Image generated, size: {len(image_bytes)} bytes")
             
             # Generate a deterministic filename based on form styling
-            # This allows caching - same styling = same filename
             style_hash = hashlib.md5(
                 f"{title}{description}{background_color}{accent_color}{text_color}{question_count}".encode()
             ).hexdigest()[:12]
@@ -280,21 +282,35 @@ class OGImageService:
             # Upload to S3
             s3 = self._get_s3_service()
             if not s3.bucket_name:
-                logger.warning("S3 not configured, cannot upload OG image")
+                logger.warning("[OG] S3 not configured (no bucket name)")
                 return None
             
-            url = s3.put_object(
-                key=s3_key,
-                body=image_bytes,
-                content_type="image/png",
-                public=True
-            )
+            logger.warning(f"[OG] Uploading to bucket: {s3.bucket_name}, key: {s3_key}")
             
-            logger.info(f"Generated and uploaded OG image for form {form_id}: {url}")
+            # Try upload - first with ACL, then without if that fails
+            try:
+                url = s3.put_object(
+                    key=s3_key,
+                    body=image_bytes,
+                    content_type="image/png",
+                    public=True
+                )
+            except Exception as acl_error:
+                logger.warning(f"[OG] ACL upload failed ({acl_error}), trying without ACL")
+                url = s3.put_object(
+                    key=s3_key,
+                    body=image_bytes,
+                    content_type="image/png",
+                    public=False
+                )
+            
+            logger.warning(f"[OG] SUCCESS! Uploaded to: {url}")
             return url
             
         except Exception as e:
-            logger.error(f"Failed to generate/upload OG image for form {form_id}: {e}")
+            import traceback
+            logger.error(f"[OG] FAILED for form {form_id}: {e}")
+            logger.error(f"[OG] Traceback: {traceback.format_exc()}")
             return None
     
     def get_or_generate_url(

@@ -14,20 +14,46 @@ from datetime import datetime
 
 from ..core.db import get_db
 from ..core.security import get_current_user
-from ..models import User, Form, FormQuestion, ConditionalRule, PublicForm, QuestionType, ConditionType
+from ..models import User, Form, FormQuestion, ConditionalRule, PublicForm, QuestionType, ConditionType, FormResponse as FormResponseModel, ResponseAnswer, ChatMessage as ChatMessageModel
 from ..schemas.form import (
     FormCreate, FormUpdate, FormResponse, FormGenerationResponse,
     QuestionCreate, QuestionUpdate, QuestionResponse,
     ConditionalRuleCreate, ConditionalRuleResponse,
     PublicFormCreate, PublicFormResponse,
-    ChatMessage, ChatResponse
+    ChatMessage as ChatMessageSchema, ChatResponse
 )
 from ..services.form_creator import generate_form_spec, edit_form_spec, validate_question_type, validate_condition_type
 from ..services.credit_service import credit_service
 
 import logging
+import re
 
 logger = logging.getLogger(__name__)
+
+
+def repair_json(text: str) -> str:
+    """
+    Repair common JSON issues from LLM output.
+    - Remove // comments
+    - Remove /* */ comments  
+    - Fix trailing commas before } or ]
+    """
+    if not text:
+        return text
+    
+    # Remove single-line comments (// ...)
+    text = re.sub(r'//[^\n]*', '', text)
+    
+    # Remove multi-line comments (/* ... */)
+    text = re.sub(r'/\*.*?\*/', '', text, flags=re.DOTALL)
+    
+    # Remove trailing commas before } or ]
+    text = re.sub(r',(\s*[}\]])', r'\1', text)
+    
+    # Remove any BOM or weird unicode
+    text = text.strip().lstrip('\ufeff')
+    
+    return text
 
 router = APIRouter(prefix="/api/forms", tags=["forms"])
 
@@ -239,8 +265,34 @@ async def delete_form(
             detail="Form not found"
         )
     
+    # Delete all related records in order to respect foreign key constraints
+    # 1. Delete chat messages
+    db.query(ChatMessageModel).filter(ChatMessageModel.form_id == form_id).delete(synchronize_session=False)
+    
+    # 2. Delete response answers (linked to responses)
+    response_ids = [r.id for r in db.query(FormResponseModel.id).filter(FormResponseModel.form_id == form_id).all()]
+    if response_ids:
+        db.query(ResponseAnswer).filter(ResponseAnswer.response_id.in_(response_ids)).delete(synchronize_session=False)
+    
+    # 3. Delete form responses
+    db.query(FormResponseModel).filter(FormResponseModel.form_id == form_id).delete(synchronize_session=False)
+    
+    # 4. Delete public forms (share links)
+    db.query(PublicForm).filter(PublicForm.form_id == form_id).delete(synchronize_session=False)
+    
+    # 5. Delete conditional rules (linked to questions)
+    question_ids = [q.id for q in db.query(FormQuestion.id).filter(FormQuestion.form_id == form_id).all()]
+    if question_ids:
+        db.query(ConditionalRule).filter(ConditionalRule.question_id.in_(question_ids)).delete(synchronize_session=False)
+    
+    # 6. Delete form questions
+    db.query(FormQuestion).filter(FormQuestion.form_id == form_id).delete(synchronize_session=False)
+    
+    # 7. Finally delete the form
     db.delete(form)
     db.commit()
+    
+    logger.info(f"Deleted form {form_id} and all associated data for user {current_user.id}")
     
     return None
 
@@ -567,6 +619,8 @@ async def publish_form(
     
     # Generate OG image for social sharing
     question_count = len(form.questions) if form.questions else 0
+    logger.info(f"Generating OG image for form {form_id}, title: {form.title}, questions: {question_count}")
+    
     og_image_url = og_image_service.generate_and_upload(
         form_id=form.id,
         token=existing.share_token if existing else "temp",
@@ -577,6 +631,8 @@ async def publish_form(
         text_color=form.settings.get('text_color') if form.settings else None,
         question_count=question_count
     )
+    
+    logger.info(f"OG image result for form {form_id}: {og_image_url}")
     
     if existing:
         # Update the OG image URL (in case form title/styling changed)
@@ -656,7 +712,7 @@ async def get_publish_info(
 @router.post("/{form_id}/chat/stream")
 async def chat_stream(
     form_id: int,
-    chat_data: ChatMessage,
+    chat_data: ChatMessageSchema,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -668,7 +724,6 @@ async def chat_stream(
     from sqlalchemy import func
     import json
     import asyncio
-    from ..models import FormResponse as FormResponseModel, ChatMessage as ChatMessageModel
     from ..services.response_chat_service import response_chat_service
     from ..services.agents import FormChatFunction
     
@@ -878,7 +933,12 @@ async def chat_stream(
                 response = result.get('response')
                 if hasattr(response, 'component_spec'):
                     try:
-                        component_spec = json.loads(response.component_spec) if isinstance(response.component_spec, str) else response.component_spec
+                        raw_spec = response.component_spec
+                        if isinstance(raw_spec, str):
+                            raw_spec = repair_json(raw_spec)
+                            component_spec = json.loads(raw_spec)
+                        else:
+                            component_spec = raw_spec
                         
                         # Create question in DB
                         max_order = db.query(func.max(FormQuestion.question_order)).filter(
@@ -912,7 +972,12 @@ async def chat_stream(
                 response = result.get('response')
                 if hasattr(response, 'updated_form'):
                     try:
-                        updated_form = json.loads(response.updated_form) if isinstance(response.updated_form, str) else response.updated_form
+                        raw_form = response.updated_form
+                        if isinstance(raw_form, str):
+                            raw_form = repair_json(raw_form)
+                            updated_form = json.loads(raw_form)
+                        else:
+                            updated_form = raw_form
                         changes_desc = getattr(response, 'changes_made', 'Form updated')
                         
                         if updated_form and "components" in updated_form:
@@ -1044,7 +1109,7 @@ async def chat_stream(
 @router.post("/{form_id}/chat", response_model=ChatResponse)
 async def chat_edit_form(
     form_id: int,
-    chat_data: ChatMessage,
+    chat_data: ChatMessageSchema,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -1205,8 +1270,14 @@ async def chat_edit_form(
             component_spec = None
             if hasattr(response, 'component_spec'):
                 try:
-                    component_spec = json.loads(response.component_spec) if isinstance(response.component_spec, str) else response.component_spec
-                except:
+                    raw_spec = response.component_spec
+                    if isinstance(raw_spec, str):
+                        raw_spec = repair_json(raw_spec)
+                        component_spec = json.loads(raw_spec)
+                    else:
+                        component_spec = raw_spec
+                except Exception as e:
+                    logger.error(f"Failed to parse component_spec: {e}")
                     component_spec = None
             
             if component_spec:
@@ -1244,8 +1315,14 @@ async def chat_edit_form(
             updated_form = None
             if hasattr(response, 'updated_form'):
                 try:
-                    updated_form = json.loads(response.updated_form) if isinstance(response.updated_form, str) else response.updated_form
-                except:
+                    raw_form = response.updated_form
+                    if isinstance(raw_form, str):
+                        raw_form = repair_json(raw_form)
+                        updated_form = json.loads(raw_form)
+                    else:
+                        updated_form = raw_form
+                except Exception as e:
+                    logger.error(f"Failed to parse updated_form: {e}")
                     updated_form = None
             
             if updated_form and "components" in updated_form:
