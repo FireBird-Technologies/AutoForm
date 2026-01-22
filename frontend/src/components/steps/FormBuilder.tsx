@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { QuestionEditor } from '../QuestionEditor';
 import { LoadingAnimation } from '../LoadingAnimation';
 import { ConditionModal } from '../ConditionModal';
@@ -40,6 +40,60 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
   const [showBgColorPicker, setShowBgColorPicker] = useState(false);
   const [showTextColorPicker, setShowTextColorPicker] = useState(false);
   const [showChat, setShowChat] = useState(true); // Chat visible by default in builder
+
+  // Refs for debounced saves
+  const pendingQuestionSaves = useRef<Map<number, NodeJS.Timeout>>(new Map());
+  const pendingFormSave = useRef<NodeJS.Timeout | null>(null);
+
+  // Save question to backend (debounced)
+  const saveQuestionToBackend = useCallback(async (questionId: number, updates: any) => {
+    try {
+      const response = await fetch(
+        `${config.backendUrl}/api/forms/${formData.id}/questions/${questionId}`,
+        {
+          method: 'PUT',
+          headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+          credentials: 'include',
+          body: JSON.stringify(updates)
+        }
+      );
+      if (!response.ok) {
+        console.error('Failed to save question:', await response.text());
+      }
+    } catch (err) {
+      console.error('Failed to save question:', err);
+    }
+  }, [formData.id]);
+
+  // Save form metadata to backend (debounced)
+  const saveFormMetadataToBackend = useCallback(async (title: string, description: string) => {
+    try {
+      const response = await fetch(`${config.backendUrl}/api/forms/${formData.id}`, {
+        method: 'PUT',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        credentials: 'include',
+        body: JSON.stringify({ title, description })
+      });
+      if (!response.ok) {
+        console.error('Failed to save form metadata:', await response.text());
+      }
+    } catch (err) {
+      console.error('Failed to save form metadata:', err);
+    }
+  }, [formData.id]);
+
+  // Cleanup pending saves on unmount
+  useEffect(() => {
+    return () => {
+      // Clear all pending question saves
+      pendingQuestionSaves.current.forEach((timeout) => clearTimeout(timeout));
+      pendingQuestionSaves.current.clear();
+      // Clear pending form save
+      if (pendingFormSave.current) {
+        clearTimeout(pendingFormSave.current);
+      }
+    };
+  }, []);
 
   // Close chat when sidebar opens
   useEffect(() => {
@@ -254,19 +308,72 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
 
   // Handle inline editing of question text, description, or options
   const handleInlineQuestionUpdate = (questionId: number, field: string, value: any) => {
-    const updatedQuestions = formData.questions.map((q: any) => {
-      if (q.id === questionId) {
-        // Handle nested settings fields (e.g., 'settings.choices', 'settings.min_value')
-        if (field.startsWith('settings.')) {
-          const settingKey = field.split('.')[1];
-          return { ...q, settings: { ...q.settings, [settingKey]: value } };
-        }
-        // Handle top-level fields
-        return { ...q, [field]: value };
-      }
-      return q;
-    });
+    // Find the current question to build the complete update
+    const question = formData.questions.find((q: any) => q.id === questionId);
+    if (!question) return;
+
+    // Build the updated question
+    let updatedQuestion: any;
+    if (field.startsWith('settings.')) {
+      const settingKey = field.split('.')[1];
+      updatedQuestion = { ...question, settings: { ...question.settings, [settingKey]: value } };
+    } else {
+      updatedQuestion = { ...question, [field]: value };
+    }
+
+    // Update local state immediately
+    const updatedQuestions = formData.questions.map((q: any) =>
+      q.id === questionId ? updatedQuestion : q
+    );
     setFormData({ ...formData, questions: updatedQuestions });
+
+    // Debounce the backend save (500ms)
+    const existingTimeout = pendingQuestionSaves.current.get(questionId);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+    }
+    
+    const timeoutId = setTimeout(() => {
+      // Build the update payload for the backend
+      const updatePayload: any = {
+        question_text: updatedQuestion.question_text,
+        description: updatedQuestion.description,
+        required: updatedQuestion.required,
+        settings: updatedQuestion.settings
+      };
+      saveQuestionToBackend(questionId, updatePayload);
+      pendingQuestionSaves.current.delete(questionId);
+    }, 500);
+    
+    pendingQuestionSaves.current.set(questionId, timeoutId);
+  };
+
+  // Handle form title update with debounced save
+  const handleTitleUpdate = (value: string) => {
+    setFormData((prev: any) => ({ ...prev, title: value }));
+    
+    // Debounce backend save
+    if (pendingFormSave.current) {
+      clearTimeout(pendingFormSave.current);
+    }
+    pendingFormSave.current = setTimeout(() => {
+      saveFormMetadataToBackend(value, formData.description || '');
+      pendingFormSave.current = null;
+    }, 500);
+  };
+
+  // Handle form description update with debounced save
+  const handleDescriptionUpdate = (value: string) => {
+    setFormData((prev: any) => ({ ...prev, description: value }));
+    
+    // Debounce backend save
+    if (pendingFormSave.current) {
+      clearTimeout(pendingFormSave.current);
+    }
+    pendingFormSave.current = setTimeout(() => {
+      saveFormMetadataToBackend(formData.title || 'Untitled Form', value);
+      pendingFormSave.current = null;
+    }, 500);
   };
 
   const handleSaveCondition = (condition: any) => {
@@ -958,7 +1065,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
             }}>
               <InlineEditableText
                 value={formData.title || 'Untitled Form'}
-                onChange={(value) => setFormData({ ...formData, title: value })}
+                onChange={handleTitleUpdate}
                 placeholder="Form title"
                 isTitle={true}
                 boldTextColor={globalColors.boldText || '#9333ea'}
@@ -974,7 +1081,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
               {formData.description && (
                 <InlineEditableText
                   value={formData.description}
-                  onChange={(value) => setFormData({ ...formData, description: value })}
+                  onChange={handleDescriptionUpdate}
                   placeholder="Add form description..."
                   multiline={true}
                   boldTextColor={globalColors.boldText || '#9333ea'}
@@ -992,7 +1099,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                     // Add description on click
                     const newDesc = prompt('Add form description:') || '';
                     if (newDesc) {
-                      setFormData({ ...formData, description: newDesc });
+                      handleDescriptionUpdate(newDesc);
                     }
                   }}
                   style={{
