@@ -299,10 +299,30 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
     }
   };
 
-  const handleDeleteQuestion = (questionId: number) => {
+  const handleDeleteQuestion = async (questionId: number) => {
     if (confirm('Are you sure you want to delete this question?')) {
-      const updatedQuestions = formData.questions.filter((q: any) => q.id !== questionId);
-      setFormData({ ...formData, questions: updatedQuestions });
+      try {
+        // Delete from backend first
+        const response = await fetch(
+          `${config.backendUrl}/api/forms/${formData.id}/questions/${questionId}`,
+          {
+            method: 'DELETE',
+            headers: getAuthHeaders(),
+            credentials: 'include'
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error('Failed to delete question');
+        }
+
+        // Update local state only after successful backend delete
+        const updatedQuestions = formData.questions.filter((q: any) => q.id !== questionId);
+        setFormData({ ...formData, questions: updatedQuestions });
+      } catch (err) {
+        console.error('Failed to delete question:', err);
+        alert('Failed to delete question. Please try again.');
+      }
     }
   };
 
