@@ -239,6 +239,7 @@ class PublicFormResponse(BaseModel):
     allow_multiple_submissions: bool
     collect_email: bool
     custom_thank_you_message: Optional[str]
+    og_image_url: Optional[str] = None
     created_at: datetime
     
     class Config:

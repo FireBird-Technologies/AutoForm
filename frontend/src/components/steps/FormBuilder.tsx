@@ -550,6 +550,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
 
       if (response.ok) {
         const data = await response.json();
+        // Use the same /forms/{token} URL for both preview and sharing
         const link = `${window.location.origin}/forms/${data.share_token}`;
         setPublishLink(link);
         setShowPublishPopup(true);
@@ -591,6 +592,38 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
       console.error('Preview failed:', error);
       alert('Failed to generate preview. Please try again.');
         }
+  };
+
+  const handleDeleteForm = async () => {
+    if (!formData.id) return;
+    
+    if (!confirm(`Are you sure you want to delete "${formData.title || 'this form'}"?\n\nThis will permanently delete the form and all its responses. This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${config.backendUrl}/api/forms/${formData.id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        alert('Form deleted successfully.');
+        // Navigate back or to dashboard
+        if (onBack) {
+          onBack();
+        } else {
+          window.location.href = '/build';
+        }
+      } else {
+        const error = await response.json().catch(() => ({}));
+        alert(error.detail || 'Failed to delete form. Please try again.');
+      }
+    } catch (error) {
+      console.error('Failed to delete form:', error);
+      alert('Failed to delete form. Please try again.');
+    }
   };
 
   const copyPublishLink = () => {
@@ -710,6 +743,42 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
               <circle cx="12" cy="12" r="3" />
             </svg>
             Preview
+          </button>
+
+          {/* Delete Button */}
+          <button
+            onClick={handleDeleteForm}
+            style={{
+              padding: '8px',
+              fontSize: '14px',
+              color: '#9ca3af',
+              background: '#ffffff',
+              border: '1px solid #e5e7eb',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.15s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = '#fecaca';
+              e.currentTarget.style.color = '#dc2626';
+              e.currentTarget.style.background = '#fef2f2';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = '#e5e7eb';
+              e.currentTarget.style.color = '#9ca3af';
+              e.currentTarget.style.background = '#ffffff';
+            }}
+            title="Delete Form"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+              <line x1="10" y1="11" x2="10" y2="17" />
+              <line x1="14" y1="11" x2="14" y2="17" />
+            </svg>
           </button>
 
           {/* Background Color */}
@@ -2205,28 +2274,28 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
             background: '#ffffff',
             borderRadius: '12px',
             padding: '32px',
-            maxWidth: '500px',
+            maxWidth: '480px',
             width: '90%'
           }}>
             <h3 style={{
               fontSize: '20px',
               fontWeight: '600',
-              color: '#000000',
-              marginBottom: '16px'
+              color: '#111827',
+              marginBottom: '8px'
             }}>
-              Publish Your Form
+              Form Published
             </h3>
             <p style={{
               fontSize: '14px',
               color: '#6b7280',
               marginBottom: '20px'
             }}>
-              Anyone with this link can fill out your form:
+              Share this link with anyone to collect responses:
             </p>
             <div style={{
               display: 'flex',
               gap: '8px',
-              marginBottom: '24px'
+              marginBottom: '20px'
             }}>
               <input
                 type="text"
@@ -2234,23 +2303,24 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                 readOnly
                 style={{
                   flex: 1,
-                  padding: '10px',
+                  padding: '12px',
                   fontSize: '14px',
                   border: '1px solid #e5e7eb',
-                  borderRadius: '6px',
-                  background: '#f9fafb'
+                  borderRadius: '8px',
+                  background: '#f9fafb',
+                  color: '#374151'
                 }}
               />
               <button
                 onClick={copyPublishLink}
                 style={{
-                  padding: '10px 20px',
+                  padding: '12px 20px',
                   fontSize: '14px',
                   fontWeight: '500',
                   color: '#ffffff',
-                  background: '#9333ea',
+                  background: globalColors.accent || '#9333ea',
                   border: 'none',
-                  borderRadius: '6px',
+                  borderRadius: '8px',
                   cursor: 'pointer'
                 }}
               >
@@ -2261,13 +2331,13 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
               onClick={() => setShowPublishPopup(false)}
               style={{
                 width: '100%',
-                padding: '10px',
+                padding: '12px',
                 fontSize: '14px',
                 fontWeight: '500',
                 color: '#6b7280',
                 background: '#f9fafb',
                 border: '1px solid #e5e7eb',
-                borderRadius: '6px',
+                borderRadius: '8px',
                 cursor: 'pointer'
               }}
             >

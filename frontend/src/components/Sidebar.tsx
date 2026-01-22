@@ -25,6 +25,7 @@ export const Sidebar: React.FC = () => {
   const [forms, setForms] = useState<Form[]>([]);
   const [loading, setLoading] = useState(true);
   const [hoveredForm, setHoveredForm] = useState<number | null>(null);
+  const [deletingFormId, setDeletingFormId] = useState<number | null>(null);
 
   useEffect(() => {
     loadForms();
@@ -66,6 +67,41 @@ export const Sidebar: React.FC = () => {
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  const handleDeleteForm = async (formId: number, formTitle: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!confirm(`Are you sure you want to delete "${formTitle}"?\n\nThis will permanently delete the form and all its responses.`)) {
+      return;
+    }
+
+    setDeletingFormId(formId);
+    try {
+      const response = await fetch(`${config.backendUrl}/api/forms/${formId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        // Remove from local state
+        setForms(forms.filter(f => f.id !== formId));
+        
+        // If we're currently viewing this form, navigate away
+        if (location.pathname.includes(`/forms/${formId}`) || location.state?.formId === formId) {
+          navigate('/build');
+        }
+      } else {
+        const error = await response.json().catch(() => ({}));
+        alert(error.detail || 'Failed to delete form. Please try again.');
+      }
+    } catch (error) {
+      console.error('Failed to delete form:', error);
+      alert('Failed to delete form. Please try again.');
+    } finally {
+      setDeletingFormId(null);
+    }
   };
 
   if (!isOpen) return null;
@@ -300,6 +336,25 @@ export const Sidebar: React.FC = () => {
                         </svg>
                       }
                     />
+                    <QuickActionButton
+                      title="Delete Form"
+                      onClick={(e) => handleDeleteForm(form.id, form.title, e)}
+                      icon={
+                        deletingFormId === form.id ? (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
+                            <circle cx="12" cy="12" r="10" strokeDasharray="32" strokeDashoffset="12" />
+                          </svg>
+                        ) : (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                            <line x1="10" y1="11" x2="10" y2="17" />
+                            <line x1="14" y1="11" x2="14" y2="17" />
+                          </svg>
+                        )
+                      }
+                      danger
+                    />
                   </div>
                 )}
               </div>
@@ -365,7 +420,8 @@ const QuickActionButton: React.FC<{
   icon: React.ReactNode;
   onClick: (e: React.MouseEvent) => void;
   title: string;
-}> = ({ icon, onClick, title }) => (
+  danger?: boolean;
+}> = ({ icon, onClick, title, danger = false }) => (
   <button
     onClick={onClick}
     title={title}
@@ -378,16 +434,21 @@ const QuickActionButton: React.FC<{
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      color: '#6b7280',
+      color: danger ? '#9ca3af' : '#6b7280',
       transition: 'all 0.15s'
     }}
     onMouseEnter={(e) => {
-      e.currentTarget.style.background = 'rgba(147, 51, 234, 0.1)';
-      e.currentTarget.style.color = '#9333ea';
+      if (danger) {
+        e.currentTarget.style.background = 'rgba(220, 38, 38, 0.1)';
+        e.currentTarget.style.color = '#dc2626';
+      } else {
+        e.currentTarget.style.background = 'rgba(147, 51, 234, 0.1)';
+        e.currentTarget.style.color = '#9333ea';
+      }
     }}
     onMouseLeave={(e) => {
       e.currentTarget.style.background = 'transparent';
-      e.currentTarget.style.color = '#6b7280';
+      e.currentTarget.style.color = danger ? '#9ca3af' : '#6b7280';
     }}
   >
     {icon}

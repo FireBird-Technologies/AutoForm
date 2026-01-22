@@ -124,4 +124,3 @@ if os.getenv("AUTO_MIGRATE", "1") == "1":
         logging.info("Default subscription plans initialized")
     except Exception as e:
         logging.error(f"Failed to initialize subscription plans: {e}")
-

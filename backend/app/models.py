@@ -343,6 +343,9 @@ class PublicForm(Base):
     collect_email: Mapped[bool] = mapped_column(Boolean, default=False)
     custom_thank_you_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     
+    # OG Image for social sharing (generated on publish)
+    og_image_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

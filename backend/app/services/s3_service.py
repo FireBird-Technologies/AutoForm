@@ -78,6 +78,47 @@ class S3Service:
             Params=params,
             ExpiresIn=expires_in
         )
+    
+    def put_object(
+        self,
+        key: str,
+        body: bytes,
+        content_type: str = "application/octet-stream",
+        public: bool = False
+    ) -> str:
+        """
+        Directly upload bytes to S3.
+        
+        Returns the public URL if public=True, otherwise the S3 URI.
+        """
+        if not self.bucket:
+            raise ValueError("S3_BUCKET_NAME is not set")
+        
+        full_key = f"{self.prefix}/{key}" if not key.startswith(self.prefix) else key
+        
+        params = {
+            "Bucket": self.bucket,
+            "Key": full_key,
+            "Body": body,
+            "ContentType": content_type
+        }
+        
+        if public:
+            params["ACL"] = "public-read"
+        
+        self.client.put_object(**params)
+        
+        # Return public URL
+        region = os.getenv("AWS_REGION", "us-east-1")
+        if region == "us-east-1":
+            return f"https://{self.bucket}.s3.amazonaws.com/{full_key}"
+        else:
+            return f"https://{self.bucket}.s3.{region}.amazonaws.com/{full_key}"
+    
+    @property
+    def bucket_name(self) -> Optional[str]:
+        """Return the configured bucket name."""
+        return self.bucket
 
     def _slugify(self, value: str) -> str:
         if not value:

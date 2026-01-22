@@ -17,6 +17,13 @@
   [headers.values]
     Content-Type = "application/wasm"
 
+# Edge function handles /forms/* - serves OG tags for social crawlers
+# Regular browsers get the SPA
+[[edge_functions]]
+  function = "og-proxy"
+  path = "/forms/*"
+
+# All other requests go to SPA
 [[redirects]]
   from = "/*"
   to = "/index.html"

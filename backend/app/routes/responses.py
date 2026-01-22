@@ -6,9 +6,11 @@ Routes for form submission and response management.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 from typing import List
+import os
 import json
 import csv
 import io
@@ -36,6 +38,85 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["responses"])
 
+
+# =============================================================================
+# SOCIAL MEDIA OG META TAGS ENDPOINTS
+# =============================================================================
+
+@router.get("/og/{token}", response_class=HTMLResponse, include_in_schema=False)
+@router.get("/share/{token}", response_class=HTMLResponse, include_in_schema=False)
+async def get_og_meta_tags(token: str, db: Session = Depends(get_db)):
+    """
+    Serve Open Graph meta tags for social media previews.
+    Used by LinkedIn, Facebook, Twitter crawlers.
+    Regular browsers are redirected to the form.
+    """
+    public_form = db.query(PublicForm).filter(
+        PublicForm.share_token == token,
+        PublicForm.is_public == True
+    ).first()
+    
+    frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173').split(',')[0].strip()
+    form_url = f"{frontend_url}/forms/{token}"
+    
+    if not public_form:
+        return HTMLResponse(content=f"""<!DOCTYPE html>
+<html><head>
+<title>Form Not Found</title>
+<meta property="og:title" content="Form Not Found" />
+<meta http-equiv="refresh" content="0;url={form_url}">
+</head><body></body></html>""", status_code=404)
+    
+    form = db.query(Form).filter(Form.id == public_form.form_id).first()
+    if not form:
+        return HTMLResponse(content=f"""<!DOCTYPE html>
+<html><head>
+<title>Form Not Found</title>
+<meta http-equiv="refresh" content="0;url={form_url}">
+</head><body></body></html>""", status_code=404)
+    
+    # Escape HTML special characters
+    title = (form.title or "Untitled Form").replace('"', '&quot;').replace('<', '&lt;').replace('>', '&gt;')
+    description = (form.description or "Fill out this form").replace('"', '&quot;').replace('<', '&lt;').replace('>', '&gt;')
+    if len(description) > 155:
+        description = description[:152] + "..."
+    
+    # Use stored OG image (generated on publish) or fallback
+    image_url = public_form.og_image_url or f"{frontend_url}/banner.png"
+    
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title}</title>
+    <meta name="description" content="{description}">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{form_url}">
+    <meta property="og:title" content="{title}">
+    <meta property="og:description" content="{description}">
+    <meta property="og:image" content="{image_url}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:site_name" content="AutoForm">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{title}">
+    <meta name="twitter:description" content="{description}">
+    <meta name="twitter:image" content="{image_url}">
+    <meta http-equiv="refresh" content="0;url={form_url}">
+    <script>window.location.replace("{form_url}");</script>
+</head>
+<body style="font-family:system-ui;display:flex;justify-content:center;align-items:center;height:100vh;margin:0">
+    <p>Loading <a href="{form_url}">{title}</a>...</p>
+</body>
+</html>"""
+    
+    return HTMLResponse(content=html)
+
+
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
 
 def _extract_upload_ids(answer_value: dict) -> List[int]:
     if not isinstance(answer_value, dict):
@@ -450,6 +531,9 @@ async def get_public_form(
     """
     Get public form structure for filling out.
     No authentication required.
+    
+    Note: Social media sharing uses the /share/{token} endpoint in main.py
+    which serves OG meta tags and redirects browsers to the form.
     """
     public_form = db.query(PublicForm).filter(
         PublicForm.share_token == token,

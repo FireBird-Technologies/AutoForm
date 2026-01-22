@@ -546,7 +546,9 @@ async def publish_form(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Create a public publishable link for a form"""
+    """Create or update a public publishable link for a form"""
+    from ..services.og_image_service import og_image_service
+    
     form = db.query(Form).filter(
         Form.id == form_id,
         Form.user_id == current_user.id
@@ -563,11 +565,42 @@ async def publish_form(
         PublicForm.form_id == form_id
     ).first()
     
+    # Generate OG image for social sharing
+    question_count = len(form.questions) if form.questions else 0
+    og_image_url = og_image_service.generate_and_upload(
+        form_id=form.id,
+        token=existing.share_token if existing else "temp",
+        title=form.title or "Untitled Form",
+        description=form.description,
+        background_color=form.settings.get('background_color', '#ffffff') if form.settings else '#ffffff',
+        accent_color=form.settings.get('accent_color', '#9333ea') if form.settings else '#9333ea',
+        text_color=form.settings.get('text_color') if form.settings else None,
+        question_count=question_count
+    )
+    
     if existing:
+        # Update the OG image URL (in case form title/styling changed)
+        existing.og_image_url = og_image_url
+        existing.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(existing)
         return PublicFormResponse.model_validate(existing)
     
     # Generate unique publish token
     share_token = secrets.token_urlsafe(32)
+    
+    # Re-generate OG image with actual token
+    if og_image_url:
+        og_image_url = og_image_service.generate_and_upload(
+            form_id=form.id,
+            token=share_token,
+            title=form.title or "Untitled Form",
+            description=form.description,
+            background_color=form.settings.get('background_color', '#ffffff') if form.settings else '#ffffff',
+            accent_color=form.settings.get('accent_color', '#9333ea') if form.settings else '#9333ea',
+            text_color=form.settings.get('text_color') if form.settings else None,
+            question_count=question_count
+        )
     
     public_form = PublicForm(
         form_id=form_id,
@@ -577,7 +610,8 @@ async def publish_form(
         expires_at=share_data.expires_at,
         allow_multiple_submissions=share_data.allow_multiple_submissions,
         collect_email=share_data.collect_email,
-        custom_thank_you_message=share_data.custom_thank_you_message
+        custom_thank_you_message=share_data.custom_thank_you_message,
+        og_image_url=og_image_url
     )
     
     db.add(public_form)
