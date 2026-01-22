@@ -170,24 +170,29 @@ export const PublicForm: React.FC = () => {
   };
 
   const handleAnswerChange = (questionId: number, value: any) => {
-    const isFirstAnswer = Object.keys(answers).length === 0;
-    
-    const updatedAnswers = {
-      ...answers,
-      [questionId]: value
-    };
-    
-    setAnswers(updatedAnswers);
-
-    // Track first answer as form started
-    if (isFirstAnswer) {
-      trackEvent('form_started');
-    }
-    
-    // Track question answered
-    trackEvent('question_answered', questionId);
-    
-    scheduleAutosave(updatedAnswers);
+    // Use functional update to ensure we're working with latest state
+    // This prevents race conditions when user clicks checkboxes rapidly
+    setAnswers(prevAnswers => {
+      const isFirstAnswer = Object.keys(prevAnswers).length === 0;
+      
+      const updatedAnswers = {
+        ...prevAnswers,
+        [questionId]: value
+      };
+      
+      // Track first answer as form started
+      if (isFirstAnswer) {
+        trackEvent('form_started');
+      }
+      
+      // Track question answered
+      trackEvent('question_answered', questionId);
+      
+      // Schedule autosave with the new state
+      scheduleAutosave(updatedAnswers);
+      
+      return updatedAnswers;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

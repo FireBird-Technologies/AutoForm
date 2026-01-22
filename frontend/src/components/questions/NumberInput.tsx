@@ -11,7 +11,10 @@ export const NumberInput: React.FC<QuestionProps> = ({
   boldTextColor
 }) => {
   const effectiveAccent = boldTextColor || accentColor;
-  const numberValue = value?.number !== undefined ? value.number : '';
+  // Handle both { number: X } format and direct number values
+  const numberValue = value?.number !== undefined && value?.number !== null 
+    ? value.number 
+    : (typeof value === 'number' ? value : '');
   const minValue = question.settings?.min_value;
   const maxValue = question.settings?.max_value;
   const placeholder = question.settings?.placeholder || 'Enter a number';
@@ -49,7 +52,16 @@ export const NumberInput: React.FC<QuestionProps> = ({
       <input
         type="number"
         value={numberValue}
-        onChange={(e) => onChange({ number: e.target.value ? parseFloat(e.target.value) : null })}
+        onChange={(e) => {
+          const val = e.target.value;
+          // Handle empty string, NaN, and valid numbers
+          if (val === '' || val === null || val === undefined) {
+            onChange({ number: null });
+          } else {
+            const parsed = parseFloat(val);
+            onChange({ number: isNaN(parsed) ? null : parsed });
+          }
+        }}
         placeholder={placeholder}
         disabled={disabled}
         min={minValue}

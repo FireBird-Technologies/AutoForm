@@ -546,7 +546,9 @@ async def publish_form(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Create a public publishable link for a form"""
+    """Create or update a public publishable link for a form"""
+    from ..services.og_image_service import og_image_service
+    
     form = db.query(Form).filter(
         Form.id == form_id,
         Form.user_id == current_user.id
@@ -563,11 +565,42 @@ async def publish_form(
         PublicForm.form_id == form_id
     ).first()
     
+    # Generate OG image for social sharing
+    question_count = len(form.questions) if form.questions else 0
+    og_image_url = og_image_service.generate_and_upload(
+        form_id=form.id,
+        token=existing.share_token if existing else "temp",
+        title=form.title or "Untitled Form",
+        description=form.description,
+        background_color=form.settings.get('background_color', '#ffffff') if form.settings else '#ffffff',
+        accent_color=form.settings.get('accent_color', '#9333ea') if form.settings else '#9333ea',
+        text_color=form.settings.get('text_color') if form.settings else None,
+        question_count=question_count
+    )
+    
     if existing:
+        # Update the OG image URL (in case form title/styling changed)
+        existing.og_image_url = og_image_url
+        existing.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(existing)
         return PublicFormResponse.model_validate(existing)
     
     # Generate unique publish token
     share_token = secrets.token_urlsafe(32)
+    
+    # Re-generate OG image with actual token
+    if og_image_url:
+        og_image_url = og_image_service.generate_and_upload(
+            form_id=form.id,
+            token=share_token,
+            title=form.title or "Untitled Form",
+            description=form.description,
+            background_color=form.settings.get('background_color', '#ffffff') if form.settings else '#ffffff',
+            accent_color=form.settings.get('accent_color', '#9333ea') if form.settings else '#9333ea',
+            text_color=form.settings.get('text_color') if form.settings else None,
+            question_count=question_count
+        )
     
     public_form = PublicForm(
         form_id=form_id,
@@ -577,7 +610,8 @@ async def publish_form(
         expires_at=share_data.expires_at,
         allow_multiple_submissions=share_data.allow_multiple_submissions,
         collect_email=share_data.collect_email,
-        custom_thank_you_message=share_data.custom_thank_you_message
+        custom_thank_you_message=share_data.custom_thank_you_message,
+        og_image_url=og_image_url
     )
     
     db.add(public_form)
@@ -634,7 +668,7 @@ async def chat_stream(
     from sqlalchemy import func
     import json
     import asyncio
-    from ..models import FormResponse as FormResponseModel
+    from ..models import FormResponse as FormResponseModel, ChatMessage as ChatMessageModel
     from ..services.response_chat_service import response_chat_service
     from ..services.agents import FormChatFunction
     
@@ -683,29 +717,68 @@ async def chat_stream(
     response_data_preloaded = None
     conn_preloaded = None
     columns_preloaded = None
+    duckdb_ready = False
+    duckdb_error = None
+    
     if response_count > 0:
         try:
             conn_preloaded, columns_preloaded, question_id_to_col = response_chat_service.load_responses_to_duckdb(
                 db=db,
                 form_id=form_id
             )
-            response_data_preloaded = {
-                'schema_description': response_chat_service.get_schema_description(
-                    columns=columns_preloaded,
-                    question_id_to_col=question_id_to_col,
-                    db=db,
-                    form_id=form_id
-                ),
-                'summary': response_chat_service.get_response_summary(conn_preloaded, columns_preloaded),
-                'columns': columns_preloaded,
-                'conn': conn_preloaded
-            }
+            
+            # Validate DuckDB is actually ready
+            is_ready, validation_error = response_chat_service.validate_duckdb_ready(
+                conn_preloaded, 
+                columns_preloaded
+            )
+            
+            if is_ready:
+                response_data_preloaded = {
+                    'schema_description': response_chat_service.get_schema_description(
+                        columns=columns_preloaded,
+                        question_id_to_col=question_id_to_col,
+                        db=db,
+                        form_id=form_id
+                    ),
+                    'summary': response_chat_service.get_response_summary(conn_preloaded, columns_preloaded),
+                    'columns': columns_preloaded,
+                    'conn': conn_preloaded
+                }
+                duckdb_ready = True
+                logger.info(f"DuckDB ready for form {form_id} with {response_count} responses")
+            else:
+                duckdb_error = validation_error
+                logger.warning(f"DuckDB validation failed for form {form_id}: {validation_error}")
         except Exception as e:
-            logger.warning(f"Could not load responses: {e}")
+            duckdb_error = str(e)
+            logger.warning(f"Could not load responses for form {form_id}: {e}")
+    
+    # Capture user ID as plain int to avoid session detachment issues
+    user_id_for_save = current_user.id
+    
+    # Determine chat type based on whether this is likely a response analysis
+    chat_type = "form_editing"  # Default
+    
+    # Save user message to database
+    user_chat_message = ChatMessageModel(
+        form_id=form_id,
+        user_id=user_id_for_save,
+        chat_type=chat_type,
+        role="user",
+        content=chat_data.message
+    )
+    db.add(user_chat_message)
+    db.commit()
+    
+    # Variables to collect response for saving
+    collected_response = {"content": "", "route": "", "query_type": None, "sql_query": None, "result_data": None}
     
     async def event_generator():
+        nonlocal collected_response
         conn = conn_preloaded
         response_data = response_data_preloaded
+        assistant_content_parts = []  # Collect all content chunks
         try:
             # Initialize chat module
             chat_module = FormChatFunction()
@@ -720,6 +793,17 @@ async def chat_stream(
             )
             
             route = result.get('route', 'unknown')
+            collected_response['route'] = route
+            
+            # Update chat type based on route
+            if route == 'analyze_responses':
+                collected_response['query_type'] = 'response_analysis'
+            elif route == 'add_component':
+                collected_response['query_type'] = 'add_component'
+            elif route == 'edit_component':
+                collected_response['query_type'] = 'edit_component'
+            else:
+                collected_response['query_type'] = route
             
             # Send route event
             yield f"event: route\ndata: {json.dumps({'route': route})}\n\n"
@@ -727,12 +811,21 @@ async def chat_stream(
             
             # Handle response analysis with data
             if result.get('requires_response_analysis') and response_count > 0:
+                # Check if DuckDB failed to load (agent already provided error message)
+                if result.get('duckdb_ready') == False:
+                    assistant_response = result.get('response', "Unable to analyze responses - data not loaded.")
+                    assistant_content_parts.append(assistant_response)
+                    yield f"event: content\ndata: {json.dumps({'content': assistant_response})}\n\n"
+                    collected_response['content'] = assistant_response
+                    yield f"event: done\ndata: {json.dumps({'done': True})}\n\n"
+                    return
+                
                 sql_query = result.get('sql_query')
                 assistant_response = result.get('response')
                 result_data = None
                 
-                # Execute SQL if generated
-                if sql_query and conn:
+                # Execute SQL if generated (double-check conn is valid)
+                if sql_query and conn and duckdb_ready:
                     try:
                         query_results, result_columns = response_chat_service.execute_query(conn, sql_query)
                         result_data = {
@@ -761,6 +854,7 @@ async def chat_stream(
                 
                 # Stream content in chunks
                 if assistant_response:
+                    assistant_content_parts.append(assistant_response)
                     words = assistant_response.split(' ')
                     chunk_size = 5
                     for i in range(0, len(words), chunk_size):
@@ -772,7 +866,12 @@ async def chat_stream(
                 
                 # Send data if available
                 if result_data:
+                    collected_response['result_data'] = result_data
                     yield f"event: data\ndata: {json.dumps(result_data)}\n\n"
+                
+                # Store SQL query if used
+                if sql_query:
+                    collected_response['sql_query'] = sql_query
                 
             # Handle add_component
             elif route == 'add_component':
@@ -800,10 +899,13 @@ async def chat_stream(
                         db.refresh(new_question)
                         
                         msg = f"Added new **{component_spec.get('question_type', 'question')}** field: {component_spec.get('question_text', 'New Question')}"
+                        assistant_content_parts.append(msg)
                         yield f"event: content\ndata: {json.dumps({'content': msg})}\n\n"
                         yield f"event: form_updated\ndata: {json.dumps({'action': 'add', 'question_id': new_question.id})}\n\n"
                     except Exception as e:
-                        yield f"event: content\ndata: {json.dumps({'content': f'Error adding component: {str(e)}'})}\n\n"
+                        error_msg = f'Error adding component: {str(e)}'
+                        assistant_content_parts.append(error_msg)
+                        yield f"event: content\ndata: {json.dumps({'content': error_msg})}\n\n"
             
             # Handle edit_component
             elif route == 'edit_component':
@@ -841,14 +943,18 @@ async def chat_stream(
                             
                             db.commit()
                         
+                        assistant_content_parts.append(str(changes_desc))
                         yield f"event: content\ndata: {json.dumps({'content': str(changes_desc)})}\n\n"
                         yield f"event: form_updated\ndata: {json.dumps({'action': 'edit'})}\n\n"
                     except Exception as e:
-                        yield f"event: content\ndata: {json.dumps({'content': f'Error editing: {str(e)}'})}\n\n"
+                        error_msg = f'Error editing: {str(e)}'
+                        assistant_content_parts.append(error_msg)
+                        yield f"event: content\ndata: {json.dumps({'content': error_msg})}\n\n"
             
             # Handle no_responses
             elif route == 'no_responses':
                 response = result.get('response', '')
+                assistant_content_parts.append(response)
                 yield f"event: content\ndata: {json.dumps({'content': response})}\n\n"
             
             # Handle general query or other routes
@@ -864,6 +970,8 @@ async def chat_stream(
                     else:
                         msg = str(response)
                     
+                    assistant_content_parts.append(msg)
+                    
                     # Stream in chunks
                     words = msg.split(' ')
                     chunk_size = 5
@@ -874,18 +982,55 @@ async def chat_stream(
                         yield f"event: content\ndata: {json.dumps({'content': chunk})}\n\n"
                         await asyncio.sleep(0.02)
             
+            # Collect final content
+            collected_response['content'] = ' '.join(assistant_content_parts)
+            
             # Send done event
             yield f"event: done\ndata: {json.dumps({'status': 'complete'})}\n\n"
             
         except Exception as e:
             logger.error(f"Stream error: {e}", exc_info=True)
+            collected_response['content'] = f"Error: {str(e)}"
             yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
+        # Note: Don't close conn - it's cached for session reuse
+    
+    def save_assistant_message_sync(form_id_val: int, user_id_val: int, response_dict: dict):
+        """Save assistant message in a completely isolated session"""
+        from ..core.db import SessionLocal
+        session = None
+        try:
+            session = SessionLocal()
+            if response_dict.get('content'):
+                msg = ChatMessageModel(
+                    form_id=form_id_val,
+                    user_id=user_id_val,
+                    chat_type="response_analysis" if response_dict.get('route') == 'analyze_responses' else "form_editing",
+                    role="assistant",
+                    content=response_dict.get('content', ''),
+                    query_type=response_dict.get('query_type'),
+                    sql_query=response_dict.get('sql_query'),
+                    result_data=response_dict.get('result_data')
+                )
+                session.add(msg)
+                session.commit()
+                logger.debug(f"Saved assistant message for form {form_id_val}")
+        except Exception as e:
+            logger.error(f"Failed to save chat message: {e}")
+            if session:
+                session.rollback()
         finally:
-            if conn:
-                conn.close()
+            if session:
+                session.close()
+    
+    async def streaming_with_save():
+        """Wrap generator to save message after completion"""
+        async for event in event_generator():
+            yield event
+        # Save after streaming completes - pass values explicitly to avoid closure issues
+        save_assistant_message_sync(form_id, user_id_for_save, collected_response.copy())
     
     return StreamingResponse(
-        event_generator(),
+        streaming_with_save(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -1024,8 +1169,7 @@ async def chat_edit_form(
                     if status_breakdown:
                         assistant_response += f"**Status:** {', '.join([f'{k}: {v}' for k, v in status_breakdown.items()])}"
                 
-                if conn:
-                    conn.close()
+                # Note: Don't close conn - it's cached for session reuse
                 
                 return ChatResponse(
                     route="analyze_responses",
@@ -1038,17 +1182,14 @@ async def chat_edit_form(
                 
             except Exception as e:
                 logger.error(f"Response analysis failed: {e}", exc_info=True)
-                if conn:
-                    conn.close()
+                # Note: Don't close conn - it's cached for session reuse
                 return ChatResponse(
                     route="analyze_responses",
                     response={"message": f"Error analyzing responses: {str(e)}"},
                     changes_made=None
                 )
         
-        # Close conn if opened but not used
-        if conn:
-            conn.close()
+        # Note: Don't close conn - it's cached for session reuse
         
         # === Handle No Responses ===
         if route == 'no_responses':

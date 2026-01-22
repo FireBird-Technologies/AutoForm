@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useRef, useEffect } from 'react';
 import { QuestionProps } from './ShortAnswer';
 
 export const MultiSelect: React.FC<QuestionProps> = ({
@@ -11,14 +11,23 @@ export const MultiSelect: React.FC<QuestionProps> = ({
   boldTextColor
 }) => {
   const effectiveAccent = boldTextColor || accentColor;
-  const selectedChoices = value?.choices || [];
   const choices = question.settings?.choices || [];
+  
+  // Use ref to track latest choices, preventing race conditions
+  const choicesRef = useRef<string[]>(value?.choices || []);
+  
+  useEffect(() => {
+    choicesRef.current = value?.choices || [];
+  }, [value?.choices]);
+  
+  const selectedChoices = value?.choices || [];
 
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const options = Array.from(e.target.selectedOptions);
     const values = options.map(option => option.value);
+    choicesRef.current = values;
     onChange({ choices: values });
-  };
+  }, [onChange]);
 
   return (
     <div style={{

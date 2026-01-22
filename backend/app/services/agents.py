@@ -601,26 +601,43 @@ class FormChatFunction(dspy.Module):
             result['use_memory'] = True
             result['requires_response_analysis'] = True
             
-            # If response_data provided, do analysis inline
-            if response_data and response_data.get('schema_description'):
-                schema = response_data['schema_description']
-                summary = response_data.get('summary', {})
+            # VALIDATION: Check if DuckDB data is ready
+            if not response_data:
+                result['response'] = "Unable to analyze responses - data not loaded. Please try again."
+                result['duckdb_ready'] = False
+                return result
+            
+            if not response_data.get('schema_description'):
+                result['response'] = "Unable to analyze responses - schema not available. Please try again."
+                result['duckdb_ready'] = False
+                return result
+            
+            if not response_data.get('conn'):
+                result['response'] = "Unable to analyze responses - database connection not ready. Please try again."
+                result['duckdb_ready'] = False
+                return result
+            
+            result['duckdb_ready'] = True
+            
+            # Response data validated, proceed with analysis
+            schema = response_data['schema_description']
+            summary = response_data.get('summary', {})
+            
+            with dspy.context(lm=dspy.LM('openai/gpt-4o-mini', api_key=os.getenv('OPENAI_API_KEY'), max_tokens=1300)):
+                # Generate SQL
+                sql_result = self.sql_generator(
+                    user_query=user_query,
+                    schema_description=schema
+                )
+                result['sql_query'] = sql_result.sql_query
                 
-                with dspy.context(lm=dspy.LM('openai/gpt-4o-mini', api_key=os.getenv('OPENAI_API_KEY'), max_tokens=800)):
-                    # Generate SQL
-                    sql_result = self.sql_generator(
-                        user_query=user_query,
-                        schema_description=schema
-                    )
-                    result['sql_query'] = sql_result.sql_query
-                    
-                    # Summarize
-                    summary_result = self.summarizer(
-                        query_results=json.dumps(summary, default=str),
-                        user_query=user_query,
-                        schema_description=schema
-                    )
-                    result['response'] = summary_result.summary
+                # Summarize
+                summary_result = self.summarizer(
+                    query_results=json.dumps(summary, default=str),
+                    user_query=user_query,
+                    schema_description=schema
+                )
+                result['response'] = summary_result.summary
             
             return result
         
@@ -932,6 +949,11 @@ class SQLGeneratorSignature(dspy.Signature):
     5. Always include LIMIT clause (max 100 rows) unless counting/aggregating
     6. Wrap column names in double quotes if they contain special characters
     
+    IMPORTANT - QUESTION SHORTCUTS (q1, q2, etc.):
+    - The schema includes a SHORTCUTS section mapping q1, q2, etc. to full column names
+    - When user says "q1", "q2", "question 1", etc., use the SHORTCUTS to find the actual column name
+    - Example: if schema shows 'q1 → "q1_full_name"', use "q1_full_name" in your SQL
+    
     IMPORTANT - NUMERIC COLUMNS (rating, number, linear_scale):
     - Values are stored as strings, empty string means NULL
     - ALWAYS filter out empty strings BEFORE casting: WHERE "col" != '' AND "col" IS NOT NULL
@@ -940,27 +962,30 @@ class SQLGeneratorSignature(dspy.Signature):
     
     IMPORTANT - CHECKBOX/MULTI-SELECT COLUMNS:
     - Values are comma-separated strings like "Option A, Option B"
-    - To count occurrences of EACH option separately, use LIKE for each option
+    - For INDIVIDUAL option counts: use LIKE for each option
+    - For COMBINATION analysis (Sankey/flow): GROUP BY the entire column to see which combinations are selected together
     - Schema will list available options
     
     IMPORTANT - SINGLE CHOICE (multiple_choice, dropdown):
     - One value per response, use GROUP BY to count
     
     EXAMPLES:
-    - "Average rating" → SELECT AVG(CAST("q2_rating" AS FLOAT)) as avg_rating FROM responses WHERE "q2_rating" != '' AND "q2_rating" IS NOT NULL
+    - "Average of q2" (if q2 → "q2_rating") → SELECT AVG(CAST("q2_rating" AS FLOAT)) as avg_rating FROM responses WHERE "q2_rating" != '' AND "q2_rating" IS NOT NULL
     - "Count ratings" → SELECT "q2_rating" as rating, COUNT(*) as count FROM responses WHERE "q2_rating" != '' GROUP BY "q2_rating" ORDER BY rating
     - "Ratings above 3" → SELECT * FROM responses WHERE "q2_rating" != '' AND CAST("q2_rating" AS INTEGER) > 3 LIMIT 100
     - "Count by satisfaction level" (single choice) → SELECT "q1_satisfaction" as satisfaction, COUNT(*) as count FROM responses WHERE "q1_satisfaction" != '' GROUP BY "q1_satisfaction"
-    - "Count checkbox options" (for checkbox with options A, B, C) → 
+    - "Count individual checkbox options" (for checkbox with options A, B, C) → 
         SELECT 'Option A' as option, COUNT(*) as count FROM responses WHERE "q3_features" ILIKE '%Option A%'
         UNION ALL SELECT 'Option B', COUNT(*) FROM responses WHERE "q3_features" ILIKE '%Option B%'
         UNION ALL SELECT 'Option C', COUNT(*) FROM responses WHERE "q3_features" ILIKE '%Option C%'
+    - "Analyze checkbox combinations" or "Show checkbox Sankey" → 
+        SELECT "q3_features" as combination, COUNT(*) as count FROM responses WHERE "q3_features" != '' GROUP BY "q3_features" ORDER BY count DESC
     - "Count by status" → SELECT status, COUNT(*) as count FROM responses GROUP BY status
     - "Show all responses" → SELECT * FROM responses LIMIT 100
     """
     user_query = dspy.InputField(desc="Natural language query from user")
-    schema_description = dspy.InputField(desc="Table schema with column names, descriptions, and available options for choice fields")
-    sql_query = dspy.OutputField(desc="Safe SELECT SQL query for DuckDB, using GROUP BY for counts, LIKE for checkbox options")
+    schema_description = dspy.InputField(desc="Table schema with column names, descriptions, QUESTION SHORTCUTS mapping q1/q2 to full column names, and available options for choice fields")
+    sql_query = dspy.OutputField(desc="Safe SELECT SQL query for DuckDB, using full column names from SHORTCUTS when user references q1/q2")
 
 
 class ResponseSummarizerSignature(dspy.Signature):

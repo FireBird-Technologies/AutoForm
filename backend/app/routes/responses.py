@@ -6,9 +6,11 @@ Routes for form submission and response management.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 from typing import List
+import os
 import json
 import csv
 import io
@@ -27,6 +29,7 @@ from ..services.validation_service import validation_service
 from ..services.analytics_service import analytics_service
 from ..services.webhook_service import webhook_service
 from ..services.s3_service import s3_service
+from ..services.response_chat_service import invalidate_duckdb_cache
 from ..middleware.rate_limiter import rate_limiter
 
 import logging
@@ -35,6 +38,85 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["responses"])
 
+
+# =============================================================================
+# SOCIAL MEDIA OG META TAGS ENDPOINTS
+# =============================================================================
+
+@router.get("/og/{token}", response_class=HTMLResponse, include_in_schema=False)
+@router.get("/share/{token}", response_class=HTMLResponse, include_in_schema=False)
+async def get_og_meta_tags(token: str, db: Session = Depends(get_db)):
+    """
+    Serve Open Graph meta tags for social media previews.
+    Used by LinkedIn, Facebook, Twitter crawlers.
+    Regular browsers are redirected to the form.
+    """
+    public_form = db.query(PublicForm).filter(
+        PublicForm.share_token == token,
+        PublicForm.is_public == True
+    ).first()
+    
+    frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173').split(',')[0].strip()
+    form_url = f"{frontend_url}/forms/{token}"
+    
+    if not public_form:
+        return HTMLResponse(content=f"""<!DOCTYPE html>
+<html><head>
+<title>Form Not Found</title>
+<meta property="og:title" content="Form Not Found" />
+<meta http-equiv="refresh" content="0;url={form_url}">
+</head><body></body></html>""", status_code=404)
+    
+    form = db.query(Form).filter(Form.id == public_form.form_id).first()
+    if not form:
+        return HTMLResponse(content=f"""<!DOCTYPE html>
+<html><head>
+<title>Form Not Found</title>
+<meta http-equiv="refresh" content="0;url={form_url}">
+</head><body></body></html>""", status_code=404)
+    
+    # Escape HTML special characters
+    title = (form.title or "Untitled Form").replace('"', '&quot;').replace('<', '&lt;').replace('>', '&gt;')
+    description = (form.description or "Fill out this form").replace('"', '&quot;').replace('<', '&lt;').replace('>', '&gt;')
+    if len(description) > 155:
+        description = description[:152] + "..."
+    
+    # Use stored OG image (generated on publish) or fallback
+    image_url = public_form.og_image_url or f"{frontend_url}/banner.png"
+    
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title}</title>
+    <meta name="description" content="{description}">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{form_url}">
+    <meta property="og:title" content="{title}">
+    <meta property="og:description" content="{description}">
+    <meta property="og:image" content="{image_url}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:site_name" content="AutoForm">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{title}">
+    <meta name="twitter:description" content="{description}">
+    <meta name="twitter:image" content="{image_url}">
+    <meta http-equiv="refresh" content="0;url={form_url}">
+    <script>window.location.replace("{form_url}");</script>
+</head>
+<body style="font-family:system-ui;display:flex;justify-content:center;align-items:center;height:100vh;margin:0">
+    <p>Loading <a href="{form_url}">{title}</a>...</p>
+</body>
+</html>"""
+    
+    return HTMLResponse(content=html)
+
+
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
 
 def _extract_upload_ids(answer_value: dict) -> List[int]:
     if not isinstance(answer_value, dict):
@@ -270,6 +352,9 @@ async def submit_form(
         db.commit()
         db.refresh(form_response)
         
+        # Invalidate DuckDB cache so new data is reflected in analytics
+        invalidate_duckdb_cache(form.id)
+        
         return SubmissionResponse(
             id=form_response.id,
             form_id=form.id,
@@ -408,6 +493,9 @@ async def autosave_submission(
         db.commit()
         db.refresh(form_response)
         
+        # Invalidate DuckDB cache so new data is reflected in analytics
+        invalidate_duckdb_cache(form.id)
+        
         # Validate answers (non-blocking)
         validation_result = validation_service.validate_submission(
             db=db,
@@ -443,6 +531,9 @@ async def get_public_form(
     """
     Get public form structure for filling out.
     No authentication required.
+    
+    Note: Social media sharing uses the /share/{token} endpoint in main.py
+    which serves OG meta tags and redirects browsers to the form.
     """
     public_form = db.query(PublicForm).filter(
         PublicForm.share_token == token,
@@ -920,7 +1011,7 @@ async def delete_response(
 # ============================================================================
 
 from pydantic import BaseModel
-from ..models import ResponseChatMessage
+from ..models import ChatMessage
 from ..services.response_chat_service import response_chat_service
 from ..services.agents import response_chat_module
 
@@ -930,11 +1021,12 @@ class ResponseChatRequest(BaseModel):
     message: str
 
 
-class ResponseChatMessageResponse(BaseModel):
+class ChatMessageResponse(BaseModel):
     """Response model for a single chat message."""
     id: int
     role: str
     content: str
+    chat_type: str = "response_analysis"
     query_type: str | None = None
     sql_query: str | None = None
     result_data: dict | None = None
@@ -946,7 +1038,7 @@ class ResponseChatMessageResponse(BaseModel):
 
 class ResponseChatResponse(BaseModel):
     """Response model for chat endpoint."""
-    message: ResponseChatMessageResponse
+    message: ChatMessageResponse
     query_type: str
     data: dict | None = None
 
@@ -1107,7 +1199,7 @@ async def chat_with_responses(
         conn.close()
         
         return {
-            "message": ResponseChatMessageResponse.model_validate(assistant_message),
+            "message": ChatMessageResponse.model_validate(assistant_message),
             "query_type": query_type,
             "data": result_data
         }
@@ -1148,7 +1240,7 @@ async def get_response_chat_history(
     )
     
     return {
-        "messages": [ResponseChatMessageResponse.model_validate(msg) for msg in history],
+        "messages": [ChatMessageResponse.model_validate(msg) for msg in history],
         "total": len(history)
     }
 
@@ -1172,10 +1264,11 @@ async def clear_response_chat_history(
             detail="Form not found"
         )
     
-    # Delete all chat messages for this form and user
-    db.query(ResponseChatMessage).filter(
-        ResponseChatMessage.form_id == form_id,
-        ResponseChatMessage.user_id == current_user.id
+    # Delete all response analysis chat messages for this form and user
+    db.query(ChatMessage).filter(
+        ChatMessage.form_id == form_id,
+        ChatMessage.user_id == current_user.id,
+        ChatMessage.chat_type == "response_analysis"
     ).delete()
     db.commit()
     

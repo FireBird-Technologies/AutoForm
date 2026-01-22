@@ -191,7 +191,7 @@ class Form(Base):
     questions: Mapped[list["FormQuestion"]] = relationship(back_populates="form", cascade="all, delete-orphan", order_by="FormQuestion.question_order")
     conditional_rules: Mapped[list["ConditionalRule"]] = relationship(back_populates="form", cascade="all, delete-orphan")
     responses: Mapped[list["FormResponse"]] = relationship(back_populates="form", cascade="all, delete-orphan")
-    chat_messages_form: Mapped[list["ChatMessageForm"]] = relationship(back_populates="form", cascade="all, delete-orphan")
+    chat_messages: Mapped[list["ChatMessage"]] = relationship(back_populates="form", cascade="all, delete-orphan")
     versions: Mapped[list["FormVersion"]] = relationship(back_populates="form", cascade="all, delete-orphan")
     analytics_events: Mapped[list["FormAnalyticsEvent"]] = relationship(back_populates="form", cascade="all, delete-orphan")
     uploads: Mapped[list["FormUpload"]] = relationship(back_populates="form", cascade="all, delete-orphan")
@@ -343,6 +343,9 @@ class PublicForm(Base):
     collect_email: Mapped[bool] = mapped_column(Boolean, default=False)
     custom_thank_you_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     
+    # OG Image for social sharing (generated on publish)
+    og_image_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -351,23 +354,32 @@ class PublicForm(Base):
     user: Mapped[User] = relationship(back_populates="public_forms")
 
 
-class ChatMessageForm(Base):
-    """Chat messages for form editing context"""
-    __tablename__ = "chat_messages_form"
+class ChatMessage(Base):
+    """Unified chat messages for all AI assistant conversations (form editing + response analysis)"""
+    __tablename__ = "chat_messages"
     
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     form_id: Mapped[int] = mapped_column(ForeignKey("forms.id"), index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     
+    # Chat type: "form_editing" for add/edit, "response_analysis" for queries
+    chat_type: Mapped[str] = mapped_column(String(30), default="form_editing", index=True)
+    
     role: Mapped[str] = mapped_column(String(20))  # "user", "assistant"
     content: Mapped[str] = mapped_column(Text)
-    query_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    question_index: Mapped[int | None] = mapped_column(Integer, nullable=True)  # If related to a specific question
+    query_type: Mapped[str | None] = mapped_column(String(50), nullable=True)  # e.g., "add_component", "edit_component", "summary", "filter"
+    
+    # Form editing specific
+    question_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    
+    # Response analysis specific  
+    sql_query: Mapped[str | None] = mapped_column(Text, nullable=True)
+    result_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
     
     # Relationships
-    form: Mapped[Form] = relationship(back_populates="chat_messages_form")
+    form: Mapped[Form] = relationship(back_populates="chat_messages")
     user: Mapped[User] = relationship()
 
 
@@ -466,24 +478,3 @@ class WebhookConfig(Base):
     user: Mapped[User] = relationship()
 
 
-class ResponseChatMessage(Base):
-    """Chat messages for response analysis conversations"""
-    __tablename__ = "response_chat_messages"
-    
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    form_id: Mapped[int] = mapped_column(ForeignKey("forms.id"), index=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    
-    role: Mapped[str] = mapped_column(String(20))  # "user", "assistant"
-    content: Mapped[str] = mapped_column(Text)
-    
-    # Metadata for analysis results
-    query_type: Mapped[str | None] = mapped_column(String(50), nullable=True)  # "summary", "filter", "aggregate", "sentiment", "export"
-    sql_query: Mapped[str | None] = mapped_column(Text, nullable=True)  # Generated SQL query
-    result_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # Query results or analysis data
-    
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
-    
-    # Relationships
-    form: Mapped[Form] = relationship()
-    user: Mapped[User] = relationship()

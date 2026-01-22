@@ -7,7 +7,7 @@ interface ResponseDataTableProps {
   maxHeight?: string;
 }
 
-type ViewMode = 'table' | 'chart';
+type ViewMode = 'table' | 'chart' | 'sankey';
 
 /**
  * Analytics-style data table and chart for displaying response data in chat.
@@ -45,13 +45,6 @@ export const ResponseDataTable: React.FC<ResponseDataTableProps> = ({
     
     return (hasCountCol || hasLabelCol || secondColAllNumbers) && rows.length >= 2 && rows.length <= 15;
   }, [rows, columns]);
-
-  // Auto-switch to chart view for category count data
-  useEffect(() => {
-    if (looksLikeCategoryCounts) {
-      setViewMode('chart');
-    }
-  }, [looksLikeCategoryCounts]);
 
   // Detect if data is chartable (has numeric columns for aggregation)
   const chartData = useMemo(() => {
@@ -105,6 +98,62 @@ export const ResponseDataTable: React.FC<ResponseDataTableProps> = ({
   }, [rows, columns]);
 
   const isChartable = chartData !== null && chartData.data.length > 0 && chartData.data.length <= 20;
+
+  // Detect if data looks like checkbox combinations (has comma-separated values in label column)
+  const isCombinationData = useMemo(() => {
+    if (!chartData || chartData.data.length < 2) return false;
+    
+    const colLower = chartData.labelCol.toLowerCase();
+    const hasCombinationKeyword = colLower.includes('combination') || colLower.includes('features') || 
+                                   colLower.includes('options') || colLower.includes('selected');
+    
+    // Check if most labels contain commas (indicating multiple selections)
+    const labelsWithCommas = chartData.data.filter(d => d.label.includes(', ')).length;
+    const hasMultipleSelections = labelsWithCommas > chartData.data.length * 0.3;
+    
+    return hasCombinationKeyword || hasMultipleSelections;
+  }, [chartData]);
+
+  // Parse combinations into Sankey-style flow data
+  const sankeyData = useMemo(() => {
+    if (!chartData || !isCombinationData) return null;
+    
+    // Get all unique options across all combinations
+    const allOptions = new Set<string>();
+    chartData.data.forEach(d => {
+      d.label.split(', ').forEach(opt => allOptions.add(opt.trim()));
+    });
+    const optionsList = Array.from(allOptions).sort();
+    
+    // Calculate total for percentages
+    const total = chartData.data.reduce((sum, d) => sum + d.value, 0);
+    
+    // Build flow data: for each combination, create connections
+    const flows: Array<{ combination: string; options: string[]; count: number; percentage: number }> = 
+      chartData.data.map(d => ({
+        combination: d.label,
+        options: d.label.split(', ').map(o => o.trim()),
+        count: d.value,
+        percentage: (d.value / total) * 100
+      })).sort((a, b) => b.count - a.count);
+    
+    return {
+      options: optionsList,
+      flows,
+      total,
+      maxCount: Math.max(...flows.map(f => f.count))
+    };
+  }, [chartData, isCombinationData]);
+
+  // Auto-switch view based on data type
+  useEffect(() => {
+    if (isCombinationData && sankeyData) {
+      setViewMode('sankey');
+    } else if (looksLikeCategoryCounts) {
+      setViewMode('chart');
+    }
+  }, [looksLikeCategoryCounts, isCombinationData, sankeyData]);
+
   // Format column header for display
   const formatColumnHeader = (col: string): string => {
     // Convert q1_some_text to "Some Text"
@@ -276,6 +325,175 @@ export const ResponseDataTable: React.FC<ResponseDataTableProps> = ({
     );
   };
 
+  // Sankey-style Combination Chart Component
+  const SankeyChart = () => {
+    if (!sankeyData) return null;
+    
+    const { options, flows, total, maxCount } = sankeyData;
+    const colors = ['#9333ea', '#7c3aed', '#6366f1', '#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444'];
+    
+    // Assign colors to each option
+    const optionColors: Record<string, string> = {};
+    options.forEach((opt, idx) => {
+      optionColors[opt] = colors[idx % colors.length];
+    });
+    
+    return (
+      <div style={{ padding: '16px' }}>
+        <div style={{
+          fontSize: '12px',
+          fontWeight: '600',
+          color: '#6b7280',
+          marginBottom: '16px',
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em'
+        }}>
+          Selection Combinations ({total} responses)
+        </div>
+        
+        {/* Option legend */}
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '8px',
+          marginBottom: '16px'
+        }}>
+          {options.map((opt, idx) => (
+            <div key={idx} style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '4px 10px',
+              background: '#f9fafb',
+              borderRadius: '16px',
+              fontSize: '12px',
+              fontWeight: '500'
+            }}>
+              <span style={{
+                width: '10px',
+                height: '10px',
+                borderRadius: '50%',
+                background: optionColors[opt]
+              }} />
+              {opt}
+            </div>
+          ))}
+        </div>
+        
+        {/* Sankey-style flows */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {flows.slice(0, 10).map((flow, idx) => (
+            <div key={idx} style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              {/* Combination visualization */}
+              <div style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                flexWrap: 'wrap'
+              }}>
+                {flow.options.map((opt, optIdx) => (
+                  <React.Fragment key={optIdx}>
+                    {optIdx > 0 && (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                      </svg>
+                    )}
+                    <span style={{
+                      padding: '4px 10px',
+                      background: `${optionColors[opt]}15`,
+                      border: `2px solid ${optionColors[opt]}`,
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      color: optionColors[opt],
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {opt}
+                    </span>
+                  </React.Fragment>
+                ))}
+              </div>
+              
+              {/* Flow bar */}
+              <div style={{
+                width: '150px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <div style={{
+                  flex: 1,
+                  height: '24px',
+                  background: '#f3f4f6',
+                  borderRadius: '4px',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{
+                    width: `${(flow.count / maxCount) * 100}%`,
+                    height: '100%',
+                    background: `linear-gradient(90deg, ${flow.options.map(o => optionColors[o]).join(', ')})`,
+                    borderRadius: '4px',
+                    transition: 'width 0.3s ease'
+                  }} />
+                </div>
+                <span style={{
+                  fontSize: '13px',
+                  fontWeight: '700',
+                  color: '#374151',
+                  minWidth: '50px',
+                  textAlign: 'right'
+                }}>
+                  {flow.count} <span style={{ fontWeight: '400', color: '#9ca3af', fontSize: '11px' }}>({flow.percentage.toFixed(0)}%)</span>
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        {flows.length > 10 && (
+          <div style={{
+            marginTop: '12px',
+            fontSize: '12px',
+            color: '#9ca3af',
+            fontStyle: 'italic'
+          }}>
+            Showing top 10 of {flows.length} combinations
+          </div>
+        )}
+        
+        {/* Summary */}
+        <div style={{
+          marginTop: '16px',
+          padding: '12px',
+          background: '#faf5ff',
+          borderRadius: '8px',
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '16px',
+          fontSize: '13px'
+        }}>
+          <div>
+            <span style={{ color: '#6b7280' }}>Unique Combinations: </span>
+            <strong style={{ color: '#9333ea' }}>{flows.length}</strong>
+          </div>
+          <div>
+            <span style={{ color: '#6b7280' }}>Total Responses: </span>
+            <strong style={{ color: '#9333ea' }}>{total}</strong>
+          </div>
+          <div>
+            <span style={{ color: '#6b7280' }}>Most Common: </span>
+            <strong style={{ color: '#9333ea' }}>{flows[0]?.combination || '-'}</strong>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (!rows || rows.length === 0) {
     return (
       <div style={{
@@ -301,7 +519,7 @@ export const ResponseDataTable: React.FC<ResponseDataTableProps> = ({
       background: '#ffffff'
     }}>
       {/* View Toggle */}
-      {isChartable && (
+      {(isChartable || isCombinationData) && (
         <div style={{
           padding: '8px 14px',
           borderBottom: '1px solid #e5e7eb',
@@ -358,11 +576,41 @@ export const ResponseDataTable: React.FC<ResponseDataTableProps> = ({
             </svg>
             Chart
           </button>
+          {isCombinationData && (
+            <button
+              onClick={() => setViewMode('sankey')}
+              style={{
+                padding: '6px 12px',
+                fontSize: '12px',
+                fontWeight: '600',
+                color: viewMode === 'sankey' ? 'white' : '#6b7280',
+                background: viewMode === 'sankey' ? '#9333ea' : 'transparent',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.15s'
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 6h4l3 6-3 6H3" />
+                <path d="M14 6h4l3 6-3 6h-4" />
+                <path d="M7 9h7" />
+                <path d="M7 15h7" />
+              </svg>
+              Flow
+            </button>
+          )}
         </div>
       )}
 
-      {/* Chart View */}
-      {viewMode === 'chart' && isChartable ? (
+      {/* Sankey View */}
+      {viewMode === 'sankey' && isCombinationData ? (
+        <SankeyChart />
+      ) : viewMode === 'chart' && isChartable ? (
+        /* Chart View */
         <BarChart />
       ) : (
         /* Table View */
