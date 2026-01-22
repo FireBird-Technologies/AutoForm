@@ -272,7 +272,7 @@ async def delete_form(
     # 2. Delete response answers (linked to responses)
     response_ids = [r.id for r in db.query(FormResponseModel.id).filter(FormResponseModel.form_id == form_id).all()]
     if response_ids:
-        db.query(ResponseAnswer).filter(ResponseAnswer.response_id.in_(response_ids)).delete(synchronize_session=False)
+        db.query(ResponseAnswer).filter(ResponseAnswer.form_response_id.in_(response_ids)).delete(synchronize_session=False)
     
     # 3. Delete form responses
     db.query(FormResponseModel).filter(FormResponseModel.form_id == form_id).delete(synchronize_session=False)
