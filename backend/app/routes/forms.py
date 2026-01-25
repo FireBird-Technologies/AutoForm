@@ -14,7 +14,7 @@ from datetime import datetime
 
 from ..core.db import get_db
 from ..core.security import get_current_user
-from ..models import User, Form, FormQuestion, ConditionalRule, PublicForm, QuestionType, ConditionType, FormResponse as FormResponseModel, ResponseAnswer, ChatMessage as ChatMessageModel
+from ..models import User, Form, FormQuestion, ConditionalRule, PublicForm, QuestionType, ConditionType, FormResponse as FormResponseModel, ResponseAnswer, ChatMessage as ChatMessageModel, FormUpload
 from ..schemas.form import (
     FormCreate, FormUpdate, FormResponse, FormGenerationResponse,
     QuestionCreate, QuestionUpdate, QuestionResponse,
@@ -269,9 +269,14 @@ async def delete_form(
     # 1. Delete chat messages
     db.query(ChatMessageModel).filter(ChatMessageModel.form_id == form_id).delete(synchronize_session=False)
     
-    # 2. Delete response answers (linked to responses)
+    # 2. Get response IDs first (needed for cascading deletes)
     response_ids = [r.id for r in db.query(FormResponseModel.id).filter(FormResponseModel.form_id == form_id).all()]
+    
     if response_ids:
+        # 2a. Delete form uploads (linked to responses)
+        db.query(FormUpload).filter(FormUpload.form_response_id.in_(response_ids)).delete(synchronize_session=False)
+        
+        # 2b. Delete response answers (linked to responses)
         db.query(ResponseAnswer).filter(ResponseAnswer.form_response_id.in_(response_ids)).delete(synchronize_session=False)
     
     # 3. Delete form responses
@@ -280,10 +285,8 @@ async def delete_form(
     # 4. Delete public forms (share links)
     db.query(PublicForm).filter(PublicForm.form_id == form_id).delete(synchronize_session=False)
     
-    # 5. Delete conditional rules (linked to questions)
-    question_ids = [q.id for q in db.query(FormQuestion.id).filter(FormQuestion.form_id == form_id).all()]
-    if question_ids:
-        db.query(ConditionalRule).filter(ConditionalRule.question_id.in_(question_ids)).delete(synchronize_session=False)
+    # 5. Delete conditional rules (linked to the form)
+    db.query(ConditionalRule).filter(ConditionalRule.form_id == form_id).delete(synchronize_session=False)
     
     # 6. Delete form questions
     db.query(FormQuestion).filter(FormQuestion.form_id == form_id).delete(synchronize_session=False)

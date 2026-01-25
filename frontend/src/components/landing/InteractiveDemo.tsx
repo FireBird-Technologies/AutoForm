@@ -5,10 +5,10 @@ import { FunnelChart } from '../analytics/FunnelChart';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-type Tab = 'form' | 'analytics' | 'submissions';
+type Tab = 'ai-analysis' | 'form' | 'analytics' | 'submissions';
 
 export const InteractiveDemo: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<Tab>('form');
+  const [activeTab, setActiveTab] = useState<Tab>('ai-analysis');
   const [formData, setFormData] = useState<Record<number, any>>({});
 
   // Sample form questions
@@ -93,6 +93,7 @@ export const InteractiveDemo: React.FC = () => {
   };
 
   const tabs = [
+    { id: 'ai-analysis' as Tab, label: 'AI Analysis' },
     { id: 'form' as Tab, label: 'Form Preview' },
     { id: 'analytics' as Tab, label: 'Analytics' },
     { id: 'submissions' as Tab, label: 'Submissions' }
@@ -139,7 +140,7 @@ export const InteractiveDemo: React.FC = () => {
       </div>
 
       {/* Content */}
-      <div style={{ padding: '32px', minHeight: '500px', maxHeight: '600px', overflowY: 'auto' }}>
+      <div style={{ padding: '32px', height: '550px', display: 'flex', flexDirection: 'column' }}>
         {activeTab === 'form' && (
           <div>
             <div style={{ marginBottom: '24px' }}>
@@ -405,6 +406,312 @@ export const InteractiveDemo: React.FC = () => {
               color: '#6b7280'
             }}>
               📊 Showing 3 of 45 submissions
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'ai-analysis' && (
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            {/* Chat Messages Container */}
+            <div style={{ flex: 1, overflowY: 'auto', paddingBottom: '16px' }}>
+              {/* User Message - White card matching assistant UI */}
+              <div style={{
+                padding: '16px 20px',
+                borderRadius: '12px',
+                border: '1px solid #e5e7eb',
+                background: '#ffffff',
+                marginBottom: '16px'
+              }}>
+                <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  YOU
+                </div>
+                <div style={{ fontSize: '15px', color: '#1f2937' }}>
+                  Analyze my responses
+                </div>
+              </div>
+
+              {/* Assistant Message */}
+              <div style={{
+                padding: '20px',
+                borderRadius: '12px',
+                border: '1px solid #e5e7eb',
+                background: '#ffffff'
+              }}>
+                <div style={{ fontSize: '12px', fontWeight: '600', color: '#6b7280', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  ASSISTANT
+                </div>
+                
+                <div style={{ fontSize: '14px', color: '#374151', lineHeight: '1.7' }}>
+                  <p style={{ margin: '0 0 16px 0' }}>
+                    Here's a summary of the responses you provided, based on the data collected:
+                  </p>
+                  
+                  <ul style={{ margin: '0 0 20px 0', paddingLeft: '20px' }}>
+                    <li style={{ marginBottom: '10px' }}>
+                      <span style={{ color: '#9333ea', fontWeight: '500' }}>Total Responses</span>: There are 45 complete responses to the survey, indicating a robust engagement from participants.
+                    </li>
+                    <li style={{ marginBottom: '10px' }}>
+                      <span style={{ color: '#9333ea', fontWeight: '500' }}>Completion Rate</span>: 43% of viewers completed the form, reflecting good conversion from the 105 total views.
+                    </li>
+                    <li>
+                      <span style={{ color: '#9333ea', fontWeight: '500' }}>Average Rating</span>: 4.6 out of 5 stars, with 89% giving 4 or 5 stars.
+                    </li>
+                  </ul>
+
+                  <p style={{ margin: '0 0 12px 0', fontWeight: '600' }}>
+                    Key Findings:
+                  </p>
+                  
+                  <ul style={{ margin: '0 0 20px 0', paddingLeft: '20px' }}>
+                    <li style={{ marginBottom: '10px' }}>
+                      <span style={{ color: '#9333ea', fontWeight: '500' }}>Common Themes in Feedback</span>:
+                      <ul style={{ marginTop: '8px', paddingLeft: '20px' }}>
+                        <li style={{ marginBottom: '6px' }}>
+                          <span style={{ color: '#9333ea', fontWeight: '500' }}>Positive Sentiment</span>: Most respondents praised the ease of use and AI-powered features.
+                        </li>
+                        <li style={{ marginBottom: '6px' }}>
+                          <span style={{ color: '#9333ea', fontWeight: '500' }}>Feature Requests</span>: Several users mentioned wanting mobile app support and more integrations.
+                        </li>
+                        <li>
+                          <span style={{ color: '#9333ea', fontWeight: '500' }}>Issues Reported</span>: 1 user experienced mobile timeout issues and lost progress.
+                        </li>
+                      </ul>
+                    </li>
+                  </ul>
+
+                  <p style={{ margin: '0 0 12px 0', fontWeight: '600' }}>
+                    Notable Response:
+                  </p>
+                  
+                  <ul style={{ margin: '0 0 16px 0', paddingLeft: '20px' }}>
+                    <li style={{ marginBottom: '10px' }}>
+                      <span style={{ color: '#9333ea', fontWeight: '500' }}>Low Rating Alert</span>:
+                      <ul style={{ marginTop: '8px', paddingLeft: '20px' }}>
+                        <li style={{ marginBottom: '6px' }}>
+                          Response from alex.chen@company.com rated <span style={{ color: '#ef4444', fontWeight: '500' }}>1 star</span> with feedback: "Form kept timing out on mobile. Lost all my progress twice."
+                        </li>
+                        <li>
+                          <span style={{ color: '#6b7280', fontStyle: 'italic' }}>Recommendation: Consider implementing auto-save functionality to prevent data loss.</span>
+                        </li>
+                      </ul>
+                    </li>
+                  </ul>
+
+                  {/* Rating Distribution Chart - Same style as ResponseDataTable */}
+                  <div style={{
+                    marginTop: '20px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '10px',
+                    overflow: 'hidden',
+                    background: '#ffffff'
+                  }}>
+                    {/* Chart Header */}
+                    <div style={{
+                      padding: '8px 14px',
+                      borderBottom: '1px solid #e5e7eb',
+                      background: '#faf5ff',
+                      display: 'flex',
+                      gap: '4px'
+                    }}>
+                      <button
+                        style={{
+                          padding: '6px 12px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          color: '#6b7280',
+                          background: 'transparent',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="3" y="3" width="18" height="18" rx="2" />
+                          <line x1="3" y1="9" x2="21" y2="9" />
+                          <line x1="3" y1="15" x2="21" y2="15" />
+                          <line x1="9" y1="3" x2="9" y2="21" />
+                        </svg>
+                        Table
+                      </button>
+                      <button
+                        style={{
+                          padding: '6px 12px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          color: 'white',
+                          background: '#9333ea',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <line x1="18" y1="20" x2="18" y2="10" />
+                          <line x1="12" y1="20" x2="12" y2="4" />
+                          <line x1="6" y1="20" x2="6" y2="14" />
+                        </svg>
+                        Chart
+                      </button>
+                    </div>
+                    
+                    {/* Chart Body */}
+                    <div style={{ padding: '16px' }}>
+                      <div style={{
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        color: '#6b7280',
+                        marginBottom: '16px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em'
+                      }}>
+                        Count by Rating
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {[
+                          { label: '5 stars', value: 22, color: '#9333ea' },
+                          { label: '4 stars', value: 18, color: '#a855f7' },
+                          { label: '3 stars', value: 3, color: '#c084fc' },
+                          { label: '2 stars', value: 1, color: '#d8b4fe' },
+                          { label: '1 star', value: 1, color: '#e9d5ff' }
+                        ].map((item, idx) => (
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{
+                              width: '70px',
+                              fontSize: '13px',
+                              color: '#374151',
+                              fontWeight: '500',
+                              textAlign: 'right'
+                            }}>
+                              {item.label}
+                            </div>
+                            <div style={{
+                              flex: 1,
+                              height: '28px',
+                              background: '#f3f4f6',
+                              borderRadius: '6px',
+                              overflow: 'hidden',
+                              position: 'relative'
+                            }}>
+                              <div style={{
+                                width: `${(item.value / 22) * 100}%`,
+                                height: '100%',
+                                background: `linear-gradient(90deg, ${item.color} 0%, #a855f7 100%)`,
+                                borderRadius: '6px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'flex-end',
+                                paddingRight: '8px',
+                                minWidth: item.value > 0 ? '40px' : '0'
+                              }}>
+                                <span style={{
+                                  fontSize: '12px',
+                                  fontWeight: '700',
+                                  color: 'white',
+                                  textShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                                }}>
+                                  {item.value}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* Summary stats */}
+                      <div style={{
+                        marginTop: '16px',
+                        padding: '12px',
+                        background: '#faf5ff',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        gap: '24px',
+                        fontSize: '13px'
+                      }}>
+                        <div>
+                          <span style={{ color: '#6b7280' }}>Total: </span>
+                          <strong style={{ color: '#9333ea' }}>45</strong>
+                        </div>
+                        <div>
+                          <span style={{ color: '#6b7280' }}>Average: </span>
+                          <strong style={{ color: '#9333ea' }}>4.6</strong>
+                        </div>
+                        <div>
+                          <span style={{ color: '#6b7280' }}>Max: </span>
+                          <strong style={{ color: '#9333ea' }}>22</strong>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Footer */}
+                    <div style={{
+                      padding: '8px 14px',
+                      borderTop: '1px solid #e5e7eb',
+                      background: '#f9fafb',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      fontSize: '12px',
+                      color: '#6b7280'
+                    }}>
+                      <span>
+                        <strong style={{ color: '#9333ea' }}>5</strong> rows
+                      </span>
+                    </div>
+                  </div>
+
+                  <p style={{ margin: '16px 0 0 0', color: '#6b7280' }}>
+                    Would you like me to analyze specific aspects in more detail, such as rating distribution trends or feedback categorization?
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Input Box - Fixed at bottom */}
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              padding: '16px',
+              background: '#f9fafb',
+              borderRadius: '12px',
+              border: '1px solid #e5e7eb',
+              marginTop: 'auto'
+            }}>
+              <input
+                type="text"
+                placeholder="Ask AI anything about your responses..."
+                disabled
+                style={{
+                  flex: 1,
+                  padding: '12px 16px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  background: 'white',
+                  color: '#9ca3af'
+                }}
+              />
+              <button
+                disabled
+                style={{
+                  padding: '12px 24px',
+                  background: '#d8b4fe',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'not-allowed'
+                }}
+              >
+                Send
+              </button>
             </div>
           </div>
         )}

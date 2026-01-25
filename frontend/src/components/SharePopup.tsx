@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNotification } from '../contexts/NotificationContext';
 
 interface SharePopupProps {
   isOpen: boolean;
@@ -14,7 +13,6 @@ export const SharePopup: React.FC<SharePopupProps> = ({
   shareUrl,
   expiresAt
 }) => {
-  const notification = useNotification();
   const [copied, setCopied] = useState(false);
 
   if (!isOpen) return null;
@@ -23,10 +21,9 @@ export const SharePopup: React.FC<SharePopupProps> = ({
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
-      notification.success('Link copied to clipboard!');
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      notification.error('Failed to copy link');
+      console.error('Failed to copy link', err);
     }
   };
 
@@ -141,8 +138,8 @@ export const SharePopup: React.FC<SharePopupProps> = ({
           <button
             onClick={handleCopy}
             style={{
-              padding: '12px 24px',
-              background: copied ? '#10b981' : 'linear-gradient(135deg, #ef4444 0%, #f87171 100%)',
+              padding: '12px 20px',
+              background: copied ? '#10b981' : 'linear-gradient(135deg, #9333ea 0%, #a855f7 100%)',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
@@ -151,22 +148,35 @@ export const SharePopup: React.FC<SharePopupProps> = ({
               cursor: 'pointer',
               transition: 'all 0.2s',
               whiteSpace: 'nowrap',
-              boxShadow: '0 2px 8px rgba(239, 68, 68, 0.2)'
+              boxShadow: copied ? '0 2px 8px rgba(16, 185, 129, 0.3)' : '0 2px 8px rgba(147, 51, 234, 0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
             }}
             onMouseEnter={(e) => {
               if (!copied) {
-                e.currentTarget.style.background = 'linear-gradient(135deg, #dc2626 0%, #ef4444 100%)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.3)';
+                e.currentTarget.style.background = 'linear-gradient(135deg, #7c3aed 0%, #9333ea 100%)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(147, 51, 234, 0.3)';
               }
             }}
             onMouseLeave={(e) => {
               if (!copied) {
-                e.currentTarget.style.background = 'linear-gradient(135deg, #ef4444 0%, #f87171 100%)';
-                e.currentTarget.style.boxShadow = '0 2px 8px rgba(239, 68, 68, 0.2)';
+                e.currentTarget.style.background = 'linear-gradient(135deg, #9333ea 0%, #a855f7 100%)';
+                e.currentTarget.style.boxShadow = '0 2px 8px rgba(147, 51, 234, 0.2)';
               }
             }}
           >
-            {copied ? 'Copied!' : 'Copy'}
+            {copied ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+            )}
+            {copied ? 'Copied' : 'Copy'}
           </button>
         </div>
 
@@ -203,7 +213,7 @@ export const SharePopup: React.FC<SharePopupProps> = ({
             onClick={handleOpenLink}
             style={{
               padding: '10px 20px',
-              background: 'linear-gradient(135deg, #ef4444 0%, #f87171 100%)',
+              background: 'linear-gradient(135deg, #9333ea 0%, #a855f7 100%)',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
@@ -211,15 +221,15 @@ export const SharePopup: React.FC<SharePopupProps> = ({
               fontWeight: '500',
               cursor: 'pointer',
               transition: 'all 0.2s',
-              boxShadow: '0 2px 8px rgba(239, 68, 68, 0.2)'
+              boxShadow: '0 2px 8px rgba(147, 51, 234, 0.2)'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'linear-gradient(135deg, #dc2626 0%, #ef4444 100%)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.3)';
+              e.currentTarget.style.background = 'linear-gradient(135deg, #7c3aed 0%, #9333ea 100%)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(147, 51, 234, 0.3)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'linear-gradient(135deg, #ef4444 0%, #f87171 100%)';
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(239, 68, 68, 0.2)';
+              e.currentTarget.style.background = 'linear-gradient(135deg, #9333ea 0%, #a855f7 100%)';
+              e.currentTarget.style.boxShadow = '0 2px 8px rgba(147, 51, 234, 0.2)';
             }}
           >
             Open Link

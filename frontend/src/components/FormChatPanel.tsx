@@ -264,12 +264,14 @@ export const FormChatPanel: React.FC<FormChatPanelProps> = ({
     minWidth: '320px',
     maxWidth: '800px',
     height: '100%',
+    minHeight: 0, // Critical for flex children to enable scroll
     background: '#ffffff',
     borderRight: '1px solid #e5e7eb',
     display: 'flex',
     flexDirection: 'column',
     flexShrink: 0,
-    position: 'relative'
+    position: 'relative',
+    overflow: 'hidden'
   };
 
   // Fixed position mode - renders as overlay
@@ -277,14 +279,17 @@ export const FormChatPanel: React.FC<FormChatPanelProps> = ({
     position: 'fixed',
     top: 0,
     right: 0,
+    bottom: 0,
     width: `${panelWidth}px`,
-    height: '100vh',
+    height: '100%',
+    maxHeight: '100vh',
     background: '#ffffff',
     borderLeft: '1px solid #e5e7eb',
     boxShadow: '-4px 0 20px rgba(0,0,0,0.08)',
     zIndex: 1000,
     display: 'flex',
-    flexDirection: 'column'
+    flexDirection: 'column',
+    overflow: 'hidden'
   };
 
   const fixedBottomStyle: React.CSSProperties = {
@@ -361,7 +366,8 @@ export const FormChatPanel: React.FC<FormChatPanelProps> = ({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        background: '#faf5ff'
+        background: '#faf5ff',
+        flexShrink: 0
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{
@@ -439,6 +445,7 @@ export const FormChatPanel: React.FC<FormChatPanelProps> = ({
       {/* Messages */}
       <div style={{
         flex: 1,
+        minHeight: 0,
         overflowY: 'auto',
         padding: '16px 20px',
         display: 'flex',
@@ -595,7 +602,8 @@ export const FormChatPanel: React.FC<FormChatPanelProps> = ({
       <div style={{
         padding: '16px 20px',
         borderTop: '1px solid #e5e7eb',
-        background: '#ffffff'
+        background: '#ffffff',
+        flexShrink: 0
       }}>
         <div style={{ position: 'relative' }}>
           <textarea

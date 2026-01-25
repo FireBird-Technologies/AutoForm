@@ -16,7 +16,7 @@ interface FormBuilderProps {
 }
 
 export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormData, onBack }) => {
-  const { isOpen: isSidebarOpen, setSidebarOpen } = useSidebar();
+  const { setSidebarOpen } = useSidebar();
   const [formData, setFormData] = useState(initialFormData);
   const [showPublishPopup, setShowPublishPopup] = useState(false);
   const [publishLink, setPublishLink] = useState('');
@@ -94,13 +94,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
       }
     };
   }, []);
-
-  // Close chat when sidebar opens
-  useEffect(() => {
-    if (isSidebarOpen) {
-      setShowChat(false);
-    }
-  }, [isSidebarOpen]);
 
   // Handler to open chat and close sidebar
   const handleOpenChat = () => {
@@ -205,7 +198,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
         let errorMessage = 'Failed to generate form';
         if (isJson) {
           try {
-            const errorData = await response.json();
+        const errorData = await response.json();
             errorMessage = errorData.detail || errorMessage;
           } catch (e) {
             // If JSON parsing fails, use status text
@@ -317,8 +310,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
         }
 
         // Update local state only after successful backend delete
-        const updatedQuestions = formData.questions.filter((q: any) => q.id !== questionId);
-        setFormData({ ...formData, questions: updatedQuestions });
+      const updatedQuestions = formData.questions.filter((q: any) => q.id !== questionId);
+      setFormData({ ...formData, questions: updatedQuestions });
       } catch (err) {
         console.error('Failed to delete question:', err);
         alert('Failed to delete question. Please try again.');
@@ -613,7 +606,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
         // Navigate back or to dashboard
         if (onBack) {
           onBack();
-        } else {
+      } else {
           window.location.href = '/build';
         }
       } else {
@@ -637,12 +630,13 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
 
   return (
     <div style={{
-      height: '100vh',
-      maxHeight: '100vh',
+      flex: 1,
+      height: '100%',
       display: 'flex',
       flexDirection: 'column',
       background: globalColors.background,
-      overflow: 'hidden'
+      overflow: 'hidden',
+      minHeight: 0
     }}>
       {/* Top Bar */}
       <div style={{
@@ -883,7 +877,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
 
           {/* Text Color */}
           <div style={{ position: 'relative' }}>
-            <button
+          <button
               onClick={() => setShowTextColorPicker(!showTextColorPicker)}
               style={{
                 width: '32px',
@@ -1072,12 +1066,12 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
               width: '44px',
               background: 'linear-gradient(180deg, #faf5ff 0%, #ffffff 100%)',
               border: 'none',
-              borderRight: '1px solid #e5e7eb',
+          borderRight: '1px solid #e5e7eb',
               cursor: 'pointer',
-              display: 'flex',
+          display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              flexDirection: 'column',
+            flexDirection: 'column',
               gap: '8px',
               padding: '16px 0',
               transition: 'all 0.15s'
@@ -1085,20 +1079,20 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
             title="Open chat panel"
             onMouseEnter={(e) => e.currentTarget.style.background = '#faf5ff'}
             onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(180deg, #faf5ff 0%, #ffffff 100%)'}
-          >
-            <div style={{
+              >
+                <div style={{
               width: '32px',
               height: '32px',
-              borderRadius: '8px',
+                borderRadius: '8px',
               background: '#9333ea',
-              display: 'flex',
-              alignItems: 'center',
+                display: 'flex',
+                alignItems: 'center',
               justifyContent: 'center'
-            }}>
+              }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
-            </div>
+              </div>
             <span style={{
               writingMode: 'vertical-rl',
               textOrientation: 'mixed',
@@ -1128,17 +1122,18 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
         )}
 
         {/* Form Edit Area */}
-        <div style={{
+          <div style={{
           flex: 1,
+          minHeight: 0, // Critical for flex children to enable scroll
           overflow: 'auto',
           padding: '0',
           background: globalColors.background,
-          display: 'flex',
-          flexDirection: 'column',
+            display: 'flex',
+            flexDirection: 'column',
           position: 'relative'
-        }}>
+          }}>
           {/* Form Title & Description - Sticky at top */}
-          <div style={{
+            <div style={{
             position: 'sticky',
             top: 0,
             background: globalColors.background,
@@ -1158,7 +1153,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                 placeholder="Form title"
                 isTitle={true}
                 boldTextColor={globalColors.boldText || '#9333ea'}
-                style={{
+              style={{
                   fontSize: '32px',
                   fontWeight: '700',
                   color: globalColors.text,
@@ -1184,14 +1179,14 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
               )}
               {!formData.description && (
                 <div
-                  onClick={() => {
+              onClick={() => {
                     // Add description on click
                     const newDesc = prompt('Add form description:') || '';
                     if (newDesc) {
                       handleDescriptionUpdate(newDesc);
                     }
                   }}
-                  style={{
+              style={{
                     fontSize: '16px',
                     color: globalColors.text,
                     opacity: 0.4,
@@ -1203,8 +1198,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                   Add description...
                 </div>
               )}
-            </div>
           </div>
+        </div>
 
           <div style={{
             maxWidth: '800px',
@@ -1579,10 +1574,10 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formData: initialFormD
                                 }
                                 e.currentTarget.style.borderColor = '#e5e7eb';
                               }}
-                              style={{
+                          style={{
                                 width: '100%',
                                 padding: '8px 12px',
-                                fontSize: '14px',
+                            fontSize: '14px',
                                 border: '1px solid #e5e7eb',
                                 borderRadius: '6px',
                                 outline: 'none'

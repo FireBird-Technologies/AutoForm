@@ -75,25 +75,70 @@ export const Landing: React.FC<LandingProps> = ({ onStart }) => {
             }}
           />
         </div>
-        <h1 className="landing-title">Build Forms with AI</h1>
+        <h1 className="landing-title">AI First Forms</h1>
         <p className="landing-subtitle">
-          AutoForm creates beautiful, intelligent forms from simple descriptions.
-          <br />Fast. No complexity. Just forms that work.
+          A better way to work with Forms, using AI
+          <br />
+          <strong style={{ color: '#9333ea' }}> 
+            Generate with AI
+          </strong>
+          <br />
+          <strong style={{ color: '#9333ea' }}>
+            Edit with AI
+          </strong>
+          <br />
+          <strong style={{ color: '#9333ea' }}>
+            Analyze with AI
+          </strong>
         </p>
         <div className="landing-cta">
           <GoogleAuthButton onSuccess={(token) => {
             localStorage.setItem('auth_token', token);
             onStart();
           }}>
-            Create Forms for free
+            Try the AI-First Form Builder
           </GoogleAuthButton>
         </div>
       </header>
 
+      {/* Interactive Demo */}
+      <section className="demo-section" style={{ backgroundColor: 'white' }}>
+        <div className="section-container">
+          <div className="demo-header">
+            <span className="demo-badge">Live Interactive Demo</span>
+            <h2 className="section-heading">See It in Action</h2>
+            <p className="section-subheading">
+              Try our fully functional demo: Fill out the form, explore analytics, view submissions, and see AI-powered response analysis.
+              <br />
+              <strong>All features are fully interactive</strong> - exactly what you'll use with AutoForm.
+            </p>
+          </div>
+          <InteractiveDemo />
+          <div className="demo-cta">
+            <p className="demo-cta-text">
+              <strong>AI-Powered Analysis:</strong> Preview 20+ question types, track analytics in real-time, and get instant AI insights on your responses. 
+              Add conditional logic, validation rules, custom themes, and analyze data without exports.
+            </p>
+            <GoogleAuthButton
+              onSuccess={(token) => {
+                localStorage.setItem('auth_token', token);
+                onStart();
+              }}
+            >
+              Create Your Own Form
+            </GoogleAuthButton>
+          </div>
+        </div>
+      </section>
+
       {/* Features Grid */}
       <section className="features-section">
         <div className="section-container">
-          <h2 className="section-heading">Everything you need to build forms</h2>
+          <h2 className="section-heading">Do Everything via AI</h2>
+          <p className="section-subheading" style={{ marginBottom: '3rem', fontSize: '1.1rem', color: '#6b7280' }}>
+            Create forms instantly. Edit components with simple English. Analyze responses with a specialized AI agent.
+            <br />No MCP servers. No hidden features. AI is built into every step.
+          </p>
           <div className="features-grid">
             <FeatureCard
               icon={
@@ -103,17 +148,8 @@ export const Landing: React.FC<LandingProps> = ({ onStart }) => {
                   <line x1="12" y1="3" x2="12" y2="15" />
                 </svg>
               }
-              title="AI-Powered Generation"
-              description="Describe your form in plain English and let AI create it instantly. No manual field configuration needed."
-            />
-            <FeatureCard
-              icon={
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-                </svg>
-              }
-              title="19 Question Types"
-              description="Text, email, phone, dropdowns, file uploads, ratings, dates, and more. Every field type you need."
+              title="Create Forms Instantly with Simple English"
+              description="Describe your form in plain English and let AI create it instantly. No manual field configuration or drag & drop needed."
             />
             <FeatureCard
               icon={
@@ -124,8 +160,28 @@ export const Landing: React.FC<LandingProps> = ({ onStart }) => {
                   <path d="M16 17H8"/>
                 </svg>
               }
-              title="Conditional Logic"
-              description="Add skip logic and show/hide rules. Forms adapt based on user responses for smarter data collection."
+              title="Add & Edit Components with Simple English"
+              description="Tell AI what to add, remove, or change. No clicking through menus or configuring fields manually."
+            />
+            <FeatureCard
+              icon={
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                </svg>
+              }
+              title="AI-Powered Response Analysis"
+              description="After publishing, ask AI anything about your responses. Specialized analytics agent understands your form structure and provides instant insights."
+            />
+            <FeatureCard
+              icon={
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  <line x1="3" y1="9" x2="21" y2="9" />
+                  <line x1="9" y1="21" x2="9" y2="9" />
+                </svg>
+              }
+              title="Validation Rules"
+              description="Built-in validation for emails, phone numbers, URLs, and more. Ensure data quality from the start."
             />
             <FeatureCard
               icon={
@@ -140,28 +196,20 @@ export const Landing: React.FC<LandingProps> = ({ onStart }) => {
                   <line x1="16.24" y1="7.76" x2="19.07" y2="4.93" />
                 </svg>
               }
-              title="Easy Sharing"
-              description="Generate publishable links instantly. No login required for respondents. Collect responses from anyone, anywhere."
+              title="19 Question Types"
+              description="Text, email, phone, dropdowns, file uploads, ratings, dates, and more. Every field type you need, all AI-generated."
             />
             <FeatureCard
               icon={
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                  <path d="M20.71 4.63a1 1 0 0 0-1.42 0l-1.83 1.83 3.75 3.75L23 8.29a1 1 0 0 0 0-1.41z"/>
+                  <path d="M16 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                  <path d="M20 21v-8"/>
+                  <path d="M16 17H8"/>
                 </svg>
               }
-              title="Analytics & Submissions"
-              description="Built-in analytics dashboard shows views, completion rates, and conversion funnels. Browse submissions in an easy table view with sorting and export options."
-            />
-            <FeatureCard
-              icon={
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                  <line x1="3" y1="9" x2="21" y2="9" />
-                  <line x1="9" y1="21" x2="9" y2="9" />
-                </svg>
-              }
-              title="Validation Rules"
-              description="Built-in validation for emails, phone numbers, URLs, and more. Ensure data quality from the start."
+              title="Conditional Logic"
+              description="Add skip logic and show/hide rules. Forms adapt based on user responses for smarter data collection."
             />
             <FeatureCard
               icon={
@@ -182,42 +230,42 @@ export const Landing: React.FC<LandingProps> = ({ onStart }) => {
       {/* Workflow */}
       <section className="workflow-section">
         <div className="section-container">
-          <h2 className="section-heading">Building forms is as easy as 1, 2, 3</h2>
+          <h2 className="section-heading">AI-First Form Building</h2>
           <p className="section-subheading">
-            From idea to live form in minutes. No technical skills required.
+            From idea to insights in minutes. Everything powered by AI - no manual configuration needed.
           </p>
           <div className="workflow-steps">
             <WorkflowStep
               number="01"
-              title="Describe Your Form"
-              description="Tell us what kind of form you need in plain English."
+              title="Create Forms Instantly with Simple English"
+              description="Tell AI what form you need. No drag & drop, no manual configuration."
               details={[
                 "Natural language understanding",
-                "AI suggests appropriate question types",
+                "AI generates appropriate question types",
                 "Examples: 'Customer feedback survey'",
-                "Context-aware field generation"
+                "Instant form generation"
               ]}
             />
             <WorkflowStep
               number="02"
-              title="Review & Customize"
-              description="Get instant form generation and refine as needed."
+              title="Add & Edit Components with Simple English"
+              description="Tell AI what to add, remove, or change. No clicking through menus."
               details={[
-                "19 question types supported",
-                "Add conditional logic and validation",
-                "Reorder questions with drag & drop",
-                "Set required fields and defaults"
+                "Edit questions using plain English",
+                "Add components instantly",
+                "Remove or reorder with simple commands",
+                "AI understands your form structure"
               ]}
             />
             <WorkflowStep
               number="03"
-              title="Publish & Collect"
-              description="Publish your form and start collecting responses."
+              title="Publish & Analyze with AI"
+              description="Publish your form and ask AI anything about your responses."
               details={[
                 "Generate publishable link instantly",
-                "No login required for respondents",
-                "Real-time response tracking",
-                "Export responses as CSV or JSON"
+                "Specialized AI analytics agent",
+                "Ask questions like 'How many responses?'",
+                "Get instant insights without exporting data"
               ]}
             />
           </div>
@@ -467,36 +515,6 @@ export const Landing: React.FC<LandingProps> = ({ onStart }) => {
         </div>
       </section>
 
-      {/* Interactive Demo */}
-      <section className="demo-section" style={{ backgroundColor: 'white' }}>
-        <div className="section-container">
-          <div className="demo-header">
-            <span className="demo-badge">Live Interactive Demo</span>
-            <h2 className="section-heading">See It in Action</h2>
-            <p className="section-subheading">
-              Try our fully functional demo! Fill out the form, explore analytics, and see sample submissions.
-              <br />
-              <strong>All components are real and interactive</strong> - exactly what you'll build with AutoForm.
-            </p>
-          </div>
-          <InteractiveDemo />
-          <div className="demo-cta">
-            <p className="demo-cta-text">
-              <strong>Powerful Features:</strong> The demo shows just a few of our 20+ question types. 
-              Add conditional logic, validation rules, custom themes, and advanced analytics to any form you create.
-            </p>
-            <GoogleAuthButton
-              onSuccess={(token) => {
-                localStorage.setItem('auth_token', token);
-                onStart();
-              }}
-            >
-              Create Your Own Form
-            </GoogleAuthButton>
-          </div>
-        </div>
-      </section>
-
       {/* Form Types Showcase */}
       <section className="showcase-section">
         <div className="section-container">
@@ -586,16 +604,16 @@ export const Landing: React.FC<LandingProps> = ({ onStart }) => {
         <div className="section-container">
           <div className="benefits-grid">
             <div className="benefit-card">
-            <h3>Simple Analytics & Submissions</h3>
-            <p>Built-in analytics and submission views make it easy to track responses. View completion rates, analyze trends, and export data - all without any setup.</p>
+            <h3>AI-Powered Analytics</h3>
+            <p>Ask AI anything about your responses. No need to export data or upload to ChatGPT. Specialized analytics agent understands your form structure and provides instant insights.</p>
             </div>
             <div className="benefit-card">
-              <h3>Lightning Fast</h3>
-              <p>Go from upload to insight in under 60 seconds. Our backend handles all the heavy lifting.</p>
+              <h3>Fast & Reliable</h3>
+              <p>Create forms instantly with simple English. Edit components with natural language. Get insights in seconds. Everything powered by AI.</p>
             </div>
             <div className="benefit-card">
-              <h3>Enterprise Ready</h3>
-              <p>Secure, scalable, and built with production workloads in mind. Connect to any database.</p>
+              <h3>AI is the Core Product</h3>
+              <p>Not an MCP server. Not a hidden chat tool. AI is built into every step - creation, editing, and analysis. This is how forms should work in the age of AI.</p>
             </div>
           </div>
         </div>
@@ -604,8 +622,8 @@ export const Landing: React.FC<LandingProps> = ({ onStart }) => {
       {/* Final CTA */}
       <section className="final-cta">
         <div className="cta-content">
-          <h2>Ready to build intelligent forms?</h2>
-          <p>Join thousands of teams collecting data faster with AI-powered forms.</p>
+          <h2>Ready to Build Forms the Right Way?</h2>
+          <p>Join the AI-first form builder. Create, edit, and analyze - all with simple English.</p>
           <GoogleAuthButton 
             className="cta-button-primary"
             onSuccess={(token) => {
@@ -613,7 +631,7 @@ export const Landing: React.FC<LandingProps> = ({ onStart }) => {
               onStart();
             }}
           >
-            Create Your First Form - Free
+            Start Building with AI - Free
           </GoogleAuthButton>
         </div>
       </section>
@@ -633,9 +651,7 @@ export const Landing: React.FC<LandingProps> = ({ onStart }) => {
             />
           </div>
           <div className="footer-links">
-            <a href="https://github.com/FireBird-Technologies/Auto-Dash" target="_blank" rel="noopener noreferrer">GitHub</a>
-            <a href="#features">Features</a>
-            <a href="#benefits">Benefits</a>
+            <a href="https://github.com/FireBird-Technologies/AutoForm" target="_blank" rel="noopener noreferrer">GitHub</a>
           </div>
         </div>
       </footer>
