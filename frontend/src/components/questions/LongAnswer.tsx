@@ -52,10 +52,10 @@ export const LongAnswer: React.FC<QuestionProps> = ({
         disabled={disabled}
         maxLength={maxLength}
         required={question.required}
-        rows={4}
+        rows={6}
         style={{
           width: '100%',
-          padding: '12px',
+          padding: '14px 16px',
           fontSize: '15px',
           border: '1px solid #e5e7eb',
           borderRadius: '8px',
@@ -63,7 +63,9 @@ export const LongAnswer: React.FC<QuestionProps> = ({
           background: 'transparent',
           transition: 'border-color 0.2s',
           fontFamily: 'inherit',
-          resize: 'vertical'
+          resize: 'vertical',
+          minHeight: '150px',
+          lineHeight: '1.6'
         }}
         onFocus={(e) => e.currentTarget.style.borderColor = effectiveAccent}
         onBlur={(e) => e.currentTarget.style.borderColor = '#e5e7eb'}
