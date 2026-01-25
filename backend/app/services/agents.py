@@ -758,15 +758,134 @@ class FormChatFunction(dspy.Module):
 
 
 # ============================================================================
+# FORM FIXER SIGNATURE
+# ============================================================================
+
+class FormFixerSignature(dspy.Signature):
+    """
+    Fix validation errors in a generated form plan.
+    
+    You are given a form that failed validation along with the specific errors.
+    Your job is to fix ONLY the issues mentioned in the validation errors while
+    preserving all other valid parts of the form.
+    
+    VALID QUESTION TYPES (use ONLY these exact strings):
+    - short_answer: Single line text input
+    - long_answer: Multi-line text input
+    - multiple_choice: Radio buttons (one selection)
+    - checkboxes: Multiple selections allowed
+    - dropdown: Single select dropdown
+    - multi_select: Multi-select dropdown
+    - number: Numeric input
+    - email: Email address input
+    - phone: Phone number input
+    - link: URL input
+    - file_upload: File attachment
+    - date: Date picker
+    - time: Time picker
+    - linear_scale: Scale rating (1-10)
+    - matrix: Grid questions
+    - rating: Star rating
+    - payment: Payment field
+    - signature: Digital signature
+    - ranking: Rank items
+    - wallet_connect: Web3 wallet
+    - button: Action button
+    
+    COMMON FIXES:
+    - "text" → "short_answer"
+    - "textarea" → "long_answer"
+    - "radio" → "multiple_choice"
+    - "checkbox" → "checkboxes"
+    - "select" → "dropdown"
+    - Missing question_type → add appropriate type based on question_text
+    - Missing question_text → generate appropriate text
+    - Missing component_id → generate as "comp_N"
+    
+    RULES:
+    1. Fix ONLY the errors mentioned - do not modify valid components
+    2. Preserve all existing valid data (question_text, settings, etc.)
+    3. Output the complete fixed form as valid JSON
+    4. Ensure all components have: component_id, question_type, question_text
+    """
+    invalid_form = dspy.InputField(desc="The form JSON that failed validation")
+    validation_errors = dspy.InputField(desc="List of validation errors to fix")
+    user_query = dspy.InputField(desc="Original user request for context")
+    fixed_form = dspy.OutputField(desc="Complete fixed form as valid JSON with all errors corrected")
+
+
+# ============================================================================
 # FORM GENERATION MODULE
 # ============================================================================
 
 class FormGenerationModule(dspy.Module):
     """Main module for generating forms from natural language."""
     
+    # Type correction mapping for common AI mistakes
+    TYPE_CORRECTIONS = {
+        'text': 'short_answer',
+        'textarea': 'long_answer',
+        'textbox': 'short_answer',
+        'input': 'short_answer',
+        'radio': 'multiple_choice',
+        'radio_button': 'multiple_choice',
+        'radio_buttons': 'multiple_choice',
+        'checkbox': 'checkboxes',
+        'select': 'dropdown',
+        'select_one': 'dropdown',
+        'select_multiple': 'multi_select',
+        'multiselect': 'multi_select',
+        'file': 'file_upload',
+        'upload': 'file_upload',
+        'scale': 'linear_scale',
+        'slider': 'linear_scale',
+        'stars': 'rating',
+        'star_rating': 'rating',
+        'sign': 'signature',
+        'rank': 'ranking',
+        'order': 'ranking',
+        'wallet': 'wallet_connect',
+        'web3': 'wallet_connect',
+        'url': 'link',
+        'website': 'link',
+        'tel': 'phone',
+        'telephone': 'phone',
+        'datetime': 'date',
+        'grid': 'matrix',
+        'table': 'matrix',
+        'numeric': 'number',
+        'integer': 'number',
+        'float': 'number',
+        'submit': 'button',
+        'action': 'button',
+    }
+    
+    VALID_TYPES = [
+        'short_answer', 'long_answer', 'multiple_choice', 'checkboxes',
+        'dropdown', 'multi_select', 'number', 'email', 'phone', 'link',
+        'file_upload', 'date', 'time', 'linear_scale', 'matrix', 'rating',
+        'payment', 'signature', 'ranking', 'wallet_connect', 'button'
+    ]
+    
     def __init__(self):
         self.planner = dspy.Predict(FormPlannerSignature)
         self.component_generator = dspy.Predict(ComponentSignatureGenerator)
+        self.form_fixer = dspy.Predict(FormFixerSignature)
+    
+    def _correct_question_type(self, question_type: str) -> str:
+        """Correct common AI mistakes in question type generation."""
+        if not question_type:
+            return 'short_answer'
+        
+        normalized = question_type.lower().strip().replace(' ', '_').replace('-', '_')
+        
+        if normalized in self.TYPE_CORRECTIONS:
+            return self.TYPE_CORRECTIONS[normalized]
+        
+        if normalized in self.VALID_TYPES:
+            return normalized
+        
+        return 'short_answer'  # Default fallback
     
     async def aforward(self, user_query: str):
         """
@@ -826,6 +945,14 @@ class FormGenerationModule(dspy.Module):
                         logger.error(f"Failed to parse component spec for {comp.get('component_id')}")
                         continue
                 
+                # Auto-correct question_type if AI generated an invalid type
+                if 'question_type' in comp_spec:
+                    original_type = comp_spec['question_type']
+                    corrected_type = self._correct_question_type(original_type)
+                    if corrected_type != original_type:
+                        logger.info(f"Auto-corrected question_type '{original_type}' -> '{corrected_type}'")
+                        comp_spec['question_type'] = corrected_type
+                
                 # Ensure order is preserved
                 comp_spec['order'] = comp.get('order', len(detailed_components))
                 detailed_components.append(comp_spec)
@@ -845,6 +972,53 @@ class FormGenerationModule(dspy.Module):
         }
         
         return final_form
+    
+    async def fix_form(self, invalid_form: dict, validation_errors: List[str], user_query: str) -> dict:
+        """
+        Fix validation errors in a form using the FormFixerSignature.
+        
+        Args:
+            invalid_form: The form dict that failed validation
+            validation_errors: List of validation error messages
+            user_query: Original user request for context
+            
+        Returns:
+            Fixed form dict, or the original if fixing fails
+        """
+        try:
+            logger.info(f"Attempting to fix form with {len(validation_errors)} validation errors")
+            
+            with dspy.context(lm=dspy.LM("openai/gpt-4o-mini", api_key=os.getenv('OPENAI_API_KEY'), max_tokens=2500)):
+                fix_result = self.form_fixer(
+                    invalid_form=json.dumps(invalid_form),
+                    validation_errors=json.dumps(validation_errors),
+                    user_query=user_query
+                )
+            
+            fixed_form = fix_result.fixed_form
+            if isinstance(fixed_form, str):
+                try:
+                    fixed_form = json.loads(fixed_form)
+                except json.JSONDecodeError:
+                    logger.error("Failed to parse fixed form JSON")
+                    return invalid_form
+            
+            # Apply type corrections to all components in the fixed form
+            if 'components' in fixed_form:
+                for comp in fixed_form['components']:
+                    if 'question_type' in comp:
+                        original_type = comp['question_type']
+                        corrected_type = self._correct_question_type(original_type)
+                        if corrected_type != original_type:
+                            logger.info(f"Post-fix correction: '{original_type}' -> '{corrected_type}'")
+                            comp['question_type'] = corrected_type
+            
+            logger.info(f"Form fixed successfully")
+            return fixed_form
+            
+        except Exception as e:
+            logger.error(f"Failed to fix form: {e}", exc_info=True)
+            return invalid_form
 
 
 # ============================================================================
