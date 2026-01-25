@@ -140,9 +140,9 @@ export const InteractiveDemo: React.FC = () => {
       </div>
 
       {/* Content */}
-      <div style={{ padding: '32px', height: '550px', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ padding: '32px', height: '550px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {activeTab === 'form' && (
-          <div>
+          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
             <div style={{ marginBottom: '24px' }}>
               <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#1f2937', marginBottom: '8px' }}>
                 Customer Feedback Survey
@@ -235,7 +235,7 @@ export const InteractiveDemo: React.FC = () => {
         )}
 
         {activeTab === 'analytics' && (
-          <div>
+          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
             <div style={{ marginBottom: '24px' }}>
               <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#1f2937', marginBottom: '8px' }}>
                 Analytics Dashboard
@@ -313,7 +313,7 @@ export const InteractiveDemo: React.FC = () => {
         )}
 
         {activeTab === 'submissions' && (
-          <div>
+          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
             <div style={{ marginBottom: '24px' }}>
               <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#1f2937', marginBottom: '8px' }}>
                 Form Submissions
