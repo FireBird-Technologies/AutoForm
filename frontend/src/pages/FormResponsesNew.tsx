@@ -132,6 +132,16 @@ export const FormResponsesNew: React.FC = () => {
     }
   };
 
+  // Helper to truncate text at 100 characters
+  const truncateText = (text: string, maxLength: number = 100): React.ReactNode => {
+    if (text.length <= maxLength) return text;
+    return (
+      <span title={text}>
+        {text.substring(0, maxLength)}...
+      </span>
+    );
+  };
+
   const formatAnswer = (value: any): React.ReactNode => {
     if (!value) return '-';
     
@@ -193,7 +203,7 @@ export const FormResponsesNew: React.FC = () => {
       );
     }
 
-    if (value.text) return value.text;
+    if (value.text) return truncateText(String(value.text));
     if (value.file_url || value.s3_url || value.url) {
       const downloadUrl = value.file_url || value.s3_url || value.url;
       return (
@@ -237,22 +247,30 @@ export const FormResponsesNew: React.FC = () => {
       );
     }
     if (value.number !== undefined && value.number !== null) return value.number.toString();
-    if (value.choices) return Array.isArray(value.choices) ? value.choices.join(', ') : String(value.choices);
+    if (value.choices) {
+      const choicesText = Array.isArray(value.choices) ? value.choices.join(', ') : String(value.choices);
+      return truncateText(choicesText);
+    }
     if (value.date) return value.date;
-    if (value.rating) return `${'⭐'.repeat(value.rating)}`;
+    if (value.rating) return `${'⭐'.repeat(Math.min(value.rating, 5))}`;
     if (value.matrix_answers) {
-      return Object.entries(value.matrix_answers)
+      const matrixText = Object.entries(value.matrix_answers)
         .map(([row, col]) => `${row}: ${col}`)
         .join('; ');
+      return truncateText(matrixText);
     }
-    if (value.ranked_items && Array.isArray(value.ranked_items)) return value.ranked_items.join(' → ');
-    if (value.wallet_address) return value.wallet_address;
+    if (value.ranked_items && Array.isArray(value.ranked_items)) {
+      const rankedText = value.ranked_items.join(' → ');
+      return truncateText(rankedText);
+    }
+    if (value.wallet_address) return truncateText(String(value.wallet_address));
     
     // Handle null/undefined values
     if (value === null || value === undefined) return '-';
     
     // Fallback for other types
-    return typeof value === 'object' ? JSON.stringify(value) : String(value);
+    const fallbackText = typeof value === 'object' ? JSON.stringify(value) : String(value);
+    return truncateText(fallbackText);
   };
 
   // Filter responses by status
