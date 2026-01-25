@@ -15,6 +15,73 @@ import dspy
 
 logger = logging.getLogger(__name__)
 
+# Maximum retries for form generation when validation fails
+MAX_GENERATION_RETRIES = 3
+
+# Common AI type mistakes -> correct type mapping
+TYPE_CORRECTION_MAP = {
+    'text': 'short_answer',
+    'textarea': 'long_answer',
+    'textbox': 'short_answer',
+    'input': 'short_answer',
+    'radio': 'multiple_choice',
+    'radio_button': 'multiple_choice',
+    'radio_buttons': 'multiple_choice',
+    'checkbox': 'checkboxes',
+    'select': 'dropdown',
+    'select_one': 'dropdown',
+    'select_multiple': 'multi_select',
+    'multiselect': 'multi_select',
+    'file': 'file_upload',
+    'upload': 'file_upload',
+    'scale': 'linear_scale',
+    'slider': 'linear_scale',
+    'stars': 'rating',
+    'star_rating': 'rating',
+    'sign': 'signature',
+    'rank': 'ranking',
+    'order': 'ranking',
+    'wallet': 'wallet_connect',
+    'web3': 'wallet_connect',
+    'url': 'link',
+    'website': 'link',
+    'tel': 'phone',
+    'telephone': 'phone',
+    'datetime': 'date',
+    'grid': 'matrix',
+    'table': 'matrix',
+    'numeric': 'number',
+    'integer': 'number',
+    'float': 'number',
+    'submit': 'button',
+    'action': 'button',
+}
+
+
+def correct_question_type(question_type: str) -> str:
+    """
+    Correct common AI mistakes in question type generation.
+    
+    Args:
+        question_type: The question type string from AI
+        
+    Returns:
+        Corrected question type string
+    """
+    if not question_type:
+        return 'short_answer'
+    
+    # Normalize: lowercase and strip
+    normalized = question_type.lower().strip().replace(' ', '_').replace('-', '_')
+    
+    # Check if it needs correction
+    if normalized in TYPE_CORRECTION_MAP:
+        corrected = TYPE_CORRECTION_MAP[normalized]
+        logger.info(f"Corrected question type '{question_type}' -> '{corrected}'")
+        return corrected
+    
+    return normalized
+
 
 # Validation metrics for signature outputs
 def validate_form_plan(form_result: Dict[str, Any]) -> Tuple[bool, List[str]]:
@@ -39,6 +106,13 @@ def validate_form_plan(form_result: Dict[str, Any]) -> Tuple[bool, List[str]]:
     
     # Validate each component has required fields
     components = form_result.get("components", [])
+    valid_types = [
+        "short_answer", "long_answer", "multiple_choice", "checkboxes",
+        "dropdown", "multi_select", "number", "email", "phone", "link",
+        "file_upload", "date", "time", "linear_scale", "matrix", "rating",
+        "payment", "signature", "ranking", "wallet_connect", "button"
+    ]
+    
     for idx, comp in enumerate(components):
         if not comp.get("component_id"):
             errors.append(f"Component {idx}: missing component_id")
@@ -47,13 +121,16 @@ def validate_form_plan(form_result: Dict[str, Any]) -> Tuple[bool, List[str]]:
         if not comp.get("question_text"):
             errors.append(f"Component {idx}: missing question_text")
         
-        # Validate question type
-        valid_types = [
-            "short_answer", "long_answer", "multiple_choice", "checkboxes",
-            "dropdown", "multi_select", "number", "email", "phone", "link",
-            "file_upload", "date", "time", "linear_scale", "matrix", "rating",
-            "payment", "signature", "ranking", "wallet_connect"
-        ]
+        # Auto-correct question type before validation
+        original_type = comp.get("question_type", "")
+        corrected_type = correct_question_type(original_type)
+        
+        # Update the component with corrected type
+        if corrected_type != original_type:
+            comp["question_type"] = corrected_type
+            logger.info(f"Auto-corrected component {idx} type: '{original_type}' -> '{corrected_type}'")
+        
+        # Validate question type (after correction)
         if comp.get("question_type") not in valid_types:
             errors.append(f"Component {idx}: invalid question_type '{comp.get('question_type')}'")
     
@@ -152,11 +229,28 @@ async def generate_form_spec(
             logger.error(f"Form generation error: {form_result['error']}")
             raise Exception(form_result['error'])
         
-        # VALIDATION METRIC: Validate form plan structure
+        # VALIDATION METRIC: Validate form plan structure (includes auto-correction)
         is_valid, validation_errors = validate_form_plan(form_result)
+        
+        # If validation fails, try to fix the form using the AI fixer
         if not is_valid:
-            logger.error(f"Form plan validation failed: {validation_errors}")
-            raise Exception(f"Invalid form plan: {'; '.join(validation_errors)}")
+            logger.warning(f"Form plan validation failed: {validation_errors}")
+            logger.info("Attempting to fix form using FormFixerSignature...")
+            
+            # Use the fixer to correct validation errors
+            form_result = await generator.fix_form(
+                invalid_form=form_result,
+                validation_errors=validation_errors,
+                user_query=user_query
+            )
+            
+            # Re-validate after fixing
+            is_valid, validation_errors = validate_form_plan(form_result)
+            if not is_valid:
+                logger.error(f"Form still invalid after fix attempt: {validation_errors}")
+                raise Exception(f"Invalid form plan: {'; '.join(validation_errors)}")
+            else:
+                logger.info("Form successfully fixed by AI fixer")
         
         # Extract form metadata
         form_data = {

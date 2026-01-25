@@ -24,6 +24,7 @@ export const Sidebar: React.FC = () => {
   const { isOpen } = useSidebar();
   const [forms, setForms] = useState<Form[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [hoveredForm, setHoveredForm] = useState<number | null>(null);
   const [deletingFormId, setDeletingFormId] = useState<number | null>(null);
 
@@ -31,7 +32,10 @@ export const Sidebar: React.FC = () => {
     loadForms();
   }, []);
 
-  const loadForms = async () => {
+  const loadForms = async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    }
     try {
       const response = await fetch(`${config.backendUrl}/api/forms?limit=50&sort=updated_at`, {
         headers: getAuthHeaders(),
@@ -46,6 +50,13 @@ export const Sidebar: React.FC = () => {
       console.error('Failed to load forms:', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const handleRefresh = () => {
+    if (!refreshing) {
+      loadForms(true);
     }
   };
 
@@ -189,15 +200,66 @@ export const Sidebar: React.FC = () => {
         padding: '12px'
       }}>
         <div style={{
-          fontSize: '11px',
-          fontWeight: '600',
-          color: '#9ca3af',
-          textTransform: 'uppercase',
-          letterSpacing: '0.05em',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
           marginBottom: '8px',
           padding: '0 8px'
         }}>
-          Recent Forms
+          <span style={{
+            fontSize: '11px',
+            fontWeight: '600',
+            color: '#9ca3af',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em'
+          }}>
+            Recent Forms
+          </span>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            title="Refresh forms"
+            style={{
+              padding: '4px',
+              background: 'transparent',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: refreshing ? 'default' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#9ca3af',
+              transition: 'all 0.15s',
+              opacity: refreshing ? 0.6 : 1
+            }}
+            onMouseEnter={(e) => {
+              if (!refreshing) {
+                e.currentTarget.style.background = 'rgba(147, 51, 234, 0.1)';
+                e.currentTarget.style.color = '#9333ea';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = '#9ca3af';
+            }}
+          >
+            <svg 
+              width="14" 
+              height="14" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2"
+              style={{
+                animation: refreshing ? 'spin 1s linear infinite' : 'none'
+              }}
+            >
+              <path d="M21 2v6h-6" />
+              <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+              <path d="M3 22v-6h6" />
+              <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+            </svg>
+          </button>
         </div>
 
         {loading ? (
