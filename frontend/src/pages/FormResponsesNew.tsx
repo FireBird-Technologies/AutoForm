@@ -30,7 +30,7 @@ interface FormData {
 export const FormResponsesNew: React.FC = () => {
   const { formId } = useParams<{ formId: string }>();
   const navigate = useNavigate();
-  const { isOpen: isSidebarOpen, setSidebarOpen } = useSidebar();
+  const { setSidebarOpen } = useSidebar();
   
   const [formData, setFormData] = useState<FormData | null>(null);
   const [responses, setResponses] = useState<Response[]>([]);
@@ -43,13 +43,6 @@ export const FormResponsesNew: React.FC = () => {
   const [showChat, setShowChat] = useState(false);
   
   const ITEMS_PER_PAGE = 50;
-
-  // Close chat when sidebar opens
-  useEffect(() => {
-    if (isSidebarOpen) {
-      setShowChat(false);
-    }
-  }, [isSidebarOpen]);
 
   // Handler to open chat and close sidebar
   const handleOpenChat = () => {
@@ -357,11 +350,12 @@ export const FormResponsesNew: React.FC = () => {
 
   return (
     <div style={{
-      minHeight: '100vh',
-      height: '100vh',
+      flex: 1,
+      height: '100%',
       display: 'flex',
       overflow: 'hidden',
-      background: '#fafafa'
+      background: '#fafafa',
+      minHeight: 0
     }}>
       {/* Collapsed Chat Toggle */}
       {!showChat && (
@@ -428,6 +422,7 @@ export const FormResponsesNew: React.FC = () => {
       {/* Main Content */}
       <div style={{
         flex: 1,
+        minHeight: 0, // Critical for flex children to enable scroll
         overflowY: 'auto',
         padding: '24px'
       }}>

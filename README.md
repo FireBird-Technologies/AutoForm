@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 <div align="center">
   <img src="backend/images/AutoForm.svg" alt="AutoForm Logo" width="300" />
   

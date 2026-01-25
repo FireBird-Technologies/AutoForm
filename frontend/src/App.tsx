@@ -114,7 +114,7 @@ function FormBuilderPage() {
   };
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       {renderStep()}
     </div>
   );
@@ -142,9 +142,9 @@ function AppRoutes() {
       <AuthHandler />
       {showNavbar && <NewYearBanner />}
       {showNavbar && <Navbar onAccountClick={() => navigate('/account')} />}
-      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'row' }}>
+      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'row', minHeight: 0 }}>
         {showSidebar && <Sidebar />}
-        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <Routes>
             <Route path="/" element={<Landing onStart={() => navigate('/build')} />} />
           

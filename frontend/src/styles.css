@@ -709,6 +709,7 @@ body {
     inset 0 -1px 0 rgba(255, 255, 255, 0.3);
   position: relative;
   overflow: hidden;
+  z-index: 10;
 }
 
 .landing-hero::before {
@@ -1320,23 +1321,23 @@ body {
 /* Final CTA */
 .final-cta {
   padding: 80px 32px;
-  background: #ffffff;
+  background: #9333ea;
   margin: 60px 0 0;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid #9333ea;
 }
 
 .cta-content {
   text-align: center;
-  color: #000000;
+  color: #ffffff;
   max-width: 600px;
   margin: 0 auto;
-  background: #ffffff;
+  background: transparent;
   padding: 48px;
   border-radius: 24px;
-  border: 2px solid #e9d5ff;
+  border: 2px solid rgba(255, 255, 255, 0.2);
   box-shadow: 
     0 8px 32px rgba(0, 0, 0, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
     inset 0 -1px 0 rgba(255, 255, 255, 0.1);
   position: relative;
   overflow: hidden;
@@ -1358,13 +1359,13 @@ body {
   font-size: clamp(32px, 5vw, 40px);
   font-weight: 800;
   margin: 0 0 12px;
-  color: #000000;
+  color: #ffffff;
 }
 
 .cta-content p {
   font-size: 18px;
   margin: 0 0 32px;
-  color: #6b7280;
+  color: #ffffff;
 }
 
 .cta-content .cta-button-primary {
