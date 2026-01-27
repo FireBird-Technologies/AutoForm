@@ -225,7 +225,7 @@ class EmailService:
             user_name=user_name or 'there',
             form_count=form_count,
             app_name='AutoForm',
-            support_email=os.getenv('SUPPORT_EMAIL', os.getenv('EMAIL_FROM_ADDRESS', 'support@autoform.com')),
+            support_email=os.getenv('SUPPORT_EMAIL', os.getenv('EMAIL_FROM_ADDRESS', 'support@autoform.ink')),
             frontend_url=os.getenv('FRONTEND_URL', 'http://localhost:5173')
         )
         
