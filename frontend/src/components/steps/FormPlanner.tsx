@@ -7,6 +7,17 @@ interface FormPlannerProps {
 export const FormPlanner: React.FC<FormPlannerProps> = ({ onComplete }) => {
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+  // Track window width for responsive adjustments
+  React.useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobile = windowWidth < 768;
+  const isTablet = windowWidth >= 768 && windowWidth < 1024;
 
   const examples = [
     'Create a customer feedback form with rating and comments',
@@ -35,35 +46,42 @@ export const FormPlanner: React.FC<FormPlannerProps> = ({ onComplete }) => {
 
   return (
     <div style={{
-      minHeight: '100vh',
+      minHeight: '100%',
+      height: '100%',
       display: 'flex',
       alignItems: 'flex-start',
       justifyContent: 'center',
-      padding: '12vh 20px 40px 20px',
-      background: '#ffffff'
+      padding: isMobile ? '8vh 16px 32px 16px' : isTablet ? '10vh 20px 36px 20px' : '12vh 20px 40px 20px',
+      background: '#ffffff',
+      overflowY: 'auto',
+      overflowX: 'hidden',
+      WebkitOverflowScrolling: 'touch'
     }}>
       <div style={{
         maxWidth: '900px',
-        width: '100%'
+        width: '100%',
+        flex: '0 1 auto'
       }}>
         <div style={{
           textAlign: 'center',
           marginBottom: '38px'
         }}>
           <h1 style={{
-            fontSize: '48px',
+            fontSize: 'clamp(32px, 8vw, 48px)',
             fontWeight: '700',
             color: '#9333ea',
             marginBottom: '16px',
-            letterSpacing: '-0.02em'
+            letterSpacing: '-0.02em',
+            lineHeight: '1.2'
           }}>
             What form do you need?
           </h1>
           <p style={{
-            fontSize: '18px',
+            fontSize: 'clamp(16px, 3vw, 18px)',
             color: '#6b7280',
             maxWidth: '600px',
-            margin: '0 auto'
+            margin: '0 auto',
+            lineHeight: '1.5'
           }}>
             Tell us what you want to create and we'll build it for you
           </p>
@@ -91,18 +109,19 @@ export const FormPlanner: React.FC<FormPlannerProps> = ({ onComplete }) => {
             placeholder="Example: Create a customer feedback form with rating and comments"
             style={{
               width: '100%',
-              minHeight: '140px',
-                padding: '20px 60px 20px 20px',
-              fontSize: '17px',
-                border: '1px solid #e5e7eb',
+              minHeight: 'clamp(100px, 20vh, 140px)',
+              padding: '20px 60px 20px 20px',
+              fontSize: 'clamp(15px, 3vw, 17px)',
+              border: '1px solid #e5e7eb',
               borderRadius: '12px',
               resize: 'vertical',
               fontFamily: 'inherit',
               outline: 'none',
               transition: 'all 0.2s',
-                background: '#ffffff',
-                boxShadow: '0 2px 8px rgba(147, 51, 234, 0.15)'
-              }}
+              background: '#ffffff',
+              boxShadow: '0 2px 8px rgba(147, 51, 234, 0.15)',
+              lineHeight: '1.5'
+            }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey && description.trim()) {
                   e.preventDefault();
@@ -169,7 +188,8 @@ export const FormPlanner: React.FC<FormPlannerProps> = ({ onComplete }) => {
           <div style={{
             display: 'flex',
             flexWrap: 'wrap',
-            gap: '8px'
+            gap: '8px',
+            justifyContent: 'center'
           }}>
             {examples.map((example, index) => (
               <button
@@ -178,22 +198,27 @@ export const FormPlanner: React.FC<FormPlannerProps> = ({ onComplete }) => {
                 onClick={() => setDescription(example)}
                 style={{
                   padding: '10px 16px',
-                  fontSize: '14px',
+                  fontSize: 'clamp(13px, 2.5vw, 14px)',
                   color: '#374151',
                   background: 'transparent',
                   border: '1px solid #e5e7eb',
                   borderRadius: '8px',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
-                  fontWeight: '500'
+                  fontWeight: '500',
+                  textAlign: 'left',
+                  wordBreak: 'break-word',
+                  lineHeight: '1.4'
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.borderColor = '#9333ea';
                   e.currentTarget.style.color = '#9333ea';
+                  e.currentTarget.style.background = '#faf5ff';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.borderColor = '#e5e7eb';
                   e.currentTarget.style.color = '#374151';
+                  e.currentTarget.style.background = 'transparent';
                 }}
               >
                 {example}
