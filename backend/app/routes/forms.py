@@ -14,7 +14,7 @@ from datetime import datetime
 
 from ..core.db import get_db
 from ..core.security import get_current_user
-from ..models import User, Form, FormQuestion, ConditionalRule, PublicForm, QuestionType, ConditionType, FormResponse as FormResponseModel, ResponseAnswer, ChatMessage as ChatMessageModel, FormUpload
+from ..models import User, Form, FormQuestion, ConditionalRule, PublicForm, QuestionType, ConditionType, FormResponse as FormResponseModel, ResponseAnswer, ChatMessage as ChatMessageModel, FormUpload, Subscription
 from ..schemas.form import (
     FormCreate, FormUpdate, FormResponse, FormGenerationResponse,
     QuestionCreate, QuestionUpdate, QuestionResponse,
@@ -24,9 +24,11 @@ from ..schemas.form import (
 )
 from ..services.form_creator import generate_form_spec, edit_form_spec, validate_question_type, validate_condition_type
 from ..services.credit_service import credit_service
+from ..services.email_service import email_service, EmailServiceError
 
 import logging
 import re
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -151,6 +153,18 @@ async def generate_form(
             description=f"Generated form: {new_form.title}",
             db=db
         )
+        
+        # Send feedback email asynchronously (non-blocking)
+        # Only send to users with paid plans (plan_id > 1)
+        form_count = db.query(Form).filter(Form.user_id == current_user.id).count()
+        task = asyncio.create_task(_send_feedback_email_if_eligible(
+            user_id=current_user.id,
+            user_email=current_user.email,
+            user_name=current_user.name,
+            form_count=form_count
+        ))
+        # Add done callback to log any exceptions
+        task.add_done_callback(lambda t: logger.error(f"Email task error: {t.exception()}") if t.exception() else None)
         
         return FormGenerationResponse(
             form=FormResponse.model_validate(new_form),
@@ -1389,3 +1403,53 @@ async def chat_edit_form(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Chat processing failed: {str(e)}"
         )
+
+
+async def _send_feedback_email_if_eligible(user_id: int, user_email: str, user_name: str, form_count: int):
+    """
+    Send feedback request email to eligible users (paid plans only).
+    Runs asynchronously and doesn't block the main request.
+    Creates its own database session to avoid session conflicts.
+    
+    Args:
+        user_id: User ID
+        user_email: User email address
+        user_name: User name
+        form_count: Number of forms the user has created
+    """
+    from ..core.db import SessionLocal
+    
+    # Create a new database session for this async task
+    db = SessionLocal()
+    
+    try:
+        # Get user's subscription
+        subscription = db.query(Subscription).filter(
+            Subscription.user_id == user_id
+        ).order_by(desc(Subscription.created_at)).first()
+        
+        # Only send to users with paid plans (plan_id > 1, as 1 is free tier)
+        if not subscription or not subscription.plan_id or subscription.plan_id <= 1:
+            logger.info(f"User {user_email} is on free tier (plan_id: {subscription.plan_id if subscription else 'None'}), skipping feedback email")
+            return
+        
+        logger.info(f"Attempting to send feedback email to {user_email} (plan_id: {subscription.plan_id})")
+        
+        # Send feedback request email
+        await email_service.send_feedback_request_email(
+            to_email=user_email,
+            user_name=user_name,
+            form_count=form_count
+        )
+        
+        logger.info(f"✅ Feedback email sent successfully to {user_email}")
+        
+    except EmailServiceError as e:
+        # Log but don't fail the request
+        logger.error(f"Failed to send feedback email to {user_email}: {e}")
+    except Exception as e:
+        # Catch all other errors to prevent breaking the main flow
+        logger.error(f"Unexpected error sending feedback email to {user_email}: {e}", exc_info=True)
+    finally:
+        # Always close the database session
+        db.close()
