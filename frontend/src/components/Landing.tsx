@@ -652,6 +652,8 @@ export const Landing: React.FC<LandingProps> = ({ onStart }) => {
           </div>
           <div className="footer-links">
             <a href="https://github.com/FireBird-Technologies/AutoForm" target="_blank" rel="noopener noreferrer">GitHub</a>
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/terms">Terms of Service</a>
           </div>
         </div>
       </footer>
