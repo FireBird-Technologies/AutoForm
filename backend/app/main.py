@@ -49,6 +49,18 @@ default_lm = dspy.LM(default_model, max_tokens=3200,api_key=os.getenv(provider+'
 
 dspy.configure(lm=default_lm)
 
+# Session support for OAuth (Authlib requires request.session)
+# NOTE: SessionMiddleware must be added BEFORE CORSMiddleware (middlewares execute in reverse order)
+# For production HTTPS with cross-site OAuth, use same_site="none" with https_only=True
+is_production = os.getenv("SESSION_HTTPS_ONLY", "0") == "1"
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv("SESSION_SECRET", "change-this-session-secret"),
+    same_site="none" if is_production else "lax",  # "none" required for cross-site OAuth on HTTPS
+    https_only=is_production,
+    max_age=3600,  # 1 hour session lifetime
+)
+
 # CORS middleware - allow frontend to access backend
 frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
 # Support multiple origins (local dev + production)
@@ -59,14 +71,6 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-)
-
-# Session support for OAuth (Authlib requires request.session)
-app.add_middleware(
-    SessionMiddleware,
-    secret_key=os.getenv("SESSION_SECRET", "change-this-session-secret"),
-    same_site="lax",
-    https_only=bool(int(os.getenv("SESSION_HTTPS_ONLY", "0"))),
 )
 
 

@@ -40,13 +40,14 @@ async def login(request: Request):
 @router.get("/callback")
 async def callback(request: Request, db: Session = Depends(get_db)):
     try:
+        # Let authlib handle the OAuth state validation
         token = await oauth.google.authorize_access_token(request)
         userinfo = token.get("userinfo") or await oauth.google.parse_id_token(request, token)
         
         email = userinfo.get("email")
         if not email:
             logger.error("No email in Google OAuth response")
-            return RedirectResponse(url=f"{FRONTEND_URL}/?error=missing_email")
+            return RedirectResponse(url=f"{FRONTEND_URL}/?error=missing_email", status_code=302)
         
         user = db.query(User).filter(User.email == email).first()
         is_new_user = not user
@@ -73,11 +74,19 @@ async def callback(request: Request, db: Session = Depends(get_db)):
             asyncio.create_task(_send_welcome_email(user))
         
         jwt_token = create_access_token(str(user.id), {"email": user.email})
-        return RedirectResponse(url=f"{FRONTEND_URL}/?{urlencode({'token': jwt_token})}")
+        return RedirectResponse(url=f"{FRONTEND_URL}/?{urlencode({'token': jwt_token})}", status_code=302)
     
     except Exception as e:
+        error_msg = str(e).lower()
         logger.error(f"OAuth callback error: {e}", exc_info=True)
-        return RedirectResponse(url=f"{FRONTEND_URL}/?error=login_failed")
+        
+        # Provide more specific error messages
+        if "state" in error_msg or "mismatch" in error_msg or "missingstateerror" in error_msg:
+            return RedirectResponse(url=f"{FRONTEND_URL}/?error=session_expired&message=Please try logging in again", status_code=302)
+        elif "token" in error_msg:
+            return RedirectResponse(url=f"{FRONTEND_URL}/?error=token_error&message=Authentication failed, please retry", status_code=302)
+        else:
+            return RedirectResponse(url=f"{FRONTEND_URL}/?error=login_failed&message=Login failed, please try again", status_code=302)
 
 
 async def _send_welcome_email(user: User):
