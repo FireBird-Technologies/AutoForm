@@ -24,10 +24,35 @@ function AuthHandler() {
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
     const token = urlParams.get('token');
+    const error = urlParams.get('error');
+    const message = urlParams.get('message');
     
-    if (token && sessionStorage.getItem('auth_callback')) {
+    // Handle OAuth errors
+    if (error) {
+      console.error('OAuth error:', error, message);
+      sessionStorage.removeItem('auth_callback');
+      
+      // Clear the URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // Show error to user (you might want to use a toast notification instead)
+      if (error === 'session_expired') {
+        // Session expired - user just needs to try again
+        console.log('Session expired, please try logging in again');
+      } else {
+        alert(message || 'Login failed. Please try again.');
+      }
+      return;
+    }
+    
+    // Handle successful login - process token even without sessionStorage flag
+    // (the token itself is proof of successful authentication)
+    if (token) {
       localStorage.setItem('auth_token', token);
       sessionStorage.removeItem('auth_callback');
+      
+      // Clear the URL parameters for cleaner URL
+      window.history.replaceState({}, document.title, window.location.pathname);
       
       // Check if there's a redirect URL stored
       const redirectTo = sessionStorage.getItem('auth_redirect_to');
