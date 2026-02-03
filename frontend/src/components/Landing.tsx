@@ -1,9 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Player } from '@remotion/player';
 import { FeatureCard } from './landing/FeatureCard';
 import { WorkflowStep } from './landing/WorkflowStep';
 import { GoogleAuthButton } from './GoogleAuthButton';
 import { InteractiveDemo } from './landing/InteractiveDemo';
+import { DemoVideo } from '../../remotion/DemoVideo';
 
 interface LandingProps {
   onStart: () => void;
@@ -55,43 +57,81 @@ export const Landing: React.FC<LandingProps> = ({ onStart }) => {
     <div className="landing" ref={landingRef}>
       {/* Hero */}
 
-      <header className="landing-hero">
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '0px', gap: '0.25rem' }}>
-          <div className="landing-badge" style={{ marginBottom: 0 }}>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style={{ verticalAlign: 'middle', marginRight: '0.4em' }}>
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-            </svg>
-            Open Source
+      <header className="landing-hero" style={{ 
+          maxWidth: '1400px', 
+          padding: '60px 32px 40px',
+          background: 'transparent',
+          backdropFilter: 'none',
+          WebkitBackdropFilter: 'none',
+          border: 'none',
+          boxShadow: 'none',
+          borderRadius: 0,
+        }}>
+        {/* Browser Mockup Frame */}
+        <div style={{
+          width: '100%',
+          margin: '0 auto',
+          borderRadius: '12px',
+          overflow: 'hidden',
+          backgroundColor: '#ffffff',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+        }}>
+          {/* Browser Chrome / Title Bar */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '12px 16px',
+            backgroundColor: '#f5f5f5',
+            borderBottom: '1px solid #e5e5e5',
+            gap: '8px',
+          }}>
+            {/* Traffic Lights */}
+            <div style={{ display: 'flex', gap: '8px', marginRight: '8px' }}>
+              <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ff5f57' }} />
+              <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#febc2e' }} />
+              <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#28c840' }} />
+            </div>
+            {/* URL Bar */}
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#ffffff',
+              borderRadius: '6px',
+              padding: '6px 12px',
+              border: '1px solid #e5e5e5',
+            }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" style={{ marginRight: '6px' }}>
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+              <span style={{ fontSize: '13px', color: '#666', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                autoform.ink
+              </span>
+            </div>
           </div>
-          <img 
-            src="/logo.svg" 
-            alt="Logo" 
-            className="hero-logo"
-            style={{
-              width: '600px',
-              height: 'auto',
-              marginBottom: 0,
-              marginTop: 0
-            }}
-          />
+          {/* Video Content */}
+          <div style={{ backgroundColor: '#000000' }}>
+            <Player
+              component={DemoVideo}
+              durationInFrames={1200}
+              compositionWidth={1920}
+              compositionHeight={1080}
+              fps={30}
+              controls
+              loop
+              autoPlay
+              style={{
+                width: '100%',
+                display: 'block',
+              }}
+              clickToPlay={false}
+            />
+          </div>
         </div>
-        <h1 className="landing-title">AI First Forms</h1>
-        <p className="landing-subtitle">
-          A better way to work with Forms, using AI
-          <br />
-          <strong style={{ color: '#9333ea' }}> 
-            Generate with AI
-          </strong>
-          <br />
-          <strong style={{ color: '#9333ea' }}>
-            Edit with AI
-          </strong>
-          <br />
-          <strong style={{ color: '#9333ea' }}>
-            Analyze with AI
-          </strong>
-        </p>
-        <div className="landing-cta">
+
+        <div className="landing-cta" style={{ marginTop: '48px' }}>
           <GoogleAuthButton onSuccess={(token) => {
             localStorage.setItem('auth_token', token);
             onStart();
