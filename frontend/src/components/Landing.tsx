@@ -115,7 +115,7 @@ export const Landing: React.FC<LandingProps> = ({ onStart }) => {
           <div style={{ backgroundColor: '#000000' }}>
             <Player
               component={DemoVideo}
-              durationInFrames={1200}
+              durationInFrames={1230}
               compositionWidth={1920}
               compositionHeight={1080}
               fps={30}

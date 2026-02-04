@@ -4,7 +4,7 @@ import { useCurrentFrame, useVideoConfig, interpolate, Easing, Img, staticFile }
 export const OutroScene: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const startFrame = 36 * fps; // Starts at 36 seconds (frame 1080)
+  const startFrame = 37 * fps; // Starts at 37 seconds (frame 1110)
 
   // Logo fade in first
   const logoOpacity = interpolate(

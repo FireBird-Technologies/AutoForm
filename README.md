@@ -21,6 +21,20 @@
 
 ---
 
+## Demo
+
+<div align="center">
+
+https://github.com/user-attachments/assets/placeholder-upload-video-here
+
+> **Note:** To see the demo video, upload `frontend/public/DemoVideo.mp4` to this README by dragging it into the edit view on GitHub, or watch it live at:
+
+**[🚀 View Live Demo → autoform.ink](https://autoform.ink)**
+
+</div>
+
+---
+
 ## Features
 
 <table>

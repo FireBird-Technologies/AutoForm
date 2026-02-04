@@ -11,14 +11,14 @@ export const DemoVideo: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Scene timing (in frames) - 40 seconds total @ 30fps = 1200 frames
+  // Scene timing (in frames) - 41 seconds total @ 30fps = 1230 frames
   // Order: Intro → FormCreation → AIAnalysis (KEY) → Editing → QuestionTypes → Outro
-  const introEnd = 3 * fps; // 0-3s (frames 0-90)
-  const formCreationEnd = 11 * fps; // 3-11s (frames 90-330)
-  const aiAnalysisEnd = 23 * fps; // 11-23s (frames 330-690) - 12 seconds for detail
-  const editingEnd = 31 * fps; // 23-31s (frames 690-930)
-  const questionTypesEnd = 36 * fps; // 31-36s (frames 930-1080)
-  // Video ends at 40s (1200 frames)
+  const introEnd = 4 * fps; // 0-4s (frames 0-120) - extra 1s for feature closeup
+  const formCreationEnd = 12 * fps; // 4-12s (frames 120-360)
+  const aiAnalysisEnd = 24 * fps; // 12-24s (frames 360-720) - 12 seconds for detail
+  const editingEnd = 32 * fps; // 24-32s (frames 720-960)
+  const questionTypesEnd = 37 * fps; // 32-37s (frames 960-1110)
+  // Video ends at 41s (1230 frames)
 
   // Determine which scene to show
   let currentScene: React.ReactNode;

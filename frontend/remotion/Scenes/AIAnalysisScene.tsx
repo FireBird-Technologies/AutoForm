@@ -4,7 +4,7 @@ import { useCurrentFrame, useVideoConfig, interpolate, Easing } from 'remotion';
 export const AIAnalysisScene: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const startFrame = 11 * fps; // Starts at 11 seconds
+  const startFrame = 12 * fps; // Starts at 12 seconds
 
   // Header animation
   const headerOpacity = interpolate(frame, [startFrame, startFrame + 20], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });

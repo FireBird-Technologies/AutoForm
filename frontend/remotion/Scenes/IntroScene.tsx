@@ -32,9 +32,20 @@ export const IntroScene: React.FC = () => {
   });
 
   // Feature badges appear
-  const badge1Opacity = interpolate(frame, [50, 65], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  const badge2Opacity = interpolate(frame, [58, 73], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  const badge3Opacity = interpolate(frame, [66, 81], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const badge1Opacity = interpolate(frame, [50, 60], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const badge2Opacity = interpolate(frame, [55, 65], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const badge3Opacity = interpolate(frame, [60, 70], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+
+  // Feature closeup - each badge scales up for ~10 frames (0.33s each = 1s total)
+  // Starts at frame 75, ends at frame 105
+  const badge1Scale = interpolate(frame, [75, 80, 85, 90], [1, 1.15, 1.15, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const badge2Scale = interpolate(frame, [85, 90, 95, 100], [1, 1.15, 1.15, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const badge3Scale = interpolate(frame, [95, 100, 105, 110], [1, 1.15, 1.15, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  
+  // Glow effect during closeup
+  const badge1Glow = interpolate(frame, [75, 80, 85, 90], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const badge2Glow = interpolate(frame, [85, 90, 95, 100], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const badge3Glow = interpolate(frame, [95, 100, 105, 110], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
 
   return (
     <div
@@ -114,6 +125,7 @@ export const IntroScene: React.FC = () => {
         <div
           style={{
             opacity: badge1Opacity,
+            transform: `scale(${badge1Scale})`,
             padding: '16px 32px',
             backgroundColor: 'rgba(255, 255, 255, 0.15)',
             borderRadius: '50px',
@@ -122,6 +134,8 @@ export const IntroScene: React.FC = () => {
             fontWeight: 600,
             border: '2px solid rgba(255, 255, 255, 0.3)',
             backdropFilter: 'blur(10px)',
+            boxShadow: badge1Glow > 0 ? `0 0 ${30 * badge1Glow}px ${15 * badge1Glow}px rgba(255, 255, 255, 0.4)` : 'none',
+            transition: 'box-shadow 0.1s',
           }}
         >
           Generate with AI
@@ -129,6 +143,7 @@ export const IntroScene: React.FC = () => {
         <div
           style={{
             opacity: badge2Opacity,
+            transform: `scale(${badge2Scale})`,
             padding: '16px 32px',
             backgroundColor: 'rgba(255, 255, 255, 0.15)',
             borderRadius: '50px',
@@ -137,6 +152,8 @@ export const IntroScene: React.FC = () => {
             fontWeight: 600,
             border: '2px solid rgba(255, 255, 255, 0.3)',
             backdropFilter: 'blur(10px)',
+            boxShadow: badge2Glow > 0 ? `0 0 ${30 * badge2Glow}px ${15 * badge2Glow}px rgba(255, 255, 255, 0.4)` : 'none',
+            transition: 'box-shadow 0.1s',
           }}
         >
           Edit with AI
@@ -144,6 +161,7 @@ export const IntroScene: React.FC = () => {
         <div
           style={{
             opacity: badge3Opacity,
+            transform: `scale(${badge3Scale})`,
             padding: '16px 32px',
             backgroundColor: 'rgba(255, 255, 255, 0.15)',
             borderRadius: '50px',
@@ -152,6 +170,8 @@ export const IntroScene: React.FC = () => {
             fontWeight: 600,
             border: '2px solid rgba(255, 255, 255, 0.3)',
             backdropFilter: 'blur(10px)',
+            boxShadow: badge3Glow > 0 ? `0 0 ${30 * badge3Glow}px ${15 * badge3Glow}px rgba(255, 255, 255, 0.4)` : 'none',
+            transition: 'box-shadow 0.1s',
           }}
         >
           AI Response Analysis

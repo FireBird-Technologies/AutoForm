@@ -4,34 +4,65 @@ import { useCurrentFrame, useVideoConfig, interpolate, Easing } from 'remotion';
 export const FormCreationScene: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const startFrame = 3 * fps; // Starts at 3 seconds
+  const startFrame = 4 * fps; // Starts at 4 seconds
 
-  // Typing animation
+  // Typing animation - starts immediately
   const prompt = "Create a customer feedback survey with ratings and comments";
-  const typingProgress = interpolate(frame, [startFrame, startFrame + 90], [0, prompt.length], { easing: Easing.linear, extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const typingProgress = interpolate(frame, [startFrame + 5, startFrame + 95], [0, prompt.length], { easing: Easing.linear, extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   const displayedText = prompt.slice(0, Math.floor(typingProgress));
 
-  // Form container appears
-  const formOpacity = interpolate(frame, [startFrame + 100, startFrame + 130], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  const formScale = interpolate(frame, [startFrame + 100, startFrame + 130], [0.95, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  // ZOOM EFFECT: Stay zoomed in while typing, then zoom out to normal
+  // Typing ends at startFrame + 95, zoom out from startFrame + 100 to startFrame + 130
+  const zoomScale = interpolate(
+    frame, 
+    [startFrame, startFrame + 95, startFrame + 100, startFrame + 130], 
+    [1.4, 1.4, 1.4, 1], // Zoom in -> hold -> zoom out to 1x (centered)
+    { easing: Easing.inOut(Easing.ease), extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+  );
+  
+  // Pan position - focus on chat input while zoomed, then center (0,0) when zoomed out
+  const panX = interpolate(
+    frame,
+    [startFrame, startFrame + 95, startFrame + 100, startFrame + 130],
+    [18, 18, 18, 0], // Shift to show chat, then center
+    { easing: Easing.inOut(Easing.ease), extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+  );
+  
+  const panY = interpolate(
+    frame,
+    [startFrame, startFrame + 95, startFrame + 100, startFrame + 130],
+    [0, 0, 0, 0],
+    { easing: Easing.inOut(Easing.ease), extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+  );
+
+  // Form container appears (after zoom out)
+  const formOpacity = interpolate(frame, [startFrame + 130, startFrame + 150], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const formScale = interpolate(frame, [startFrame + 130, startFrame + 150], [0.95, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
 
   // Form fields animate in sequentially - matching exact UI components
-  const field1Opacity = interpolate(frame, [startFrame + 130, startFrame + 150], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  const field2Opacity = interpolate(frame, [startFrame + 150, startFrame + 170], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  const field3Opacity = interpolate(frame, [startFrame + 170, startFrame + 190], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  const field4Opacity = interpolate(frame, [startFrame + 190, startFrame + 210], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const field1Opacity = interpolate(frame, [startFrame + 150, startFrame + 165], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const field2Opacity = interpolate(frame, [startFrame + 165, startFrame + 180], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const field3Opacity = interpolate(frame, [startFrame + 180, startFrame + 195], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const field4Opacity = interpolate(frame, [startFrame + 195, startFrame + 210], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
 
   return (
+    <div style={{
+      width: '100%',
+      height: '100%',
+      overflow: 'hidden',
+      backgroundColor: '#ffffff',
+    }}>
     <div style={{
       width: '100%',
       height: '100%',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: '#ffffff',
-      padding: '50px',
-      gap: '50px',
+      padding: '40px',
+      gap: '40px',
       fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      transform: `scale(${zoomScale}) translate(${panX}%, ${panY}%)`,
+      transformOrigin: 'center center',
     }}>
       {/* Left side - Chat input matching FormChatPanel */}
       <div style={{ width: '580px', display: 'flex', flexDirection: 'column' }}>
@@ -292,6 +323,7 @@ export const FormCreationScene: React.FC = () => {
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 };

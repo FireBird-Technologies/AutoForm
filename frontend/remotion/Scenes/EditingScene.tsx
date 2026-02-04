@@ -4,34 +4,65 @@ import { useCurrentFrame, useVideoConfig, interpolate, Easing } from 'remotion';
 export const EditingScene: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const startFrame = 23 * fps; // Starts at 23 seconds
+  const startFrame = 24 * fps; // Starts at 24 seconds
 
-  // Chat message typing
+  // Chat message typing - starts immediately
   const editPrompt = "Add an email field and make the rating required";
-  const typingProgress = interpolate(frame, [startFrame, startFrame + 60], [0, editPrompt.length], { easing: Easing.linear, extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const typingProgress = interpolate(frame, [startFrame + 5, startFrame + 65], [0, editPrompt.length], { easing: Easing.linear, extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   const displayedText = editPrompt.slice(0, Math.floor(typingProgress));
 
-  // AI response appears
-  const responseOpacity = interpolate(frame, [startFrame + 70, startFrame + 90], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  // ZOOM EFFECT: Stay zoomed in while typing, then zoom out to normal
+  // Typing ends at startFrame + 65, zoom out from startFrame + 70 to startFrame + 95
+  const zoomScale = interpolate(
+    frame, 
+    [startFrame, startFrame + 65, startFrame + 70, startFrame + 95], 
+    [1.4, 1.4, 1.4, 1], // Zoom in -> hold -> zoom out to 1x (centered)
+    { easing: Easing.inOut(Easing.ease), extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+  );
+  
+  // Pan position - focus on chat input while zoomed, then center (0,0) when zoomed out
+  const panX = interpolate(
+    frame,
+    [startFrame, startFrame + 65, startFrame + 70, startFrame + 95],
+    [18, 18, 18, 0], // Shift to show chat, then center
+    { easing: Easing.inOut(Easing.ease), extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+  );
+  
+  const panY = interpolate(
+    frame,
+    [startFrame, startFrame + 65, startFrame + 70, startFrame + 95],
+    [0, 0, 0, 0],
+    { easing: Easing.inOut(Easing.ease), extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+  );
+
+  // AI response appears (after zoom out)
+  const responseOpacity = interpolate(frame, [startFrame + 100, startFrame + 115], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
 
   // New field animates in
-  const newFieldOpacity = interpolate(frame, [startFrame + 100, startFrame + 120], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  const newFieldY = interpolate(frame, [startFrame + 100, startFrame + 120], [-15, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const newFieldOpacity = interpolate(frame, [startFrame + 120, startFrame + 140], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const newFieldY = interpolate(frame, [startFrame + 120, startFrame + 140], [-15, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
 
   // Required badge appears
-  const requiredBadgeOpacity = interpolate(frame, [startFrame + 130, startFrame + 145], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const requiredBadgeOpacity = interpolate(frame, [startFrame + 145, startFrame + 160], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
 
   return (
+    <div style={{
+      width: '100%',
+      height: '100%',
+      overflow: 'hidden',
+      backgroundColor: '#fafafa',
+    }}>
     <div style={{
       width: '100%',
       height: '100%',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: '#fafafa',
-      padding: '50px',
-      gap: '50px',
+      padding: '40px',
+      gap: '40px',
       fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      transform: `scale(${zoomScale}) translate(${panX}%, ${panY}%)`,
+      transformOrigin: 'center center',
     }}>
       {/* Left side - Chat Panel matching FormChatPanel exactly */}
       <div style={{ width: '480px', display: 'flex', flexDirection: 'column' }}>
@@ -349,6 +380,7 @@ export const EditingScene: React.FC = () => {
           }} placeholder="Your answer" />
         </div>
       </div>
+    </div>
     </div>
   );
 };

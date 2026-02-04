@@ -4,7 +4,7 @@ import { useCurrentFrame, useVideoConfig, interpolate, Easing } from 'remotion';
 export const QuestionTypesScene: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const startFrame = 31 * fps; // Starts at 31 seconds (frame 930)
+  const startFrame = 32 * fps; // Starts at 32 seconds (frame 960)
 
   // Grid of question types - more types for fuller screen
   const questionTypes = [
